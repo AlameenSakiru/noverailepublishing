@@ -31,6 +31,9 @@ export default async function HomePage() {
         category: true,
         imprint: true,
         examMetadata: true,
+        reviews: {
+          select: { rating: true },
+        },
       },
       orderBy: { createdAt: "asc" },
     }),
@@ -274,20 +277,29 @@ export default async function HomePage() {
 
         {/* 6-Book Multi-Niche Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {allBooks.map((book) => (
-            <BookCard
-              key={book.id}
-              id={book.id}
-              title={book.title}
-              subtitle={book.subtitle}
-              slug={book.slug}
-              coverImage={book.coverImage}
-              authorName={book.author.name}
-              categoryName={book.category.name}
-              price={book.price}
-              salePrice={book.salePrice}
-            />
-          ))}
+          {allBooks.map((book) => {
+            const reviewCount = book.reviews?.length || 0;
+            const avgRating = reviewCount > 0
+              ? book.reviews.reduce((acc, r) => acc + r.rating, 0) / reviewCount
+              : null;
+
+            return (
+              <BookCard
+                key={book.id}
+                id={book.id}
+                title={book.title}
+                subtitle={book.subtitle}
+                slug={book.slug}
+                coverImage={book.coverImage}
+                authorName={book.author.name}
+                categoryName={book.category.name}
+                price={book.price}
+                salePrice={book.salePrice}
+                rating={avgRating}
+                reviewCount={reviewCount}
+              />
+            );
+          })}
         </div>
       </section>
 

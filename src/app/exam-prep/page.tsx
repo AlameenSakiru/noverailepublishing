@@ -25,6 +25,9 @@ export default async function ExamPrepPage() {
       author: true,
       category: true,
       examMetadata: true,
+      reviews: {
+        select: { rating: true },
+      },
     },
     orderBy: { isFeatured: "desc" },
   });
@@ -94,6 +97,8 @@ export default async function ExamPrepPage() {
                 categoryName={book.category.name}
                 price={book.price}
                 salePrice={book.salePrice}
+                rating={book.reviews?.length ? book.reviews.reduce((acc, r) => acc + r.rating, 0) / book.reviews.length : null}
+                reviewCount={book.reviews?.length || 0}
               />
             </div>
           ))}

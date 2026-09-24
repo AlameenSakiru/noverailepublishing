@@ -126,8 +126,8 @@ export function BookDetailClient({ book, isOwned = false }: BookDetailClientProp
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14">
         {/* Book Cover Presentation */}
         <div className="lg:col-span-5 flex flex-col items-center">
-          <div className="relative w-full max-w-sm aspect-[3/4] rounded-2xl bg-brand-50 p-6 flex items-center justify-center border border-brand-border/80 shadow-xs">
-            <div className="relative w-4/5 h-full rounded-md shadow-book-lg overflow-hidden border border-black/10">
+          <div className="relative w-full max-w-sm rounded-2xl bg-gradient-to-b from-[#fbf9f5] to-[#f4efe4] p-6 sm:p-8 flex items-center justify-center border border-brand-border/80 shadow-xs">
+            <div className="relative w-full max-w-[240px] aspect-[2/3] rounded-md shadow-book-lg overflow-hidden bg-white border border-black/10">
               <Image
                 src={book.coverImage}
                 alt={`Cover of ${book.title}`}
@@ -137,7 +137,7 @@ export function BookDetailClient({ book, isOwned = false }: BookDetailClientProp
                 className="object-cover"
               />
               {/* Spine highlight */}
-              <div className="absolute top-0 bottom-0 left-0 w-3 bg-gradient-to-r from-black/30 via-white/10 to-transparent pointer-events-none" />
+              <div className="absolute top-0 bottom-0 left-0 w-3 bg-gradient-to-r from-black/25 via-white/10 to-transparent pointer-events-none" />
             </div>
 
             {book.salePrice && (
@@ -195,12 +195,38 @@ export function BookDetailClient({ book, isOwned = false }: BookDetailClientProp
               By {book.author.name}
             </Link>
             <span className="text-gray-300">•</span>
-            <div className="flex items-center gap-1 text-amber-500">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-3.5 h-3.5 fill-current" />
-              ))}
-              <span className="text-xs font-semibold text-brand-slate ml-1">5.0 (Verified Readers)</span>
-            </div>
+            
+            {/* Reviews / Rating Display (No fake 5 stars) */}
+            {book.reviews && book.reviews.length > 0 ? (
+              <div className="flex items-center gap-1.5 text-amber-500">
+                <div className="flex items-center">
+                  {[...Array(5)].map((_, i) => {
+                    const avg = book.reviews.reduce((acc: number, r: any) => acc + r.rating, 0) / book.reviews.length;
+                    return (
+                      <Star
+                        key={i}
+                        className={`w-3.5 h-3.5 ${
+                          i < Math.round(avg)
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-gray-200 fill-gray-200"
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+                <span className="text-xs font-semibold text-brand-slate ml-1">
+                  {(book.reviews.reduce((acc: number, r: any) => acc + r.rating, 0) / book.reviews.length).toFixed(1)} ({book.reviews.length} Verified {book.reviews.length === 1 ? "Reader" : "Readers"})
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  New Release
+                </span>
+                <span className="text-xs text-brand-muted">Verified Direct Edition</span>
+              </div>
+            )}
           </div>
 
           {/* Pricing Box */}

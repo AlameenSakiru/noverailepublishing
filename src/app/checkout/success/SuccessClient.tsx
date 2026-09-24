@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { CheckCircle2, BookOpen, ArrowRight, Library } from "lucide-react";
+import { CheckCircle2, BookOpen, ArrowRight, Library, Receipt } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 
@@ -67,8 +67,8 @@ export function SuccessClient({ order }: SuccessClientProps) {
         <strong className="text-brand-ink">{order.customerEmail}</strong>. Your publications are now active inside your personal cloud library.
       </p>
 
-      {/* Immediate Reading CTA */}
-      <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+      {/* Immediate Reading & Library CTAs */}
+      <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
         {firstSlug ? (
           <Link
             href={`/reader/${firstSlug}`}
@@ -82,10 +82,18 @@ export function SuccessClient({ order }: SuccessClientProps) {
 
         <Link
           href="/my-library"
-          className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-white border border-brand-border text-brand-ink font-semibold text-sm hover:bg-brand-50 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+          className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white border border-brand-border text-brand-ink font-semibold text-sm hover:bg-brand-50 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
         >
           <Library className="w-4 h-4 text-brand-500" />
-          <span>Open My Library</span>
+          <span>My Bookshelf</span>
+        </Link>
+
+        <Link
+          href="/my-library?tab=orders"
+          className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white border border-brand-border text-brand-slate hover:text-brand-ink font-semibold text-sm hover:bg-brand-50 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+        >
+          <Receipt className="w-4 h-4 text-brand-500" />
+          <span>Order Receipt</span>
         </Link>
       </div>
 
@@ -101,7 +109,7 @@ export function SuccessClient({ order }: SuccessClientProps) {
             <div key={item.id} className="py-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 {item.book?.coverImage && (
-                  <div className="relative w-12 aspect-[3/4] rounded shadow-xs overflow-hidden shrink-0 border border-brand-border/60">
+                  <div className="relative w-12 aspect-[2/3] rounded shadow-xs overflow-hidden shrink-0 border border-brand-border/60">
                     <Image
                       src={item.book.coverImage}
                       alt={item.bookTitle}

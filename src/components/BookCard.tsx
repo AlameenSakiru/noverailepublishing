@@ -17,6 +17,8 @@ export interface BookCardProps {
   price: number;
   salePrice?: number | null;
   isOwned?: boolean;
+  rating?: number | null;
+  reviewCount?: number | null;
 }
 
 export function BookCard({
@@ -30,6 +32,8 @@ export function BookCard({
   price,
   salePrice,
   isOwned = false,
+  rating,
+  reviewCount = 0,
 }: BookCardProps) {
   const { addItem, isInCart } = useCart();
   const inCart = isInCart(id);
@@ -55,67 +59,111 @@ export function BookCard({
   };
 
   return (
-    <div className="group flex flex-col h-full bg-white rounded-xl border border-brand-border hover:border-brand-300 hover:shadow-book-lg transition-all duration-300 overflow-hidden">
-      {/* Book Cover Container with depth */}
-      <Link href={`/books/${slug}`} className="relative block aspect-[3/4] overflow-hidden bg-brand-50 p-6 flex items-center justify-center">
-        {/* Soft backdrop vignette */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-10" />
+    <div className="group flex flex-col h-full bg-white rounded-2xl border border-brand-border hover:border-brand-300 hover:shadow-book-lg transition-all duration-300 overflow-hidden">
+      {/* 1. Amazon-Style Clean Book Cover Stage (No text overlaid on artwork) */}
+      <Link
+        href={`/books/${slug}`}
+        className="relative block bg-gradient-to-b from-[#fbf9f5] to-[#f4efe4] p-6 flex items-center justify-center border-b border-brand-border/60 overflow-hidden"
+      >
+        {/* Soft vignette on hover */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/[0.02] transition-colors pointer-events-none" />
 
-        {/* 3D Book Cover Presentation */}
-        <div className="relative w-4/5 h-full max-h-[260px] rounded shadow-book group-hover:scale-[1.03] transition-transform duration-300 overflow-hidden border border-black/10 bg-gradient-to-br from-brand-navy to-brand-ink flex flex-col justify-between p-4 text-white">
-          <Image
-            src={coverImage}
-            alt={`Cover of ${title}`}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover"
-            onError={(e) => {
-              // Hide broken image and reveal gradient cover underneath
-              (e.target as HTMLElement).style.display = 'none';
-            }}
-          />
-          {/* Tactile fallback typography visible if image fails or before load */}
-          <div className="relative z-0 pointer-events-none">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-brand-300 block">Noveraile</span>
-            <p className="font-serif font-bold text-xs mt-2 line-clamp-3 leading-tight">{title}</p>
-          </div>
-          <p className="text-[9px] text-gray-300 relative z-0">{authorName}</p>
+        {/* 3D Tactile Book Presentation (2:3 Standard Book Ratio) */}
+        <div className="relative w-full max-w-[190px] aspect-[2/3] rounded shadow-book group-hover:shadow-book-lg group-hover:scale-[1.03] transition-all duration-300 overflow-hidden bg-white border border-black/10">
+          {coverImage ? (
+            <Image
+              src={coverImage}
+              alt={`Cover of ${title}`}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className="object-cover"
+              priority={false}
+            />
+          ) : (
+            /* Typographic fallback ONLY when no cover image exists */
+            <div className="w-full h-full bg-gradient-to-br from-brand-navy to-brand-ink p-4 flex flex-col justify-between text-white">
+              <div>
+                <span className="text-[9px] font-mono uppercase tracking-widest text-brand-300 block">Noveraile Edition</span>
+                <p className="font-serif font-bold text-xs mt-2 line-clamp-3 leading-tight">{title}</p>
+              </div>
+              <p className="text-[10px] text-gray-300 font-sans">{authorName}</p>
+            </div>
+          )}
 
-          {/* Subtle Spine highlight for tactile feel */}
-          <div className="absolute top-0 bottom-0 left-0 w-3 bg-gradient-to-r from-black/30 via-white/10 to-transparent pointer-events-none z-10" />
+          {/* Spine light reflection for realistic tactile depth */}
+          <div className="absolute top-0 bottom-0 left-0 w-2.5 bg-gradient-to-r from-black/25 via-white/10 to-transparent pointer-events-none z-10" />
         </div>
 
+        {/* Category Pill Tag */}
         {categoryName && (
-          <span className="absolute top-3 left-3 z-20 px-2.5 py-1 bg-white/90 backdrop-blur-md rounded-md text-[11px] font-semibold text-brand-ink uppercase tracking-wider shadow-sm border border-brand-border/60">
+          <span className="absolute top-3 left-3 z-20 px-2.5 py-1 bg-white/95 backdrop-blur-md rounded text-[10px] font-semibold text-brand-slate uppercase tracking-wider shadow-xs border border-brand-border/80">
             {categoryName}
           </span>
         )}
       </Link>
 
-      {/* Book Info Body */}
+      {/* 2. Book Info Body Below Cover */}
       <div className="p-5 flex flex-col flex-1">
-        <div className="flex items-center gap-1 text-amber-500 mb-2">
-          {[...Array(5)].map((_, i) => (
-            <Star key={i} className="w-3.5 h-3.5 fill-current" />
-          ))}
-          <span className="text-xs font-semibold text-brand-slate ml-1">5.0</span>
+        {/* Rating / New Release Badge (No hardcoded fake 5.0 stars) */}
+        <div className="mb-2">
+          {reviewCount && reviewCount > 0 ? (
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center text-amber-500">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`w-3.5 h-3.5 ${
+                      i < Math.round(rating || 5)
+                        ? "fill-amber-400 text-amber-400"
+                        : "text-gray-200 fill-gray-200"
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-xs font-semibold text-brand-slate">
+                {(rating || 5).toFixed(1)}
+              </span>
+              <span className="text-[11px] text-brand-muted">({reviewCount})</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                New Release
+              </span>
+              <span className="text-[11px] text-brand-muted">Direct Edition</span>
+            </div>
+          )}
         </div>
 
+        {/* Book Title */}
         <Link href={`/books/${slug}`} className="block group-hover:text-brand-700 transition-colors">
           <h3 className="font-serif text-lg font-bold text-brand-ink leading-snug line-clamp-2">
             {title}
           </h3>
         </Link>
 
-        <p className="text-xs font-medium text-brand-muted mt-1">
-          By {authorName}
+        {/* Author Byline */}
+        <p className="text-xs font-medium text-brand-slate mt-1.5">
+          By <span className="font-semibold text-brand-ink">{authorName}</span>
         </p>
 
+        {/* Subtitle if available */}
         {subtitle && (
-          <p className="text-xs text-brand-slate line-clamp-2 mt-2 font-light">
+          <p className="text-xs text-brand-muted line-clamp-1 mt-1 font-light">
             {subtitle}
           </p>
         )}
+
+        {/* Format Badge */}
+        <div className="mt-3 flex items-center gap-2 text-[11px] text-brand-muted">
+          <span className="inline-flex items-center gap-1 text-brand-slate font-medium">
+            <BookOpen className="w-3 h-3 text-brand-500" />
+            Digital Edition
+          </span>
+          <span>•</span>
+          <span>Instant Cloud Reader</span>
+        </div>
 
         {/* Price & Action Row */}
         <div className="mt-auto pt-4 flex items-center justify-between border-t border-gray-100">
@@ -133,7 +181,7 @@ export function BookCard({
           {isOwned ? (
             <Link
               href={`/reader/${slug}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-semibold hover:bg-emerald-100 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-semibold hover:bg-emerald-100 transition-colors"
             >
               <BookOpen className="w-3.5 h-3.5" />
               <span>Read</span>
@@ -142,10 +190,10 @@ export function BookCard({
             <button
               onClick={handleAddToCart}
               disabled={inCart}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
                 inCart
                   ? "bg-gray-100 text-gray-500 cursor-default"
-                  : "bg-brand-ink text-white hover:bg-brand-900 shadow-sm"
+                  : "bg-brand-ink text-white hover:bg-brand-900 shadow-xs hover:shadow"
               }`}
             >
               {inCart ? (

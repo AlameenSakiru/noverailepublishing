@@ -26,13 +26,13 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
 
   if (query) {
     where.OR = [
-      { title: { contains: query } },
-      { subtitle: { contains: query } },
-      { description: { contains: query } },
-      { author: { name: { contains: query } } },
-      { category: { name: { contains: query } } },
-      { examMetadata: { examName: { contains: query } } },
-      { examMetadata: { examAcronym: { contains: query } } },
+      { title: { contains: query, mode: "insensitive" } },
+      { subtitle: { contains: query, mode: "insensitive" } },
+      { description: { contains: query, mode: "insensitive" } },
+      { author: { name: { contains: query, mode: "insensitive" } } },
+      { category: { name: { contains: query, mode: "insensitive" } } },
+      { examMetadata: { examName: { contains: query, mode: "insensitive" } } },
+      { examMetadata: { examAcronym: { contains: query, mode: "insensitive" } } },
     ];
   }
 
@@ -56,6 +56,9 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
       author: true,
       category: true,
       examMetadata: true,
+      reviews: {
+        select: { rating: true },
+      },
     },
   });
 
@@ -209,20 +212,29 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {books.map((book) => (
-                <BookCard
-                  key={book.id}
-                  id={book.id}
-                  title={book.title}
-                  subtitle={book.subtitle}
-                  slug={book.slug}
-                  coverImage={book.coverImage}
-                  authorName={book.author.name}
-                  categoryName={book.category.name}
-                  price={book.price}
-                  salePrice={book.salePrice}
-                />
-              ))}
+              {books.map((book) => {
+                const reviewCount = book.reviews?.length || 0;
+                const avgRating = reviewCount > 0
+                  ? book.reviews.reduce((acc, r) => acc + r.rating, 0) / reviewCount
+                  : null;
+
+                return (
+                  <BookCard
+                    key={book.id}
+                    id={book.id}
+                    title={book.title}
+                    subtitle={book.subtitle}
+                    slug={book.slug}
+                    coverImage={book.coverImage}
+                    authorName={book.author.name}
+                    categoryName={book.category.name}
+                    price={book.price}
+                    salePrice={book.salePrice}
+                    rating={avgRating}
+                    reviewCount={reviewCount}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

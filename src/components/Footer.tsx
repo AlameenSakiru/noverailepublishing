@@ -154,6 +154,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/my-library?tab=orders" className="hover:text-white transition-colors">
+                  Order History & Receipts
+                </Link>
+              </li>
+              <li>
                 <Link href="/help" className="hover:text-white transition-colors">
                   Help Center & FAQs
                 </Link>

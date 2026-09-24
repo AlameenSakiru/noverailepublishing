@@ -127,6 +127,12 @@ export function Header() {
                     >
                       My Library
                     </Link>
+                    <Link
+                      href="/my-library?tab=orders"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-50"
+                    >
+                      Order History & Receipts
+                    </Link>
                     {(user.role === "ADMIN" || user.role === "EDITOR") && (
                       <Link
                         href="/admin"
@@ -210,6 +216,13 @@ export function Header() {
             className="block py-2 text-base font-semibold text-brand-ink"
           >
             My Library
+          </Link>
+          <Link
+            href="/my-library?tab=orders"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block py-2 text-base font-medium text-brand-slate hover:text-brand-ink"
+          >
+            Order History & Receipts
           </Link>
           {user ? (
             <button

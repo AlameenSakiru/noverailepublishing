@@ -39,6 +39,9 @@ export default async function CategoryDetailPage({ params }: CategoryPageProps) 
     include: {
       author: true,
       category: true,
+      reviews: {
+        select: { rating: true },
+      },
     },
     orderBy: { isFeatured: "desc" },
   });
@@ -102,20 +105,29 @@ export default async function CategoryDetailPage({ params }: CategoryPageProps) 
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {books.map((book) => (
-              <BookCard
-                key={book.id}
-                id={book.id}
-                title={book.title}
-                subtitle={book.subtitle}
-                slug={book.slug}
-                coverImage={book.coverImage}
-                authorName={book.author.name}
-                categoryName={book.category.name}
-                price={book.price}
-                salePrice={book.salePrice}
-              />
-            ))}
+            {books.map((book) => {
+              const reviewCount = book.reviews?.length || 0;
+              const avgRating = reviewCount > 0
+                ? book.reviews.reduce((acc, r) => acc + r.rating, 0) / reviewCount
+                : null;
+
+              return (
+                <BookCard
+                  key={book.id}
+                  id={book.id}
+                  title={book.title}
+                  subtitle={book.subtitle}
+                  slug={book.slug}
+                  coverImage={book.coverImage}
+                  authorName={book.author.name}
+                  categoryName={book.category.name}
+                  price={book.price}
+                  salePrice={book.salePrice}
+                  rating={avgRating}
+                  reviewCount={reviewCount}
+                />
+              );
+            })}
           </div>
         )}
       </div>
