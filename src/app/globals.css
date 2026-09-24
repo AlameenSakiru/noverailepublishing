@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #fbfaf8;
+  --foreground: #0c111d;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Protected Reader Security Styles */
+.reader-canvas {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Print Security: Disallow printing full protected book contents */
+@media print {
+  .no-print, header, footer, .reader-canvas, .reader-controls {
+    display: none !important;
+  }
+  
+  body::before {
+    content: "Notice: Printing of this proprietary digital publication is prohibited by copyright policy and digital rights management. Please view your publication directly in the Noveraile Protected Cloud Reader.";
+    display: block;
+    padding: 2rem;
+    font-family: serif;
+    font-size: 16pt;
+    text-align: center;
+    color: #111;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
