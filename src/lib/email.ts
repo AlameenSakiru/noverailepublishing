@@ -13,13 +13,47 @@ export async function sendEmail({
   html,
   text,
 }: SendEmailOptions): Promise<{ success: boolean; id?: string; error?: string }> {
-  const resendApiKey = process.env.RESEND_API_KEY?.trim();
   const smtpHost = process.env.SMTP_HOST?.trim();
   const smtpUser = process.env.SMTP_USER?.trim();
-  const smtpPass = process.env.SMTP_PASS?.trim();
-  let fromEmail = process.env.EMAIL_FROM?.trim() || "Noveraile Publishing <onboarding@resend.dev>";
+  const smtpPass = process.env.SMTP_PASS?.trim()?.replace(/\s+/g, "");
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  let fromEmail = process.env.EMAIL_FROM?.trim() || `Noveraile Publishing <${smtpUser || "onboarding@resend.dev"}>`;
 
-  // Provider 1: Resend HTTP API
+  // Provider 1: Universal SMTP (Gmail, Google Workspace, Brevo, SendGrid, Hostinger)
+  if (smtpHost && smtpUser && smtpPass) {
+    try {
+      const port = Number(process.env.SMTP_PORT) || 465;
+      const isSecure = process.env.SMTP_SECURE === "true" || port === 465;
+
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port,
+        secure: isSecure,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+
+      const formattedFrom = fromEmail.includes("<") ? fromEmail : `"Noveraile Publishing" <${smtpUser}>`;
+
+      const info = await transporter.sendMail({
+        from: formattedFrom,
+        to,
+        subject,
+        html,
+        text,
+      });
+
+      console.log(`✅ [EMAIL SENT via SMTP] To: ${to} (MessageId: ${info.messageId})`);
+      return { success: true, id: info.messageId };
+    } catch (smtpErr: any) {
+      console.error("❌ SMTP send error:", smtpErr);
+      return { success: false, error: smtpErr.message || "SMTP error" };
+    }
+  }
+
+  // Provider 2: Resend HTTP API
   if (resendApiKey && resendApiKey.length > 0) {
     try {
       let res = await fetch("https://api.resend.com/emails", {
@@ -39,7 +73,7 @@ export async function sendEmail({
 
       let data = await res.json();
 
-      // If domain verification failed (e.g. noverailepublishing.com not verified yet on Resend), retry with onboarding@resend.dev
+      // If domain verification failed, fallback to onboarding@resend.dev
       if (!res.ok && (data.message?.includes("domain") || data.name === "validation_error" || res.status === 403)) {
         console.warn("⚠️ Custom domain unverified on Resend. Falling back to onboarding@resend.dev...");
         const fallbackFrom = "Noveraile Publishing <onboarding@resend.dev>";
@@ -73,41 +107,9 @@ export async function sendEmail({
     }
   }
 
-  // Provider 2: Universal SMTP (Gmail, Brevo, SendGrid, Hostinger, cPanel)
-  if (smtpHost && smtpUser && smtpPass) {
-    try {
-      const port = Number(process.env.SMTP_PORT) || 465;
-      const isSecure = process.env.SMTP_SECURE === "true" || port === 465;
-
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port,
-        secure: isSecure,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
-
-      const info = await transporter.sendMail({
-        from: fromEmail.includes("<") ? fromEmail : `"${process.env.NEXT_PUBLIC_SITE_NAME || 'Noveraile Publishing'}" <${smtpUser}>`,
-        to,
-        subject,
-        html,
-        text,
-      });
-
-      console.log(`✅ [EMAIL SENT via SMTP] To: ${to} (MessageId: ${info.messageId})`);
-      return { success: true, id: info.messageId };
-    } catch (smtpErr: any) {
-      console.error("❌ SMTP send error:", smtpErr);
-      return { success: false, error: smtpErr.message || "SMTP error" };
-    }
-  }
-
   // Provider 3: Local / Development Dry Run Logger
   console.log("=================================================");
-  console.log("📬 [EMAIL DISPATCH - LOCAL LOG (No API Key Configured)]");
+  console.log("📬 [EMAIL DISPATCH - LOCAL LOG (No Provider Configured)]");
   console.log(`To: ${to}`);
   console.log(`Subject: ${subject}`);
   console.log("=================================================");
@@ -169,7 +171,7 @@ export async function sendVerificationEmail(toEmail: string, recipientName: stri
               </table>
 
               <p style="font-size: 13px; line-height: 1.6; color: #64748b; margin: 0;">
-                For your security, never share this code with anyone.
+                For your security, never share this code with anyone. Noveraile staff will never ask for your verification code.
               </p>
             </td>
           </tr>
@@ -178,7 +180,7 @@ export async function sendVerificationEmail(toEmail: string, recipientName: stri
           <tr>
             <td style="padding-top: 24px; border-top: 1px solid #f1f5f9; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.5;">
               Noveraile Publishing Platform • Protected Cloud Library<br>
-              If you did not create this account, you can safely disregard this email.
+              If you did not initiate this request, you can safely disregard this email.
             </td>
           </tr>
         </table>
