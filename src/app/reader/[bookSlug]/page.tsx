@@ -28,7 +28,7 @@ export default async function ProtectedReaderPage({ params }: ReaderPageProps) {
     },
   });
 
-  if (!book || book.status !== "PUBLISHED") {
+  if (!book) {
     notFound();
   }
 
@@ -41,6 +41,12 @@ export default async function ProtectedReaderPage({ params }: ReaderPageProps) {
 
   // Check server-side entitlement or admin privileges
   const isStaff = currentUser.role === "ADMIN" || currentUser.role === "EDITOR";
+
+  // Only published books accessible to regular customers; staff can preview all
+  if (!isStaff && book.status !== "PUBLISHED") {
+    notFound();
+  }
+
   let hasEntitlement = isStaff;
 
   if (!hasEntitlement) {
@@ -102,10 +108,13 @@ export default async function ProtectedReaderPage({ params }: ReaderPageProps) {
         authorName: book.author.name,
         pageCount: book.pageCount,
         tableOfContents: toc,
-        pdfUrl,
+        pdfUrl: pdfUrl || `/api/reader/pdf-stream?bookId=${book.id}`,
+        pdfStreamUrl: `/api/reader/pdf-stream?bookId=${book.id}`,
       }}
       initialPage={initialPage}
       userEmail={currentUser.email}
+      userName={currentUser.name}
+      userId={currentUser.userId}
       hasEntitlement={hasEntitlement}
     />
   );
