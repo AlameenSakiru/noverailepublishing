@@ -7,13 +7,19 @@ export const dynamic = "force-dynamic";
 export default async function AdminCustomersPage() {
   const [users, books] = await Promise.all([
     prisma.user.findMany({
-      where: { role: "CUSTOMER" },
       include: {
         entitlements: {
           include: {
             book: {
               select: { title: true },
             },
+          },
+        },
+        _count: {
+          select: {
+            sessions: true,
+            orders: true,
+            bookmarks: true,
           },
         },
       },
