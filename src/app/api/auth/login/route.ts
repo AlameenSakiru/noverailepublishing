@@ -85,14 +85,7 @@ export async function POST(req: Request) {
       );
     }
 
-    await setSessionCookie({
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    });
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: {
         userId: user.id,
@@ -101,6 +94,18 @@ export async function POST(req: Request) {
         role: user.role,
       },
     });
+
+    await setSessionCookie(
+      {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+      response
+    );
+
+    return response;
   } catch (error: any) {
     console.error("Login error:", error);
 

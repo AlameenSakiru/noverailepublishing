@@ -49,9 +49,8 @@ function AdminLoginForm() {
         return;
       }
 
-      // Success: redirect directly to publisher dashboard
-      router.push("/admin");
-      router.refresh();
+      // Success: navigate with full page reload to ensure fresh cookie and layout hydration
+      window.location.href = "/admin";
     } catch {
       setError("Network or server connection error. Please try again.");
       setLoading(false);

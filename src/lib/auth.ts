@@ -36,18 +36,38 @@ export function verifyToken(token: string): SessionPayload | null {
   }
 }
 
-export async function setSessionCookie(payload: SessionPayload) {
+import type { NextResponse } from "next/server";
+
+export async function setSessionCookie(payload: SessionPayload, response?: NextResponse) {
   const token = signToken(payload);
   const cookieStore = cookies();
   
-  // Set HTTP-only secure cookie
-  cookieStore.set(COOKIE_NAME, token, {
+  // Set HTTP-only secure cookie safely (only HTTPS in production)
+  const isSecure = process.env.NODE_ENV === "production" && (
+    process.env.NEXT_PUBLIC_APP_URL?.startsWith("https") ?? false
+  );
+
+  const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isSecure,
+    sameSite: "lax" as const,
     path: "/",
     maxAge: 60 * 60 * 24 * SESSION_EXPIRY_DAYS,
-  });
+  };
+
+  try {
+    cookieStore.set(COOKIE_NAME, token, cookieOptions);
+  } catch (err) {
+    // In some edge route handler contexts, cookieStore.set may warn
+  }
+
+  if (response) {
+    try {
+      response.cookies.set(COOKIE_NAME, token, cookieOptions);
+    } catch (err) {
+      console.warn("Failed to set cookie on response:", err);
+    }
+  }
 
   // Record session in database for device & session management
   try {
