@@ -117,14 +117,11 @@ export async function POST(req: Request) {
         console.error("Verification email dispatch failed:", err);
       }
 
-      const hasEmailProvider = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "");
-
       return NextResponse.json(
         {
           error: "Your email address is not verified yet. Please enter the 6-digit verification code sent to your inbox.",
           requiresVerification: true,
           email: cleanEmail,
-          demoCode: hasEmailProvider ? undefined : code,
         },
         { status: 403 }
       );

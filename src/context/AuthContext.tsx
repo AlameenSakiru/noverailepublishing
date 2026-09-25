@@ -73,7 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           error: data.error || "Login failed",
           requiresVerification: data.requiresVerification,
           email: data.email,
-          demoCode: data.demoCode,
         };
       }
       setUser(data.user);
