@@ -58,13 +58,18 @@ export async function POST(req: Request) {
     });
 
     // Dispatch email
-    let emailResult: { success: boolean; error?: string } = { success: false };
-    try {
-      const { sendVerificationEmail } = await import("@/lib/email");
-      emailResult = await sendVerificationEmail(cleanEmail, user.name, code);
-    } catch (err: any) {
-      console.error("Email send exception:", err);
-      emailResult = { success: false, error: err?.message };
+    const { sendVerificationEmail } = await import("@/lib/email");
+    const emailResult = await sendVerificationEmail(cleanEmail, user.name, code);
+
+    if (!emailResult.success) {
+      console.error("Resend verification email failure:", emailResult.error);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Email delivery failed: ${emailResult.error || "Please check server connection."}`,
+        },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
