@@ -4,6 +4,16 @@ import jwt from "jsonwebtoken";
 import prisma from "./prisma";
 
 const JWT_SECRET = process.env.JWT_SECRET || "noveraile_super_secret_jwt_key_development_32chars_minimum";
+
+if (
+  process.env.NODE_ENV === "production" &&
+  (!process.env.JWT_SECRET || process.env.JWT_SECRET.includes("development") || process.env.JWT_SECRET.length < 32)
+) {
+  console.warn(
+    "⚠️ SECURITY WARNING: In production, JWT_SECRET must be set to a secure, random string (min 32 chars) in environment variables."
+  );
+}
+
 const COOKIE_NAME = "noveraile_session";
 const SESSION_EXPIRY_DAYS = 30;
 
@@ -42,10 +52,11 @@ export async function setSessionCookie(payload: SessionPayload, response?: NextR
   const token = signToken(payload);
   const cookieStore = cookies();
   
-  // Set HTTP-only secure cookie safely (only HTTPS in production)
-  const isSecure = process.env.NODE_ENV === "production" && (
-    process.env.NEXT_PUBLIC_APP_URL?.startsWith("https") ?? false
-  );
+  // Set HTTP-only secure cookie safely (enforce HTTPS in production/Vercel)
+  const isSecure =
+    process.env.NODE_ENV === "production" ||
+    process.env.VERCEL === "1" ||
+    (process.env.NEXT_PUBLIC_APP_URL?.startsWith("https") ?? false);
 
   const cookieOptions = {
     httpOnly: true,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { checkRateLimit, getClientIp } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -45,14 +46,37 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Please log in to submit a review." }, { status: 401 });
     }
 
-    const { bookId, rating, title, comment } = await req.json();
+    const ip = getClientIp(req);
+    if (!checkRateLimit(`review_${user.userId}_${ip}`, 10, 60 * 60 * 1000)) {
+      return NextResponse.json(
+        { error: "Too many review submissions. Please wait before submitting another review." },
+        { status: 429 }
+      );
+    }
+
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+    }
+
+    const { bookId, rating, title, comment } = body || {};
 
     if (!bookId || !rating || !title || !comment) {
       return NextResponse.json({ error: "All fields are required." }, { status: 400 });
     }
 
-    if (rating < 1 || rating > 5) {
+    const numRating = Math.round(Number(rating));
+    if (isNaN(numRating) || numRating < 1 || numRating > 5) {
       return NextResponse.json({ error: "Rating must be between 1 and 5." }, { status: 400 });
+    }
+
+    const cleanTitle = String(title).replace(/[<>]/g, "").trim().slice(0, 100);
+    const cleanComment = String(comment).replace(/[<>]/g, "").trim().slice(0, 2000);
+
+    if (cleanTitle.length < 2 || cleanComment.length < 5) {
+      return NextResponse.json({ error: "Review title or comment is too short." }, { status: 400 });
     }
 
     // Check if user owns the book (verified purchase)
@@ -71,11 +95,11 @@ export async function POST(req: Request) {
       data: {
         bookId,
         userId: user.userId,
-        rating,
-        title: title.trim(),
-        comment: comment.trim(),
+        rating: numRating,
+        title: cleanTitle,
+        comment: cleanComment,
         isVerifiedPurchase,
-        isApproved: true, // auto-approve verified, or flag for moderation
+        isApproved: true,
       },
     });
 

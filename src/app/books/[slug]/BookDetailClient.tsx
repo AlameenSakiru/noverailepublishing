@@ -121,11 +121,16 @@ export function BookDetailClient({
     faq = [];
   }
 
-  let previewPages: number[] = [1, 2];
+  let previewPages: number[] = [1, 2, 3, 4, 5];
   try {
-    previewPages = JSON.parse(book.previewPageNumbers || "[1,2]");
+    const parsed = JSON.parse(book.previewPageNumbers || "[1,2,3,4,5]");
+    if (Array.isArray(parsed) && parsed.length >= 3) {
+      previewPages = parsed;
+    } else {
+      previewPages = [1, 2, 3, 4, 5];
+    }
   } catch {
-    previewPages = [1, 2];
+    previewPages = [1, 2, 3, 4, 5];
   }
 
   // Reviews computations

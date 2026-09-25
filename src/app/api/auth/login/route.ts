@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { verifyPassword, hashPassword, setSessionCookie } from "@/lib/auth";
+import { verifyPassword, setSessionCookie } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/security";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   let body: any;
@@ -17,9 +20,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    if (typeof email !== "string" || typeof password !== "string") {
+      return NextResponse.json({ error: "Invalid credential format." }, { status: 400 });
+    }
 
-    // Query with automatic retry for serverless DB wake-up (e.g. Neon cold starts)
+    // Protect against bcrypt DoS (passwords longer than 128 characters)
+    if (password.length > 128) {
+      return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail.length > 254 || !cleanEmail.includes("@")) {
+      return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
+    }
+
+    // Rate Limiting: 10 failed/login attempts per 15 minutes per IP + per email
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+    const ipRateLimitKey = `login_ip_${ip}`;
+    const emailRateLimitKey = `login_email_${cleanEmail}`;
+
+    if (!checkRateLimit(ipRateLimitKey, 15, 15 * 60 * 1000) || !checkRateLimit(emailRateLimitKey, 10, 15 * 60 * 1000)) {
+      return NextResponse.json(
+        { error: "Too many sign-in attempts. Please wait 15 minutes before trying again." },
+        { status: 429 }
+      );
+    }
+
+    // Query with automatic retry for serverless DB wake-up
     let user = null;
     let dbAttempts = 0;
     while (dbAttempts < 3) {
@@ -37,6 +64,11 @@ export async function POST(req: Request) {
     }
 
     if (!user) {
+      // Execute dummy bcrypt compare to prevent timing-based user enumeration attacks
+      await verifyPassword(
+        password,
+        "$2a$10$e7eG1fWq1K8m1hN0B2uQ3uWb7GfCqO8kH2f0l1y7K2iW0x5f9j3O6"
+      );
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
 
@@ -47,40 +79,11 @@ export async function POST(req: Request) {
       );
     }
 
-    let isMatch = await verifyPassword(password, user.passwordHash);
-
-    // Friendly fallback for admin account to prevent lockouts if variation was typed
-    if (!isMatch && cleanEmail === "admin@noveraile.com") {
-      const allowedAdminPasswords = [
-        "AdminPass2026!",
-        "Admin123!",
-        "admin123",
-        "AdminPass2026",
-        "admin",
-      ];
-      if (allowedAdminPasswords.includes(password)) {
-        isMatch = true;
-        // Update the password hash to the new password
-        try {
-          const newHash = await hashPassword(password);
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { passwordHash: newHash },
-          });
-        } catch (e) {
-          console.warn("Could not update admin password hash:", e);
-        }
-      }
-    }
+    const isMatch = await verifyPassword(password, user.passwordHash);
 
     if (!isMatch) {
       return NextResponse.json(
-        {
-          error:
-            cleanEmail === "admin@noveraile.com"
-              ? "Invalid password. The default admin password is AdminPass2026!"
-              : "Invalid email or password.",
-        },
+        { error: "Invalid email or password." },
         { status: 401 }
       );
     }
@@ -130,4 +133,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

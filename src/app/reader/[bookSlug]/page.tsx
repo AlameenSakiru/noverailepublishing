@@ -108,7 +108,7 @@ export default async function ProtectedReaderPage({ params }: ReaderPageProps) {
         authorName: book.author.name,
         pageCount: book.pageCount,
         tableOfContents: toc,
-        pdfUrl: pdfUrl || `/api/reader/pdf-stream?bookId=${book.id}`,
+        pdfUrl: `/api/reader/pdf-stream?bookId=${book.id}`,
         pdfStreamUrl: `/api/reader/pdf-stream?bookId=${book.id}`,
       }}
       initialPage={initialPage}

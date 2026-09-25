@@ -13,7 +13,7 @@ export interface ReaderTokenPayload {
 
 /**
  * Signs a short-lived reader access token (15 minutes).
- * Used by the reader client to fetch protected book page assets.
+ * Used by the reader client to fetch protected book assets.
  */
 export function signReaderAccessToken(userId: string, userEmail: string, bookId: string): string {
   return jwt.sign(
@@ -48,7 +48,7 @@ export interface AccessCheckResult {
   allowed: boolean;
   reason?: string;
   isPreview: boolean;
-  watermarkText?: string;
+  watermarkText?: string | null;
 }
 
 /**
@@ -70,7 +70,7 @@ export async function verifyBookAccess(
   });
 
   if (!book) {
-    return { allowed: false, reason: "BOOK_NOT_FOUND", isPreview: false };
+    return { allowed: false, reason: "BOOK_NOT_FOUND", isPreview: false, watermarkText: null };
   }
 
   // Parse preview page numbers
@@ -78,7 +78,10 @@ export async function verifyBookAccess(
   try {
     previewPages = JSON.parse(book.previewPageNumbers || "[]");
   } catch {
-    previewPages = [1];
+    previewPages = [1, 2, 3, 4, 5];
+  }
+  if (!Array.isArray(previewPages) || previewPages.length === 0) {
+    previewPages = [1, 2, 3, 4, 5];
   }
 
   const isPreviewPage = previewPages.includes(pageNumber);
@@ -88,13 +91,13 @@ export async function verifyBookAccess(
     return {
       allowed: true,
       isPreview: true,
-      watermarkText: userEmail ? `Preview Copy • ${userEmail}` : "Public Free Preview • Noveraile Publishing",
+      watermarkText: null,
     };
   }
 
   // Non-preview pages require authenticated user with ownership
   if (!userId || !userEmail) {
-    return { allowed: false, reason: "AUTHENTICATION_REQUIRED", isPreview: false };
+    return { allowed: false, reason: "AUTHENTICATION_REQUIRED", isPreview: false, watermarkText: null };
   }
 
   // Check if user is ADMIN or EDITOR
@@ -107,7 +110,7 @@ export async function verifyBookAccess(
     return {
       allowed: true,
       isPreview: false,
-      watermarkText: `Editorial Copy • ${userEmail}`,
+      watermarkText: null,
     };
   }
 
@@ -127,25 +130,37 @@ export async function verifyBookAccess(
   });
 
   if (!entitlement || entitlement.status !== "ACTIVE") {
-    return { allowed: false, reason: "NO_ACTIVE_ENTITLEMENT", isPreview: false };
+    return { allowed: false, reason: "NO_ACTIVE_ENTITLEMENT", isPreview: false, watermarkText: null };
   }
-
-  const orderNum = entitlement.order?.orderNumber || "LIC-ACTIVE";
-  const watermarkText = `Licensed to ${userEmail} • ${orderNum} • Noveraile Protected Reader`;
 
   return {
     allowed: true,
     isPreview: false,
-    watermarkText,
+    watermarkText: null,
   };
 }
 
 /**
- * Basic in-memory rate limiter for sensitive endpoints
+ * High-performance, self-pruning in-memory rate limiter for sensitive endpoints
  */
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+let lastPruneTime = Date.now();
+
+function pruneExpiredRateLimits() {
+  const now = Date.now();
+  if (now - lastPruneTime < 60000 && rateLimitMap.size < 10000) return;
+  lastPruneTime = now;
+
+  for (const [key, record] of rateLimitMap.entries()) {
+    if (now > record.resetTime) {
+      rateLimitMap.delete(key);
+    }
+  }
+}
 
 export function checkRateLimit(key: string, limit: number = 60, windowMs: number = 60000): boolean {
+  pruneExpiredRateLimits();
+
   const now = Date.now();
   const record = rateLimitMap.get(key);
 
@@ -160,4 +175,30 @@ export function checkRateLimit(key: string, limit: number = 60, windowMs: number
 
   record.count += 1;
   return true;
+}
+
+/**
+ * Extracts normalized client IP address from standard reverse proxy headers
+ */
+export function getClientIp(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp) {
+    return realIp.trim();
+  }
+  return "local_client";
+}
+
+/**
+ * Sanitizes input text against basic XSS injection
+ */
+export function sanitizeString(input: string, maxLength: number = 500): string {
+  if (!input || typeof input !== "string") return "";
+  return input
+    .trim()
+    .replace(/[<>]/g, "")
+    .slice(0, maxLength);
 }

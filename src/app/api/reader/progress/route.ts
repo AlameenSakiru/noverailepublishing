@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   try {
     const user = await getCurrentUser();
@@ -57,16 +59,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { bookId, currentPage, totalPages, toggleBookmark, bookmarkLabel } = await req.json();
-
-    if (!bookId || !currentPage) {
-      return NextResponse.json({ error: "Missing bookId or currentPage" }, { status: 400 });
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    const total = totalPages || 1;
-    const progressPercent = Math.min(100, Math.round((currentPage / total) * 100 * 10) / 10);
+    const { bookId, currentPage, totalPages, toggleBookmark, bookmarkLabel } = body || {};
 
-    // Upsert reading progress
+    if (!bookId || typeof bookId !== "string") {
+      return NextResponse.json({ error: "Missing bookId" }, { status: 400 });
+    }
+
+    const pageNum = Math.max(1, Math.min(50000, parseInt(String(currentPage), 10) || 1));
+    const total = Math.max(1, Math.min(50000, parseInt(String(totalPages), 10) || 1));
+    const progressPercent = Math.min(100, Math.round((pageNum / total) * 100 * 10) / 10);
+
+    // Upsert reading progress strictly for the authenticated user
     const progress = await prisma.readingProgress.upsert({
       where: {
         userId_bookId: {
@@ -75,7 +85,7 @@ export async function POST(req: Request) {
         },
       },
       update: {
-        currentPage,
+        currentPage: pageNum,
         totalPages: total,
         progressPercent,
         lastReadAt: new Date(),
@@ -83,20 +93,12 @@ export async function POST(req: Request) {
       create: {
         userId: user.userId,
         bookId,
-        currentPage,
+        currentPage: pageNum,
         totalPages: total,
         progressPercent,
         lastReadAt: new Date(),
       },
     });
-
-    // Keep book pageCount synced with real PDF page count
-    if (total > 1) {
-      await prisma.book.update({
-        where: { id: bookId },
-        data: { pageCount: total },
-      }).catch(() => {});
-    }
 
     // Handle bookmark toggle if requested
     let bookmarkStatus = null;
@@ -105,7 +107,7 @@ export async function POST(req: Request) {
         where: {
           userId: user.userId,
           bookId,
-          pageNumber: currentPage,
+          pageNumber: pageNum,
         },
       });
 
@@ -115,12 +117,16 @@ export async function POST(req: Request) {
         });
         bookmarkStatus = "REMOVED";
       } else {
+        const cleanLabel = (bookmarkLabel && typeof bookmarkLabel === "string"
+          ? bookmarkLabel.trim().slice(0, 80)
+          : `Page ${pageNum}`);
+
         await prisma.bookmark.create({
           data: {
             userId: user.userId,
             bookId,
-            pageNumber: currentPage,
-            label: bookmarkLabel || `Page ${currentPage}`,
+            pageNumber: pageNum,
+            label: cleanLabel,
           },
         });
         bookmarkStatus = "ADDED";

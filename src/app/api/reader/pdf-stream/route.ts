@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/security";
 import { promises as fs } from "fs";
 import path from "path";
 
 export const dynamic = "force-dynamic";
+
+const PRIVATE_MANUSCRIPTS_DIR = path.resolve(process.cwd(), "storage", "private", "manuscripts");
 
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const bookId = url.searchParams.get("bookId");
 
-    if (!bookId) {
-      return NextResponse.json({ error: "Missing bookId parameter" }, { status: 400 });
+    if (!bookId || typeof bookId !== "string" || bookId.trim().length === 0) {
+      return NextResponse.json({ error: "Missing or invalid bookId parameter" }, { status: 400 });
     }
 
     const currentUser = await getCurrentUser();
@@ -20,6 +23,15 @@ export async function GET(req: Request) {
       return NextResponse.json(
         { error: "Authentication required to stream publication manuscript" },
         { status: 401 }
+      );
+    }
+
+    // Rate limit check: max 60 requests per minute per user to prevent automated scrapers
+    const rateLimitKey = `pdf_stream_${currentUser.userId}`;
+    if (!checkRateLimit(rateLimitKey, 60, 60000)) {
+      return NextResponse.json(
+        { error: "Too many manuscript stream requests. Please read at a standard pace." },
+        { status: 429 }
       );
     }
 
@@ -50,64 +62,56 @@ export async function GET(req: Request) {
 
     const book = await prisma.book.findUnique({
       where: { id: bookId },
-      select: { id: true, specifications: true, title: true },
+      select: { id: true, specifications: true, title: true, status: true },
     });
 
     if (!book) {
       return NextResponse.json({ error: "Publication not found" }, { status: 404 });
     }
 
-    let pdfRelativePath: string | null = null;
+    if (!isStaff && book.status !== "PUBLISHED") {
+      return NextResponse.json({ error: "Publication not available" }, { status: 404 });
+    }
+
+    let manuscriptFileName: string | null = null;
     try {
       const specs = JSON.parse(book.specifications || "{}");
-      if (specs.manuscriptPdfUrl) {
-        pdfRelativePath = specs.manuscriptPdfUrl;
-      }
+      manuscriptFileName = specs.manuscriptFileName || specs.manuscriptPdfUrl || null;
     } catch {
-      pdfRelativePath = null;
+      manuscriptFileName = null;
     }
 
-    // Check default / sample manuscript if not explicitly set
-    const manuscriptsDir = path.join(process.cwd(), "public", "manuscripts");
-    let targetFilePath: string | null = null;
-
-    if (pdfRelativePath) {
-      // Strip leading slash if any
-      const cleaned = pdfRelativePath.replace(/^\/+/, "");
-      targetFilePath = path.join(process.cwd(), "public", cleaned.replace(/^manuscripts\//, "manuscripts/"));
-      // Also check if cleaned already starts with public
-      if (!targetFilePath.includes("public")) {
-        targetFilePath = path.join(process.cwd(), "public", cleaned);
-      }
+    if (!manuscriptFileName) {
+      return NextResponse.json(
+        { error: "No PDF manuscript has been uploaded for this publication." },
+        { status: 404 }
+      );
     }
 
-    // If specific file doesn't exist, check manuscripts folder for any available uploaded PDF
+    // Strict path traversal defense: Extract only the base file name
+    const sanitizedFileName = path.basename(manuscriptFileName).trim();
+    if (!sanitizedFileName || !sanitizedFileName.toLowerCase().endsWith(".pdf")) {
+      return NextResponse.json({ error: "Invalid manuscript configuration." }, { status: 400 });
+    }
+
+    // Resolve target path and verify it stays strictly inside the private manuscripts directory
+    const targetFilePath = path.resolve(PRIVATE_MANUSCRIPTS_DIR, sanitizedFileName);
+    if (!targetFilePath.startsWith(PRIVATE_MANUSCRIPTS_DIR)) {
+      console.error(`Security alert: Directory traversal attempt detected: ${manuscriptFileName}`);
+      return NextResponse.json({ error: "Access denied." }, { status: 403 });
+    }
+
     let fileExists = false;
-    if (targetFilePath) {
-      try {
-        await fs.access(targetFilePath);
-        fileExists = true;
-      } catch {
-        fileExists = false;
-      }
+    try {
+      await fs.access(targetFilePath);
+      fileExists = true;
+    } catch {
+      fileExists = false;
     }
 
     if (!fileExists) {
-      try {
-        const files = await fs.readdir(manuscriptsDir);
-        const firstPdf = files.find((f) => f.endsWith(".pdf"));
-        if (firstPdf) {
-          targetFilePath = path.join(manuscriptsDir, firstPdf);
-          fileExists = true;
-        }
-      } catch {
-        fileExists = false;
-      }
-    }
-
-    if (!fileExists || !targetFilePath) {
       return NextResponse.json(
-        { error: "No PDF manuscript has been uploaded for this publication." },
+        { error: "Manuscript file not found in secure storage." },
         { status: 404 }
       );
     }
@@ -118,7 +122,7 @@ export async function GET(req: Request) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        // Force inline display, anti-sniff, and anti-cache
+        // Force inline display, anti-sniff, anti-cache, and download defense
         "Content-Disposition": 'inline; filename="protected-manuscript.pdf"',
         "Content-Length": fileBuffer.length.toString(),
         "Cache-Control": "private, no-cache, no-store, must-revalidate",

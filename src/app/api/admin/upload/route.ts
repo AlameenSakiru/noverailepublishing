@@ -3,6 +3,61 @@ import { promises as fs } from "fs";
 import path from "path";
 import { requireAdmin } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
+const PRIVATE_MANUSCRIPTS_DIR = path.resolve(process.cwd(), "storage", "private", "manuscripts");
+const PUBLIC_COVERS_DIR = path.resolve(process.cwd(), "public", "covers");
+
+/**
+ * Validates file magic bytes (file signature) to prevent disguised malicious file uploads
+ */
+function validateMagicBytes(buffer: Buffer, type: "cover" | "manuscript"): { valid: boolean; ext: string } {
+  if (buffer.length < 12) return { valid: false, ext: "" };
+
+  if (type === "manuscript") {
+    // PDF Magic Bytes: %PDF- (0x25, 0x50, 0x44, 0x46, 0x2D)
+    const isPdf =
+      buffer[0] === 0x25 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x44 &&
+      buffer[3] === 0x46 &&
+      buffer[4] === 0x2d;
+
+    return { valid: isPdf, ext: ".pdf" };
+  }
+
+  if (type === "cover") {
+    // JPEG: 0xFF, 0xD8, 0xFF
+    if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+      return { valid: true, ext: ".jpg" };
+    }
+
+    // PNG: 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+    if (
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47 &&
+      buffer[4] === 0x0d &&
+      buffer[5] === 0x0a &&
+      buffer[6] === 0x1a &&
+      buffer[7] === 0x0a
+    ) {
+      return { valid: true, ext: ".png" };
+    }
+
+    // WEBP: RIFF....WEBP
+    if (
+      buffer.toString("ascii", 0, 4) === "RIFF" &&
+      buffer.toString("ascii", 8, 12) === "WEBP"
+    ) {
+      return { valid: true, ext: ".webp" };
+    }
+  }
+
+  return { valid: false, ext: "" };
+}
+
 export async function POST(req: Request) {
   try {
     await requireAdmin();
@@ -15,38 +70,39 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No file was provided for upload." }, { status: 400 });
     }
 
+    if (uploadType !== "cover" && uploadType !== "manuscript") {
+      return NextResponse.json({ error: "Invalid upload type specified." }, { status: 400 });
+    }
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
     if (uploadType === "cover") {
-      // Validate image types (JPG, JPEG, PNG, WEBP)
-      const allowedImageMimes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-      const isJpgExt = /\.(jpg|jpeg|png|webp)$/i.test(file.name);
-
-      if (!allowedImageMimes.includes(file.type) && !isJpgExt) {
-        return NextResponse.json(
-          { error: "Invalid cover file format. Please upload a JPG or JPEG image." },
-          { status: 400 }
-        );
-      }
-
       // Max 15MB for cover
       if (file.size > 15 * 1024 * 1024) {
         return NextResponse.json({ error: "Cover image must be under 15MB." }, { status: 400 });
       }
 
-      const coversDir = path.join(process.cwd(), "public", "covers");
-      await fs.mkdir(coversDir, { recursive: true });
+      // Validate magic bytes (JPEG, PNG, WEBP). Disallow SVGs to prevent Stored XSS.
+      const validation = validateMagicBytes(buffer, "cover");
+      if (!validation.valid) {
+        return NextResponse.json(
+          { error: "Invalid cover file. Only genuine JPG, PNG, or WEBP images are permitted." },
+          { status: 400 }
+        );
+      }
 
-      // Clean file name
-      const ext = path.extname(file.name).toLowerCase() || ".jpg";
-      const baseName = path
-        .basename(file.name, ext)
+      await fs.mkdir(PUBLIC_COVERS_DIR, { recursive: true });
+
+      // Clean file name strictly
+      const cleanBaseName = path
+        .basename(file.name, path.extname(file.name))
         .toLowerCase()
         .replace(/[^a-z0-9_-]/g, "_")
-        .slice(0, 40);
-      const uniqueFilename = `${baseName}_${Date.now()}${ext}`;
-      const filePath = path.join(coversDir, uniqueFilename);
+        .slice(0, 40) || "cover";
+
+      const uniqueFilename = `${cleanBaseName}_${Date.now()}${validation.ext}`;
+      const filePath = path.join(PUBLIC_COVERS_DIR, uniqueFilename);
 
       await fs.writeFile(filePath, buffer);
 
@@ -58,33 +114,33 @@ export async function POST(req: Request) {
         originalName: file.name,
         size: file.size,
       });
-    } else if (uploadType === "manuscript") {
-      // Validate PDF format
-      const isPdfExt = /\.pdf$/i.test(file.name);
-      const isPdfMime = file.type === "application/pdf" || file.type === "application/x-pdf";
-
-      if (!isPdfMime && !isPdfExt) {
-        return NextResponse.json(
-          { error: "Invalid manuscript file format. Please upload a valid PDF file." },
-          { status: 400 }
-        );
-      }
-
+    } else {
+      // uploadType === "manuscript"
       // Max 100MB for manuscript PDF
       if (file.size > 100 * 1024 * 1024) {
         return NextResponse.json({ error: "PDF manuscript must be under 100MB." }, { status: 400 });
       }
 
-      const manuscriptsDir = path.join(process.cwd(), "public", "manuscripts");
-      await fs.mkdir(manuscriptsDir, { recursive: true });
+      // Cryptographically inspect magic bytes for %PDF-
+      const validation = validateMagicBytes(buffer, "manuscript");
+      if (!validation.valid) {
+        return NextResponse.json(
+          { error: "Invalid manuscript file format. The file is not a valid PDF document." },
+          { status: 400 }
+        );
+      }
 
-      const baseName = path
+      // Store in private storage directory (OUTSIDE public/) so it cannot be downloaded statically
+      await fs.mkdir(PRIVATE_MANUSCRIPTS_DIR, { recursive: true });
+
+      const cleanBaseName = path
         .basename(file.name, ".pdf")
         .toLowerCase()
         .replace(/[^a-z0-9_-]/g, "_")
-        .slice(0, 40);
-      const uniqueFilename = `${baseName}_${Date.now()}.pdf`;
-      const filePath = path.join(manuscriptsDir, uniqueFilename);
+        .slice(0, 40) || "manuscript";
+
+      const uniqueFilename = `${cleanBaseName}_${Date.now()}.pdf`;
+      const filePath = path.join(PRIVATE_MANUSCRIPTS_DIR, uniqueFilename);
 
       await fs.writeFile(filePath, buffer);
 
@@ -108,14 +164,13 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         type: "manuscript",
-        url: `/manuscripts/${uniqueFilename}`,
+        // Note: url is returned as filename for internal specs storage, NOT as a public static path!
+        url: uniqueFilename,
         filename: uniqueFilename,
         originalName: file.name,
         size: file.size,
         pageCount: pageCount > 0 ? pageCount : null,
       });
-    } else {
-      return NextResponse.json({ error: "Invalid upload type specified." }, { status: 400 });
     }
   } catch (error: any) {
     console.error("Upload error:", error);

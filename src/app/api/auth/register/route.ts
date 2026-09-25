@@ -1,20 +1,58 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { hashPassword, setSessionCookie } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/security";
+
+export const dynamic = "force-dynamic";
+
+const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password } = await req.json();
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Malformed request payload." }, { status: 400 });
+    }
+
+    const { name, email, password } = body || {};
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: "Name, email, and password are required." }, { status: 400 });
     }
 
-    if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
+    if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string") {
+      return NextResponse.json({ error: "Invalid registration payload." }, { status: 400 });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    // Rate Limiting: max 5 registrations per hour per IP
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+    if (!checkRateLimit(`register_ip_${ip}`, 5, 60 * 60 * 1000)) {
+      return NextResponse.json(
+        { error: "Too many registration attempts from your network. Please try again later." },
+        { status: 429 }
+      );
+    }
+
+    const cleanName = name.trim().slice(0, 70);
+    const cleanEmail = email.trim().toLowerCase().slice(0, 254);
+
+    if (cleanName.length < 2) {
+      return NextResponse.json({ error: "Please enter your full name." }, { status: 400 });
+    }
+
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      return NextResponse.json({ error: "Please provide a valid email address." }, { status: 400 });
+    }
+
+    if (password.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters long." }, { status: 400 });
+    }
+
+    if (password.length > 128) {
+      return NextResponse.json({ error: "Password cannot exceed 128 characters." }, { status: 400 });
+    }
 
     // Check existing
     const existing = await prisma.user.findUnique({
@@ -27,23 +65,17 @@ export async function POST(req: Request) {
 
     const passwordHash = await hashPassword(password);
 
+    // Create user strictly as CUSTOMER
     const user = await prisma.user.create({
       data: {
-        name: name.trim(),
+        name: cleanName,
         email: cleanEmail,
         passwordHash,
         role: "CUSTOMER",
       },
     });
 
-    await setSessionCookie({
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    });
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: {
         userId: user.id,
@@ -52,6 +84,18 @@ export async function POST(req: Request) {
         role: user.role,
       },
     });
+
+    await setSessionCookie(
+      {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+      response
+    );
+
+    return response;
   } catch (error: any) {
     console.error("Registration error:", error);
     return NextResponse.json({ error: "An error occurred during account creation." }, { status: 500 });

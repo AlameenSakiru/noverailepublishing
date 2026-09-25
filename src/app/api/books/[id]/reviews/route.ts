@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { checkRateLimit, getClientIp } from "@/lib/security";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(
   req: NextRequest,
@@ -61,29 +64,6 @@ export async function POST(
 ) {
   try {
     const bookId = params.id;
-    const body = await req.json();
-    const { rating, title, comment, guestName, guestEmail } = body;
-
-    if (!rating || rating < 1 || rating > 5) {
-      return NextResponse.json(
-        { error: "Rating must be between 1 and 5 stars" },
-        { status: 400 }
-      );
-    }
-
-    if (!title || !title.trim()) {
-      return NextResponse.json(
-        { error: "Review title is required" },
-        { status: 400 }
-      );
-    }
-
-    if (!comment || !comment.trim()) {
-      return NextResponse.json(
-        { error: "Review comment is required" },
-        { status: 400 }
-      );
-    }
 
     // 1. User must be authenticated
     const user = await getCurrentUser();
@@ -92,6 +72,42 @@ export async function POST(
         { error: "Please sign in with the account you used to purchase this book to leave a review." },
         { status: 401 }
       );
+    }
+
+    const ip = getClientIp(req);
+    if (!checkRateLimit(`book_review_${user.userId}_${ip}`, 10, 60 * 60 * 1000)) {
+      return NextResponse.json(
+        { error: "Too many review submissions. Please wait before submitting another review." },
+        { status: 429 }
+      );
+    }
+
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+    }
+
+    const { rating, title, comment } = body || {};
+
+    const numRating = Math.round(Number(rating));
+    if (isNaN(numRating) || numRating < 1 || numRating > 5) {
+      return NextResponse.json(
+        { error: "Rating must be between 1 and 5 stars" },
+        { status: 400 }
+      );
+    }
+
+    const cleanTitle = String(title || "").replace(/[<>]/g, "").trim().slice(0, 100);
+    const cleanComment = String(comment || "").replace(/[<>]/g, "").trim().slice(0, 2000);
+
+    if (cleanTitle.length < 2) {
+      return NextResponse.json({ error: "Review title is required" }, { status: 400 });
+    }
+
+    if (cleanComment.length < 5) {
+      return NextResponse.json({ error: "Review comment is required" }, { status: 400 });
     }
 
     // 2. Strict check: Must have an ACTIVE entitlement or PAID order for this book
@@ -141,9 +157,9 @@ export async function POST(
       const updatedReview = await prisma.review.update({
         where: { id: existingReview.id },
         data: {
-          rating: Math.round(rating),
-          title: title.trim(),
-          comment: comment.trim(),
+          rating: numRating,
+          title: cleanTitle,
+          comment: cleanComment,
           isVerifiedPurchase: true,
           isApproved: true,
         },
@@ -166,9 +182,9 @@ export async function POST(
       data: {
         bookId,
         userId: user.userId,
-        rating: Math.round(rating),
-        title: title.trim(),
-        comment: comment.trim(),
+        rating: numRating,
+        title: cleanTitle,
+        comment: cleanComment,
         isVerifiedPurchase: true,
         isApproved: true,
       },

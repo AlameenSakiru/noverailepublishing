@@ -30,6 +30,6 @@ Thumbs.db
 # TypeScript cache
 *.tsbuildinfo
 
-# Uploaded scratch files
-storage/private/*
-!storage/private/.gitkeep
+# Uploaded temporary scratch files
+storage/private/temp/*
+!storage/private/manuscripts/

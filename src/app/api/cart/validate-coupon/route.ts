@@ -1,15 +1,34 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkRateLimit, getClientIp } from "@/lib/security";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    const { code, subtotal } = await req.json();
+    const ip = getClientIp(req);
+    if (!checkRateLimit(`coupon_check_${ip}`, 20, 10 * 60 * 1000)) {
+      return NextResponse.json(
+        { valid: false, message: "Too many coupon validation attempts. Please try again later." },
+        { status: 429 }
+      );
+    }
 
-    if (!code) {
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ valid: false, message: "Malformed request payload." }, { status: 400 });
+    }
+
+    const { code, subtotal } = body || {};
+
+    if (!code || typeof code !== "string") {
       return NextResponse.json({ valid: false, message: "Coupon code is required." }, { status: 400 });
     }
 
-    const cleanCode = code.trim().toUpperCase();
+    const cleanCode = code.trim().toUpperCase().slice(0, 30);
+    const orderSubtotal = typeof subtotal === "number" && !isNaN(subtotal) ? subtotal : 0;
 
     const coupon = await prisma.coupon.findUnique({
       where: { code: cleanCode },
@@ -32,7 +51,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ valid: false, message: "This coupon has reached its usage limit." }, { status: 400 });
     }
 
-    if (coupon.minOrderAmount && subtotal < coupon.minOrderAmount) {
+    if (coupon.minOrderAmount && orderSubtotal < coupon.minOrderAmount) {
       return NextResponse.json(
         { valid: false, message: `Minimum order amount of $${coupon.minOrderAmount.toFixed(2)} required for this code.` },
         { status: 400 }

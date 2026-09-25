@@ -1,15 +1,39 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkRateLimit, getClientIp } from "@/lib/security";
+
+export const dynamic = "force-dynamic";
+
+const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
+    const ip = getClientIp(req);
+    if (!checkRateLimit(`newsletter_${ip}`, 5, 10 * 60 * 1000)) {
+      return NextResponse.json(
+        { error: "Too many subscription requests. Please try again later." },
+        { status: 429 }
+      );
+    }
 
-    if (!email || !email.includes("@")) {
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+    }
+
+    const { email } = body || {};
+
+    if (!email || typeof email !== "string") {
       return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = email.trim().toLowerCase().slice(0, 254);
+
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
+    }
 
     await prisma.newsletterSubscriber.upsert({
       where: { email: cleanEmail },
