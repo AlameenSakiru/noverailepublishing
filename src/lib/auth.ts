@@ -22,6 +22,7 @@ export interface SessionPayload {
   email: string;
   role: string;
   name: string;
+  isEmailVerified?: boolean;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -126,7 +127,7 @@ export async function getCurrentUser(): Promise<SessionPayload | null> {
     // Verify that the user still exists and is ACTIVE
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, email: true, name: true, role: true, status: true },
+      select: { id: true, email: true, name: true, role: true, status: true, isEmailVerified: true },
     });
 
     if (!user || user.status !== "ACTIVE") {
@@ -138,6 +139,7 @@ export async function getCurrentUser(): Promise<SessionPayload | null> {
       email: user.email,
       name: user.name,
       role: user.role,
+      isEmailVerified: user.isEmailVerified,
     };
   } catch (error) {
     console.warn("Database lookup in getCurrentUser failed, falling back to verified JWT payload:", error);
@@ -146,6 +148,7 @@ export async function getCurrentUser(): Promise<SessionPayload | null> {
       email: payload.email,
       name: payload.name,
       role: payload.role,
+      isEmailVerified: payload.isEmailVerified,
     };
   }
 }

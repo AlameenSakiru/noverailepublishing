@@ -65,18 +65,41 @@ export async function POST(req: Request) {
 
     const passwordHash = await hashPassword(password);
 
-    // Create user strictly as CUSTOMER
+    // Create user strictly as CUSTOMER with isEmailVerified = false
     const user = await prisma.user.create({
       data: {
         name: cleanName,
         email: cleanEmail,
         passwordHash,
         role: "CUSTOMER",
+        isEmailVerified: false,
       },
     });
 
+    // Generate secure 6-digit verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    try {
+      await prisma.verificationCode.create({
+        data: {
+          email: cleanEmail,
+          code: verificationCode,
+          type: "EMAIL_VERIFICATION",
+          expiresAt,
+        },
+      });
+
+      // Dispatch verification email in background
+      const { sendVerificationEmail } = await import("@/lib/email");
+      await sendVerificationEmail(cleanEmail, user.name, verificationCode);
+    } catch (codeErr) {
+      console.error("Failed to generate or send verification code:", codeErr);
+    }
+
     const response = NextResponse.json({
       success: true,
+      requiresVerification: true,
       user: {
         userId: user.id,
         email: user.email,

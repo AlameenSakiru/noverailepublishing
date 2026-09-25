@@ -389,3 +389,16 @@ model AuditLog {
   @@index([action])
   @@index([entityType])
 }
+
+model VerificationCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  type      String   @default("EMAIL_VERIFICATION") // "EMAIL_VERIFICATION", "PASSWORD_RESET"
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email, code])
+  @@index([expiresAt])
+}
+

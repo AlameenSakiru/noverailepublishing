@@ -8,6 +8,7 @@ export interface UserProfile {
   email: string;
   name: string;
   role: string;
+  isEmailVerified?: boolean;
 }
 
 interface AuthContextType {
