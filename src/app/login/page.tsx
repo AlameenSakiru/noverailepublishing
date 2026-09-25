@@ -10,14 +10,15 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const { login, loginWithGoogle } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get("redirect") || "/my-library";
+  const urlError = searchParams.get("error");
+  const [error, setError] = useState<string | null>(urlError || null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,33 +38,10 @@ function LoginForm() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
     setError(null);
     setGoogleLoading(true);
-
-    // Prompt user for Google account email or use Google Identity
-    // In production with GOOGLE_CLIENT_ID, Google Identity One-Tap prompts automatically
-    const googleEmail = prompt("Enter your Google Account email address to continue:", email || "reader@gmail.com");
-    if (!googleEmail) {
-      setGoogleLoading(false);
-      return;
-    }
-
-    const result = await loginWithGoogle({
-      email: googleEmail,
-      name: googleEmail.split("@")[0].replace(/[._]/g, " "),
-    });
-
-    if (result.success) {
-      if (result.user?.role === "ADMIN" || result.user?.role === "EDITOR") {
-        router.push("/admin");
-      } else {
-        router.push(redirectUrl);
-      }
-    } else {
-      setError(result.error || "Google authentication failed.");
-      setGoogleLoading(false);
-    }
+    window.location.href = `/api/auth/google/oauth?redirect=${encodeURIComponent(redirectUrl)}`;
   };
 
   return (

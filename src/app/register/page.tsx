@@ -62,27 +62,10 @@ function RegisterForm() {
     }
   };
 
-  const handleGoogleSignUp = async () => {
+  const handleGoogleSignUp = () => {
     setError(null);
     setGoogleLoading(true);
-
-    const googleEmail = prompt("Enter your Google Account email address to register:", email || "reader@gmail.com");
-    if (!googleEmail) {
-      setGoogleLoading(false);
-      return;
-    }
-
-    const result = await loginWithGoogle({
-      email: googleEmail,
-      name: name || googleEmail.split("@")[0].replace(/[._]/g, " "),
-    });
-
-    if (result.success) {
-      router.push(redirectUrl);
-    } else {
-      setError(result.error || "Google registration failed.");
-      setGoogleLoading(false);
-    }
+    window.location.href = `/api/auth/google/oauth?redirect=${encodeURIComponent(redirectUrl)}`;
   };
 
   return (
