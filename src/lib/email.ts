@@ -17,12 +17,12 @@ export async function sendEmail({
   const smtpHost = process.env.SMTP_HOST?.trim();
   const smtpUser = process.env.SMTP_USER?.trim();
   const smtpPass = process.env.SMTP_PASS?.trim();
-  const fromEmail = process.env.EMAIL_FROM || "Noveraile Publishing <orders@noverailepublishing.com>";
+  let fromEmail = process.env.EMAIL_FROM?.trim() || "Noveraile Publishing <onboarding@resend.dev>";
 
   // Provider 1: Resend HTTP API
   if (resendApiKey && resendApiKey.length > 0) {
     try {
-      const res = await fetch("https://api.resend.com/emails", {
+      let res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -37,9 +37,31 @@ export async function sendEmail({
         }),
       });
 
-      const data = await res.json();
+      let data = await res.json();
+
+      // If domain verification failed (e.g. noverailepublishing.com not verified yet on Resend), retry with onboarding@resend.dev
+      if (!res.ok && (data.message?.includes("domain") || data.name === "validation_error" || res.status === 403)) {
+        console.warn("⚠️ Custom domain unverified on Resend. Falling back to onboarding@resend.dev...");
+        const fallbackFrom = "Noveraile Publishing <onboarding@resend.dev>";
+        res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${resendApiKey}`,
+          },
+          body: JSON.stringify({
+            from: fallbackFrom,
+            to: [to],
+            subject,
+            html,
+            text,
+          }),
+        });
+        data = await res.json();
+      }
+
       if (!res.ok) {
-        console.error("Resend API error:", data);
+        console.error("❌ Resend API error:", data);
         return { success: false, error: data.message || "Failed to send email via Resend" };
       }
 
@@ -78,14 +100,14 @@ export async function sendEmail({
       console.log(`✅ [EMAIL SENT via SMTP] To: ${to} (MessageId: ${info.messageId})`);
       return { success: true, id: info.messageId };
     } catch (smtpErr: any) {
-      console.error("SMTP send error:", smtpErr);
+      console.error("❌ SMTP send error:", smtpErr);
       return { success: false, error: smtpErr.message || "SMTP error" };
     }
   }
 
   // Provider 3: Local / Development Dry Run Logger
   console.log("=================================================");
-  console.log("📬 [EMAIL DISPATCH - LOCAL LOG]");
+  console.log("📬 [EMAIL DISPATCH - LOCAL LOG (No API Key Configured)]");
   console.log(`To: ${to}`);
   console.log(`Subject: ${subject}`);
   console.log("=================================================");
