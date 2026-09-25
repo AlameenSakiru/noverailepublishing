@@ -51,7 +51,7 @@ export function CustomerEntitlementsClient({
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "SUSPENDED" | "ADMIN">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "VERIFIED" | "PENDING" | "SUSPENDED" | "ADMIN">("ALL");
 
   // Manual Entitlement Form State
   const [grantEmail, setGrantEmail] = useState("");
@@ -69,13 +69,15 @@ export function CustomerEntitlementsClient({
 
     if (!matchesSearch) return false;
 
-    if (statusFilter === "ACTIVE") return u.status === "ACTIVE";
+    if (statusFilter === "VERIFIED") return u.status === "ACTIVE" && u.isEmailVerified;
+    if (statusFilter === "PENDING") return u.status === "ACTIVE" && !u.isEmailVerified;
     if (statusFilter === "SUSPENDED") return u.status === "SUSPENDED";
     if (statusFilter === "ADMIN") return u.role === "ADMIN" || u.role === "EDITOR";
     return true;
   });
 
-  const totalActive = users.filter((u) => u.status === "ACTIVE").length;
+  const totalVerified = users.filter((u) => u.status === "ACTIVE" && u.isEmailVerified).length;
+  const totalPending = users.filter((u) => u.status === "ACTIVE" && !u.isEmailVerified).length;
   const totalSuspended = users.filter((u) => u.status === "SUSPENDED").length;
 
   // Handle Suspend / Ban User
@@ -237,7 +239,7 @@ export function CustomerEntitlementsClient({
   return (
     <div className="space-y-6">
       {/* Top Banner Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
@@ -246,18 +248,29 @@ export function CustomerEntitlementsClient({
             <Users className="w-4 h-4 text-brand-500" />
           </div>
           <p className="font-serif text-2xl font-bold text-brand-ink mt-2">{users.length}</p>
-          <span className="text-[11px] text-gray-400 font-mono">Platform registered readers</span>
+          <span className="text-[11px] text-gray-400 font-mono">Registered accounts</span>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">
-              Active Users
+              Verified Readers
             </span>
             <UserCheck className="w-4 h-4 text-emerald-500" />
           </div>
-          <p className="font-serif text-2xl font-bold text-emerald-700 mt-2">{totalActive}</p>
-          <span className="text-[11px] text-gray-400 font-mono">In good standing</span>
+          <p className="font-serif text-2xl font-bold text-emerald-700 mt-2">{totalVerified}</p>
+          <span className="text-[11px] text-gray-400 font-mono">Email verified & active</span>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-600">
+              Pending Email
+            </span>
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+          </div>
+          <p className="font-serif text-2xl font-bold text-amber-700 mt-2">{totalPending}</p>
+          <span className="text-[11px] text-gray-400 font-mono">Awaiting 6-digit PIN</span>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-2xs">
@@ -268,7 +281,7 @@ export function CustomerEntitlementsClient({
             <Ban className="w-4 h-4 text-red-500" />
           </div>
           <p className="font-serif text-2xl font-bold text-red-700 mt-2">{totalSuspended}</p>
-          <span className="text-[11px] text-gray-400 font-mono">Access blocked & sessions evicted</span>
+          <span className="text-[11px] text-gray-400 font-mono">Sessions evicted</span>
         </div>
       </div>
 
@@ -349,17 +362,23 @@ export function CustomerEntitlementsClient({
               <span className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider mr-1">
                 Filter:
               </span>
-              {(["ALL", "ACTIVE", "SUSPENDED", "ADMIN"] as const).map((filter) => (
+              {[
+                { id: "ALL", label: `All (${users.length})` },
+                { id: "VERIFIED", label: `Verified (${totalVerified})` },
+                { id: "PENDING", label: `Pending (${totalPending})` },
+                { id: "SUSPENDED", label: `Suspended (${totalSuspended})` },
+                { id: "ADMIN", label: "Admin / Editor" },
+              ].map((f) => (
                 <button
-                  key={filter}
-                  onClick={() => setStatusFilter(filter)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                    statusFilter === filter
-                      ? "bg-brand-ink text-white"
+                  key={f.id}
+                  onClick={() => setStatusFilter(f.id as any)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0 ${
+                    statusFilter === f.id
+                      ? "bg-brand-ink text-white shadow-xs"
                       : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-100"
                   }`}
                 >
-                  {filter === "ALL" ? `All (${users.length})` : filter}
+                  {f.label}
                 </button>
               ))}
             </div>
@@ -392,7 +411,9 @@ export function CustomerEntitlementsClient({
                             ? "bg-red-100 text-red-800"
                             : isAdmin
                             ? "bg-amber-100 text-amber-900 border border-amber-300"
-                            : "bg-gray-100 text-gray-800"
+                            : user.isEmailVerified
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800 border border-amber-200"
                         }`}
                       >
                         {user.name.charAt(0).toUpperCase()}
@@ -410,10 +431,15 @@ export function CustomerEntitlementsClient({
                               <Ban className="w-2.5 h-2.5" />
                               Banned / Suspended
                             </span>
-                          ) : (
+                          ) : user.isEmailVerified ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200">
                               <CheckCircle2 className="w-2.5 h-2.5" />
-                              Active
+                              Active & Verified
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-300">
+                              <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
+                              Pending Verification (No Active Sessions)
                             </span>
                           )}
 
@@ -427,13 +453,6 @@ export function CustomerEntitlementsClient({
                           >
                             {user.role}
                           </span>
-
-                          {user.isEmailVerified && (
-                            <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-0.5">
-                              <CheckCircle2 className="w-3 h-3" />
-                              Verified
-                            </span>
-                          )}
                         </div>
 
                         <p className="text-xs text-gray-500 font-mono mt-0.5">{user.email}</p>

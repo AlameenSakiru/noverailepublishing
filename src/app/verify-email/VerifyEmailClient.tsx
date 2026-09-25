@@ -46,6 +46,19 @@ export function VerifyEmailClient() {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Auto-fetch demo code if available and in development
+  useEffect(() => {
+    if (!email) return;
+    fetch(`/api/auth/verify-email/demo-code?email=${encodeURIComponent(email)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.demoCode) {
+          setDemoCode(data.demoCode);
+        }
+      })
+      .catch(() => {});
+  }, [email]);
+
   // If emailParam changes in URL, update state
   useEffect(() => {
     if (emailParam) {
