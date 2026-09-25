@@ -111,24 +111,26 @@ export async function POST(req: Request) {
       },
     });
 
-    // Dispatch verification email in background
+    // Dispatch verification email
+    let emailResult: { success: boolean; error?: string } = { success: false };
     try {
       const { sendVerificationEmail } = await import("@/lib/email");
-      await sendVerificationEmail(cleanEmail, targetUser.name, verificationCode);
-    } catch (codeErr) {
+      emailResult = await sendVerificationEmail(cleanEmail, targetUser.name, verificationCode);
+    } catch (codeErr: any) {
       console.error("Failed to send verification email:", codeErr);
+      emailResult = { success: false, error: codeErr?.message };
     }
 
-    const hasEmailProvider = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "");
-
-    // Note: We deliberately DO NOT set a session cookie here.
-    // The user MUST verify their 6-digit code before an authenticated session is granted.
     return NextResponse.json({
       success: true,
       requiresVerification: true,
       email: cleanEmail,
-      demoCode: hasEmailProvider ? undefined : verificationCode,
-      message: "Account registered successfully. Please verify your email with the 6-digit code.",
+      emailSent: emailResult.success,
+      emailError: !emailResult.success ? emailResult.error : undefined,
+      demoCode: !emailResult.success ? verificationCode : undefined,
+      message: emailResult.success
+        ? `A 6-digit verification code was sent to ${cleanEmail}.`
+        : "Account created. Please enter the verification PIN below to confirm your account.",
     });
   } catch (error: any) {
     console.error("Registration error:", error);

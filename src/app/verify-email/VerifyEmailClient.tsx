@@ -287,20 +287,20 @@ export function VerifyEmailClient() {
         )}
       </div>
 
-      {/* Demo helper card when live email provider is not yet attached */}
+      {/* Demo / Sandbox helper card when testing */}
       {demoCode && (
         <div className="mb-5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-950 text-xs text-left animate-in fade-in">
           <div className="flex items-center gap-1.5 font-bold text-amber-900 mb-1">
             <Info className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>Development & Testing Notice</span>
+            <span>Resend Sandbox / Testing PIN</span>
           </div>
           <p className="text-[11px] text-amber-900/80 leading-relaxed">
-            Live email delivery provider (<code>RESEND_API_KEY</code>) is not set on Vercel yet. Your generated single-use test PIN is:
+            Resend trial accounts deliver live emails to your registered Resend inbox. For instant testing on any address, click the PIN below to autofill:
           </p>
           <button
             type="button"
             onClick={handleAutofillDemo}
-            className="w-full mt-2 text-center py-2 px-3 bg-white/90 hover:bg-white rounded-xl border border-amber-500/40 font-mono font-bold text-base tracking-widest text-amber-950 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+            className="w-full mt-2 text-center py-2 px-3 bg-white hover:bg-amber-50 rounded-xl border border-amber-500/40 font-mono font-bold text-base tracking-widest text-amber-950 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
           >
             <span>{demoCode}</span>
             <span className="text-[10px] font-sans font-normal text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
