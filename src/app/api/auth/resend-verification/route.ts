@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import { sendVerificationEmail } from "@/lib/email";
 import crypto from "crypto";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -17,7 +19,7 @@ export async function POST(req: Request) {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // Verify that user exists
+    // Verify user exists
     const user = await prisma.user.findUnique({
       where: { email: cleanEmail },
     });
@@ -37,7 +39,12 @@ export async function POST(req: Request) {
       });
     }
 
-    // Rate limiting: check if a code was created in the last 60 seconds
+    const hasEmailProvider = Boolean(
+      (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "") ||
+      (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
+    );
+
+    // Check recent code
     const recentCode = await prisma.verificationCode.findFirst({
       where: {
         email: cleanEmail,
@@ -46,9 +53,9 @@ export async function POST(req: Request) {
       },
     });
 
-    if (recentCode) {
+    if (recentCode && hasEmailProvider) {
       return NextResponse.json(
-        { success: false, error: "Please wait 60 seconds before requesting another code." },
+        { success: false, error: "A code was recently sent. Please check your inbox or wait 60 seconds to resend." },
         { status: 429 }
       );
     }
@@ -75,14 +82,13 @@ export async function POST(req: Request) {
     // Send email
     await sendVerificationEmail(cleanEmail, user.name, code);
 
-    const hasEmailProvider = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "");
-
     return NextResponse.json({
       success: true,
       message: hasEmailProvider
         ? `A new 6-digit verification code has been sent to ${cleanEmail}.`
-        : `Verification code generated. (Demo Code: ${code})`,
+        : `New 6-digit test code generated: ${code}`,
       demoCode: hasEmailProvider ? undefined : code,
+      hasEmailProvider,
     });
   } catch (error: any) {
     console.error("Resend verification error:", error);
