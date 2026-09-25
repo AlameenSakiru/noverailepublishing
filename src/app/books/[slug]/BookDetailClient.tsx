@@ -312,10 +312,24 @@ export function BookDetailClient({
           {/* Sample Preview Trigger Button */}
           <button
             onClick={() => setPreviewOpen(true)}
-            className="w-full max-w-sm mt-4 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl border border-brand-border bg-white hover:bg-brand-50 text-brand-ink text-xs font-semibold shadow-xs transition-all hover:shadow-sm"
+            className="w-full max-w-sm mt-4 group relative inline-flex items-center justify-between px-5 py-3.5 rounded-xl border border-brand-300/80 bg-gradient-to-r from-brand-50 via-white to-brand-50 hover:from-brand-100 hover:to-brand-100 text-brand-ink text-xs font-semibold shadow-xs transition-all hover:shadow-md hover:border-brand-500"
           >
-            <Eye className="w-4 h-4 text-brand-600" />
-            <span>Look Inside • Read Free Excerpt ({previewPages.length} Pages)</span>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-brand-100 group-hover:bg-brand-500 group-hover:text-white text-brand-700 flex items-center justify-center transition-colors shrink-0">
+                <BookOpen className="w-4 h-4" />
+              </div>
+              <div className="text-left">
+                <span className="font-serif text-sm font-bold block leading-tight text-brand-ink">
+                  Look Inside
+                </span>
+                <span className="text-[11px] text-brand-muted font-normal block mt-0.5">
+                  Read Opening Excerpt ({previewPages.length} Pages)
+                </span>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-md text-[10px] font-sans font-bold bg-amber-100 text-amber-900 uppercase tracking-wider group-hover:bg-amber-200 transition-colors">
+              Free Excerpt
+            </span>
           </button>
         </div>
 

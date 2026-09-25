@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import Image from "next/image";
 import {
   X,
   ChevronLeft,
@@ -10,8 +11,12 @@ import {
   Check,
   ZoomIn,
   ZoomOut,
+  RotateCcw,
+  Sun,
+  Moon,
+  Coffee,
+  Bookmark,
   Sparkles,
-  Lock,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 
@@ -34,6 +39,8 @@ declare global {
   }
 }
 
+type AmbianceMode = "warm" | "light" | "dark";
+
 export function PreviewModal({
   isOpen,
   onClose,
@@ -46,14 +53,18 @@ export function PreviewModal({
   salePrice,
   previewPages = [1, 2, 3, 4, 5],
 }: PreviewModalProps) {
-  // Ensure we have a valid array of 3 to 5 preview pages
+  // Guaranteed 5-page opening excerpt
   const validPages =
-    Array.isArray(previewPages) && previewPages.length > 0
+    Array.isArray(previewPages) && previewPages.length >= 3
       ? previewPages
       : [1, 2, 3, 4, 5];
 
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  // Total pages including the final "Publisher's Excerpt Completion Plate"
+  const totalSlides = validPages.length + 1;
+
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [ambiance, setAmbiance] = useState<AmbianceMode>("warm");
   const [viewMode, setViewMode] = useState<"pdf" | "text">("pdf");
   const [loading, setLoading] = useState(true);
 
@@ -62,7 +73,7 @@ export function PreviewModal({
   const [pdfJsReady, setPdfJsReady] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
 
-  // Text Fallback State
+  // Fallback text state
   const [textPageData, setTextPageData] = useState<any>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -72,19 +83,21 @@ export function PreviewModal({
   const { addItem, isInCart } = useCart();
   const inCart = isInCart(bookId);
 
-  const activePageNumber = validPages[currentPageIndex] || 1;
-  const isLastPreviewPage = currentPageIndex === validPages.length - 1;
+  const isCompletionSlide = currentSlideIndex === validPages.length;
+  const activePageNumber = !isCompletionSlide ? validPages[currentSlideIndex] : validPages[validPages.length - 1];
+
+  const displayPrice = salePrice != null && salePrice > 0 ? salePrice : price;
 
   // 1. Reset state when opened
   useEffect(() => {
     if (isOpen) {
-      setCurrentPageIndex(0);
+      setCurrentSlideIndex(0);
       setZoomLevel(100);
       setRenderError(null);
     }
   }, [isOpen, bookId]);
 
-  // 2. Load PDF.js engine from Cloudflare CDN
+  // 2. Load Mozilla PDF.js engine
   useEffect(() => {
     if (!isOpen || typeof window === "undefined") return;
 
@@ -117,7 +130,7 @@ export function PreviewModal({
     };
   }, [isOpen]);
 
-  // 3. Load PDF Document via PDF.js
+  // 3. Load PDF Document via preview stream
   useEffect(() => {
     if (!isOpen || !pdfJsReady || viewMode !== "pdf") return;
 
@@ -140,7 +153,7 @@ export function PreviewModal({
         }
       })
       .catch((err: any) => {
-        console.warn("Could not load PDF manuscript preview, falling back to text:", err);
+        console.warn("PDF stream unavailable, falling back to text:", err);
         if (isMounted) {
           setViewMode("text");
           setLoading(false);
@@ -152,10 +165,10 @@ export function PreviewModal({
     };
   }, [isOpen, pdfJsReady, bookId, viewMode]);
 
-  // 4. Render PDF Page onto Canvas
+  // 4. Render PDF Page onto Retina Canvas with physical book geometry
   const renderPdfPage = useCallback(
     async (pageNumber: number) => {
-      if (!pdfDoc || !canvasRef.current) return;
+      if (!pdfDoc || !canvasRef.current || isCompletionSlide) return;
 
       try {
         if (renderTaskRef.current) {
@@ -170,17 +183,20 @@ export function PreviewModal({
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        const containerWidth = containerRef.current?.clientWidth || 760;
+        const containerWidth = containerRef.current?.clientWidth || 800;
         const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
 
         const unscaledViewport = page.getViewport({ scale: 1.0 });
+
+        // Target display width (simulating an open physical book page)
         const targetWidth = isMobile
-          ? Math.max(containerWidth - 24, 280)
-          : Math.min(containerWidth - 48, 760);
+          ? Math.max(containerWidth - 28, 280)
+          : Math.min(containerWidth - 64, 760);
 
         const baseScale = targetWidth / unscaledViewport.width;
         const currentScale = baseScale * (zoomLevel / 100);
 
+        // HiDPI 2x scaling for ultra-crisp typography
         const pixelRatio = typeof window !== "undefined" ? Math.max(window.devicePixelRatio || 1, 2) : 2;
         const viewport = page.getViewport({ scale: currentScale * pixelRatio });
 
@@ -204,22 +220,22 @@ export function PreviewModal({
         await renderTask.promise;
       } catch (err: any) {
         if (err?.name !== "RenderingCancelledException") {
-          console.error(`Error rendering preview page ${pageNumber}:`, err);
+          console.error(`Error rendering page ${pageNumber}:`, err);
         }
       }
     },
-    [pdfDoc, zoomLevel]
+    [pdfDoc, zoomLevel, isCompletionSlide]
   );
 
   useEffect(() => {
-    if (viewMode === "pdf" && pdfDoc) {
+    if (viewMode === "pdf" && pdfDoc && !isCompletionSlide) {
       renderPdfPage(activePageNumber);
     }
-  }, [viewMode, pdfDoc, activePageNumber, zoomLevel, renderPdfPage]);
+  }, [viewMode, pdfDoc, activePageNumber, zoomLevel, isCompletionSlide, renderPdfPage]);
 
   // 5. Fallback HTML Page Fetcher
   useEffect(() => {
-    if (!isOpen || viewMode !== "text") return;
+    if (!isOpen || viewMode !== "text" || isCompletionSlide) return;
 
     let isMounted = true;
     setLoading(true);
@@ -243,258 +259,381 @@ export function PreviewModal({
     return () => {
       isMounted = false;
     };
-  }, [isOpen, viewMode, bookId, activePageNumber]);
+  }, [isOpen, viewMode, bookId, activePageNumber, isCompletionSlide]);
 
-  // 6. Keyboard Navigation
+  // 6. Keyboard navigation
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      if (e.key === "ArrowRight" && currentPageIndex < validPages.length - 1) {
-        setCurrentPageIndex((prev) => prev + 1);
+      if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") {
+        setCurrentSlideIndex((prev) => Math.min(totalSlides - 1, prev + 1));
       }
-      if (e.key === "ArrowLeft" && currentPageIndex > 0) {
-        setCurrentPageIndex((prev) => prev - 1);
+      if (e.key === "ArrowLeft" || e.key === "PageUp") {
+        setCurrentSlideIndex((prev) => Math.max(0, prev - 1));
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, currentPageIndex, validPages.length, onClose]);
+  }, [isOpen, totalSlides, onClose]);
 
   if (!isOpen) return null;
 
-  const displayPrice = salePrice != null && salePrice > 0 ? salePrice : price;
+  // Atmosphere Theme Styles
+  const ambianceStyles = {
+    warm: {
+      bg: "bg-[#181613]",
+      header: "bg-[#1f1d19]/95 border-[#2e2a24]",
+      subHeader: "bg-[#151411]/90 border-[#26231d]",
+      textPrimary: "text-[#f5f1ea]",
+      textMuted: "text-[#a39a8c]",
+      paperBg: "bg-[#f9f7f2]",
+      spineCrease: "from-black/15 via-transparent to-transparent",
+      accent: "bg-[#c59a4b] text-[#1a1408] hover:bg-[#d6aa57]",
+      pillActive: "bg-[#c59a4b] text-[#1a1408] font-bold shadow-xs",
+      pillInactive: "bg-[#25221c] text-[#a39a8c] hover:text-[#f5f1ea] border-[#363229]",
+    },
+    light: {
+      bg: "bg-[#edece8]",
+      header: "bg-white/95 border-[#dcdad4]",
+      subHeader: "bg-[#f4f3ef]/90 border-[#e3e1dc]",
+      textPrimary: "text-[#1c1d21]",
+      textMuted: "text-[#6c6e78]",
+      paperBg: "bg-white",
+      spineCrease: "from-black/10 via-transparent to-transparent",
+      accent: "bg-[#0c111d] text-white hover:bg-[#202738]",
+      pillActive: "bg-[#0c111d] text-white font-bold shadow-xs",
+      pillInactive: "bg-white text-[#6c6e78] hover:text-[#1c1d21] border-[#dcdad4]",
+    },
+    dark: {
+      bg: "bg-[#0e1015]",
+      header: "bg-[#14171f]/95 border-[#1f2430]",
+      subHeader: "bg-[#0b0d12]/90 border-[#1a1e28]",
+      textPrimary: "text-[#e6e8ee]",
+      textMuted: "text-[#878d9d]",
+      paperBg: "bg-[#faf8f5]",
+      spineCrease: "from-black/20 via-transparent to-transparent",
+      accent: "bg-[#e6e8ee] text-[#0e1015] hover:bg-white",
+      pillActive: "bg-[#e6e8ee] text-[#0e1015] font-bold shadow-xs",
+      pillInactive: "bg-[#191d26] text-[#878d9d] hover:text-[#e6e8ee] border-[#252b38]",
+    },
+  }[ambiance];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 select-none">
-      <div className="relative w-full max-w-5xl h-[92vh] bg-slate-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-700/80">
-        {/* Top Control Bar */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 bg-slate-950/90 border-b border-slate-800 text-white shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold uppercase tracking-wider shrink-0">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Look Inside</span>
-            </span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none">
+      <div
+        className={`relative w-full max-w-5xl h-[94vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-black/20 ${ambianceStyles.bg} transition-colors duration-300`}
+      >
+        {/* Editorial Header */}
+        <header
+          className={`flex items-center justify-between px-4 sm:px-6 py-3.5 border-b backdrop-blur-sm ${ambianceStyles.header} shrink-0 transition-colors duration-300`}
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            {/* Publisher Monogram Badge */}
+            <div className="w-8 h-8 rounded-lg bg-[#c59a4b]/20 border border-[#c59a4b]/40 flex items-center justify-center text-[#c59a4b] shrink-0 font-serif font-bold text-xs tracking-widest">
+              NP
+            </div>
+
             <div className="min-w-0">
-              <h4 className="font-serif text-sm font-bold text-slate-100 truncate max-w-xs sm:max-w-md">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-sans font-bold tracking-[0.2em] uppercase text-[#c59a4b]">
+                  Look Inside • Excerpt
+                </span>
+                <span className="text-[10px] text-gray-500">•</span>
+                <span className="text-[11px] font-sans font-medium opacity-70 truncate hidden sm:inline">
+                  Pages 1–{validPages.length}
+                </span>
+              </div>
+              <h3 className={`font-serif italic text-sm sm:text-base font-medium truncate max-w-xs sm:max-w-md ${ambianceStyles.textPrimary}`}>
                 {bookTitle}
-              </h4>
-              <p className="text-[11px] text-slate-400 truncate">By {authorName}</p>
+              </h3>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            {/* Zoom Controls (PDF Mode) */}
-            {viewMode === "pdf" && (
-              <div className="hidden sm:flex items-center gap-1 bg-slate-800/80 rounded-lg p-1 border border-slate-700">
+          {/* Right Header Toolbar: Ambiance, Zoom & Close */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Reading Ambiance Toggle */}
+            <div className="hidden sm:flex items-center gap-0.5 p-1 rounded-lg bg-black/10 border border-white/5">
+              <button
+                onClick={() => setAmbiance("warm")}
+                title="Warm Library (Parchment)"
+                className={`p-1.5 rounded-md text-xs transition-colors ${
+                  ambiance === "warm" ? "bg-[#c59a4b] text-[#1a1408] shadow-xs" : "opacity-60 hover:opacity-100"
+                }`}
+              >
+                <Coffee className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setAmbiance("light")}
+                title="Studio Light"
+                className={`p-1.5 rounded-md text-xs transition-colors ${
+                  ambiance === "light" ? "bg-white text-black shadow-xs" : "opacity-60 hover:opacity-100"
+                }`}
+              >
+                <Sun className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setAmbiance("dark")}
+                title="Midnight Dark"
+                className={`p-1.5 rounded-md text-xs transition-colors ${
+                  ambiance === "dark" ? "bg-slate-800 text-white shadow-xs" : "opacity-60 hover:opacity-100"
+                }`}
+              >
+                <Moon className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Zoom Controls */}
+            {viewMode === "pdf" && !isCompletionSlide && (
+              <div className="hidden md:flex items-center gap-1 p-1 rounded-lg bg-black/10 border border-white/5 text-xs">
                 <button
-                  onClick={() => setZoomLevel((z) => Math.max(70, z - 15))}
+                  onClick={() => setZoomLevel((z) => Math.max(75, z - 15))}
                   title="Zoom Out"
-                  className="p-1 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                  className="p-1.5 rounded hover:bg-black/15 opacity-75 hover:opacity-100 transition-opacity"
                 >
                   <ZoomOut className="w-3.5 h-3.5" />
                 </button>
-                <span className="text-[10px] font-mono text-slate-300 px-1.5 min-w-[36px] text-center">
+                <span className="text-[10px] font-mono px-1 opacity-80 min-w-[34px] text-center">
                   {zoomLevel}%
                 </span>
                 <button
-                  onClick={() => setZoomLevel((z) => Math.min(160, z + 15))}
+                  onClick={() => setZoomLevel((z) => Math.min(150, z + 15))}
                   title="Zoom In"
-                  className="p-1 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                  className="p-1.5 rounded hover:bg-black/15 opacity-75 hover:opacity-100 transition-opacity"
                 >
                   <ZoomIn className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
 
-            {/* Quick Unlock Button */}
-            <button
-              onClick={() => {
-                if (!inCart) {
-                  addItem({
-                    bookId,
-                    slug: bookSlug,
-                    title: bookTitle,
-                    author: authorName,
-                    coverImage,
-                    price,
-                    salePrice,
-                  });
-                }
-              }}
-              className={`hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                inCart
-                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                  : "bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold"
-              }`}
-            >
-              {inCart ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>In Cart (${displayPrice.toFixed(2)})</span>
-                </>
-              ) : (
-                <>
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>Buy Book (${displayPrice.toFixed(2)})</span>
-                </>
-              )}
-            </button>
-
+            {/* Close Modal */}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-              title="Close Preview (Esc)"
+              className="p-2 rounded-xl bg-black/10 hover:bg-black/25 opacity-75 hover:opacity-100 transition-all ml-1"
+              title="Close Excerpt (Esc)"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* Page Selector Strip */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-2 bg-slate-900/90 border-b border-slate-800 text-xs shrink-0">
-          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1">
-            <span className="text-[11px] font-semibold text-slate-400 mr-1 hidden sm:inline">
-              Sample Pages:
+        {/* Sub-Header: Elegant Page Scrubber & Table of Excerpt Contents */}
+        <div
+          className={`flex items-center justify-between px-4 sm:px-6 py-2 border-b text-xs ${ambianceStyles.subHeader} shrink-0 transition-colors duration-300`}
+        >
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+            <span className={`text-[11px] font-medium mr-1.5 hidden sm:inline ${ambianceStyles.textMuted}`}>
+              Excerpt Pages:
             </span>
             {validPages.map((pg, idx) => (
               <button
                 key={pg}
-                onClick={() => setCurrentPageIndex(idx)}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                  currentPageIndex === idx
-                    ? "bg-amber-500 text-slate-950 font-bold shadow-xs"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700/60"
+                onClick={() => setCurrentSlideIndex(idx)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-sans transition-all ${
+                  currentSlideIndex === idx ? ambianceStyles.pillActive : ambianceStyles.pillInactive
                 }`}
               >
                 Page {pg}
               </button>
             ))}
+
+            <button
+              onClick={() => setCurrentSlideIndex(validPages.length)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-sans flex items-center gap-1 transition-all ${
+                isCompletionSlide ? ambianceStyles.pillActive : ambianceStyles.pillInactive
+              }`}
+            >
+              <Bookmark className="w-3 h-3" />
+              <span>Complete Edition</span>
+            </button>
           </div>
 
-          <div className="text-[11px] text-slate-400 shrink-0 font-medium">
-            Page <span className="text-white font-bold">{currentPageIndex + 1}</span> of{" "}
-            <span className="text-white font-bold">{validPages.length}</span> (Excerpt)
+          <div className={`text-[11px] font-mono shrink-0 ${ambianceStyles.textMuted}`}>
+            {!isCompletionSlide ? (
+              <span>
+                Page <strong className={ambianceStyles.textPrimary}>{currentSlideIndex + 1}</strong> of{" "}
+                <strong className={ambianceStyles.textPrimary}>{validPages.length}</strong>
+              </span>
+            ) : (
+              <span className="text-[#c59a4b] font-sans font-semibold">Excerpt Complete</span>
+            )}
           </div>
         </div>
 
-        {/* Main Preview Viewing Stage */}
+        {/* Reading Stage & Physical Book Canvas */}
         <div
           ref={containerRef}
-          className="flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-8 flex flex-col items-center justify-start bg-slate-900/60 relative scroll-smooth"
+          className="flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-8 md:p-10 flex flex-col items-center justify-start relative scroll-smooth"
         >
           {loading ? (
-            <div className="flex flex-col items-center justify-center my-auto py-20 text-slate-400 gap-3">
-              <div className="w-10 h-10 border-3 border-amber-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm font-sans font-medium text-slate-300">
-                Rendering authentic book manuscript...
+            <div className="flex flex-col items-center justify-center my-auto py-24 gap-3 text-center">
+              <div className="w-9 h-9 border-2 border-[#c59a4b] border-t-transparent rounded-full animate-spin" />
+              <p className={`text-xs font-sans tracking-wider uppercase font-semibold ${ambianceStyles.textMuted}`}>
+                Loading Book Manuscript...
               </p>
-              <p className="text-xs text-slate-500">Preparing high-resolution sample pages</p>
             </div>
-          ) : viewMode === "pdf" ? (
-            <div className="flex flex-col items-center w-full max-w-4xl">
-              {/* Authentic PDF Manuscript Canvas with Book Drop Shadow */}
-              <div className="relative rounded-lg shadow-2xl overflow-hidden bg-white border border-slate-700/60 transition-all duration-300">
-                <canvas ref={canvasRef} className="block max-w-full h-auto" />
+          ) : !isCompletionSlide ? (
+            /* Physical Book Page Representation */
+            <div className="relative group my-auto flex flex-col items-center max-w-full">
+              {/* Physical Book Shadow and Deckled Paper Border */}
+              <div
+                className={`relative rounded-md shadow-[0_20px_50px_rgba(0,0,0,0.35)] overflow-hidden ${ambianceStyles.paperBg} border border-black/10 transition-all duration-300`}
+              >
+                {/* Book Spine Crease Gradient (simulating center binding on left edge) */}
+                <div
+                  className={`absolute top-0 bottom-0 left-0 w-8 bg-gradient-to-r ${ambianceStyles.spineCrease} pointer-events-none z-10`}
+                />
+
+                {/* Left Margin Accent Line */}
+                <div className="absolute top-0 bottom-0 left-0 w-1 bg-black/10 pointer-events-none z-10" />
+
+                {/* PDF Canvas for Real Manuscript */}
+                {viewMode === "pdf" ? (
+                  <canvas ref={canvasRef} className="block max-w-full h-auto reader-canvas" />
+                ) : (
+                  /* Fallback HTML View */
+                  <div className="p-8 sm:p-14 max-w-2xl font-serif text-slate-900 leading-relaxed">
+                    <div className="border-b border-gray-200 pb-3 mb-6">
+                      <span className="text-[11px] font-sans uppercase tracking-widest text-[#c59a4b] font-bold">
+                        {textPageData?.chapterTitle || "Chapter Overview"}
+                      </span>
+                      <h1 className="font-serif text-2xl font-bold text-slate-900 mt-1">
+                        {textPageData?.title || `Page ${activePageNumber}`}
+                      </h1>
+                    </div>
+                    <div
+                      className="prose prose-slate max-w-none text-base leading-relaxed"
+                      dangerouslySetInnerHTML={{
+                        __html: textPageData?.contentHtml || "<p>Page preview unavailable.</p>",
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
-              {/* End of Excerpt Notice on Last Preview Page */}
-              {isLastPreviewPage && (
-                <div className="w-full max-w-2xl mt-8 p-6 rounded-2xl bg-gradient-to-br from-slate-950 to-slate-900 border border-amber-500/30 text-center shadow-xl">
-                  <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto mb-3">
-                    <Lock className="w-6 h-6" />
-                  </div>
-                  <h3 className="font-serif text-xl font-bold text-white">
-                    You've reached the end of the free sample excerpt.
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-300 mt-2 max-w-lg mx-auto leading-relaxed">
-                    Unlock the complete digital edition of{" "}
-                    <span className="text-amber-300 font-semibold">{bookTitle}</span> to continue reading
-                    all chapters in our cloud reader.
-                  </p>
-                  <div className="mt-5 flex flex-wrap justify-center gap-3">
-                    <button
-                      onClick={() => {
-                        addItem({
-                          bookId,
-                          slug: bookSlug,
-                          title: bookTitle,
-                          author: authorName,
-                          coverImage,
-                          price,
-                          salePrice,
-                        });
-                        onClose();
-                      }}
-                      className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-md transition-colors"
-                    >
-                      <ShoppingBag className="w-4 h-4" />
-                      <span>Unlock Full Book (${displayPrice.toFixed(2)})</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+              {/* Discreet Floating Previous / Next Click Zones */}
+              <button
+                onClick={() => setCurrentSlideIndex((prev) => Math.max(0, prev - 1))}
+                disabled={currentSlideIndex === 0}
+                className="hidden lg:flex absolute -left-14 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 text-white items-center justify-center transition-all disabled:opacity-0 disabled:pointer-events-none backdrop-blur-xs"
+                title="Previous Page (←)"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              <button
+                onClick={() => setCurrentSlideIndex((prev) => Math.min(totalSlides - 1, prev + 1))}
+                className="hidden lg:flex absolute -right-14 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 text-white items-center justify-center transition-all backdrop-blur-xs"
+                title="Next Page (→)"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           ) : (
-            /* HTML Text Fallback Representation */
-            <div className="w-full max-w-2xl bg-white text-slate-900 rounded-2xl shadow-xl p-8 sm:p-12 my-auto">
-              {textPageData ? (
-                <div>
-                  <div className="border-b border-gray-200 pb-3 mb-6">
-                    <span className="text-xs font-sans font-semibold text-amber-600 uppercase tracking-widest block">
-                      {textPageData.chapterTitle}
-                    </span>
-                    <h1 className="font-serif text-2xl sm:text-3xl font-bold text-slate-900 mt-1">
-                      {textPageData.title}
-                    </h1>
-                  </div>
-                  <div
-                    className="prose prose-slate max-w-none font-serif text-base leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: textPageData.contentHtml }}
+            /* Masterpiece Publisher's Excerpt Completion Plate */
+            <div className="w-full max-w-2xl my-auto p-8 sm:p-12 rounded-2xl bg-white/95 text-slate-900 shadow-2xl border border-black/10 flex flex-col items-center text-center animate-in fade-in duration-300">
+              {/* Book Cover Artwork Miniature */}
+              <div className="relative w-24 sm:w-28 aspect-[2/3] rounded-md shadow-book overflow-hidden border border-black/10 mb-6 bg-slate-900">
+                {coverImage ? (
+                  <Image
+                    src={coverImage}
+                    alt={bookTitle}
+                    fill
+                    sizes="120px"
+                    className="object-cover"
                   />
-                </div>
-              ) : (
-                <div className="text-center py-12 text-slate-500">
-                  <BookOpen className="w-10 h-10 mx-auto text-slate-400 mb-2" />
-                  <p>Sample excerpt text unavailable.</p>
-                </div>
-              )}
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-slate-900 text-[#c59a4b]">
+                    <BookOpen className="w-8 h-8" />
+                  </div>
+                )}
+              </div>
+
+              <span className="text-[11px] font-sans font-bold tracking-[0.25em] uppercase text-[#996f27] mb-1">
+                Noveraile First Edition
+              </span>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">
+                {bookTitle}
+              </h2>
+              <p className="text-xs text-slate-500 font-medium mt-1">By {authorName}</p>
+
+              <div className="w-16 h-px bg-[#c59a4b]/40 my-6" />
+
+              <p className="text-sm font-serif leading-relaxed text-slate-700 max-w-lg">
+                You have reached the end of the opening 5-page sample excerpt. To continue reading the complete manuscript, acquire the full digital edition for instant access on any device.
+              </p>
+
+              {/* CTA Action Deck */}
+              <div className="mt-8 flex flex-col sm:flex-row items-center gap-3.5 w-full justify-center">
+                <button
+                  onClick={() => {
+                    if (!inCart) {
+                      addItem({
+                        bookId,
+                        slug: bookSlug,
+                        title: bookTitle,
+                        author: authorName,
+                        coverImage,
+                        price,
+                        salePrice,
+                      });
+                    }
+                    onClose();
+                  }}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-[#0c111d] hover:bg-[#1f273b] text-white text-xs font-semibold shadow-md transition-all"
+                >
+                  <ShoppingBag className="w-4 h-4 text-[#c59a4b]" />
+                  <span>
+                    Unlock Complete Book • ${displayPrice.toFixed(2)}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setCurrentSlideIndex(0)}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-3.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Read Excerpt Again</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Bottom Pagination & Action Footer */}
-        <div className="px-4 sm:px-6 py-3.5 bg-slate-950 border-t border-slate-800 text-white flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-          {/* Navigation Controls */}
-          <div className="flex items-center gap-2">
+        {/* Publisher Bottom Ribbon */}
+        <footer
+          className={`flex flex-col sm:flex-row items-center justify-between px-4 sm:px-6 py-3 border-t ${ambianceStyles.header} shrink-0 transition-colors duration-300 gap-3`}
+        >
+          {/* Previous / Next Controls */}
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
             <button
-              onClick={() => setCurrentPageIndex((prev) => Math.max(0, prev - 1))}
-              disabled={currentPageIndex === 0}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700 transition-colors"
+              onClick={() => setCurrentSlideIndex((prev) => Math.max(0, prev - 1))}
+              disabled={currentSlideIndex === 0}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${ambianceStyles.pillInactive}`}
             >
               <ChevronLeft className="w-4 h-4" />
-              <span>Previous Page</span>
+              <span>Previous</span>
             </button>
 
             <button
-              onClick={() =>
-                setCurrentPageIndex((prev) => Math.min(validPages.length - 1, prev + 1))
-              }
-              disabled={currentPageIndex >= validPages.length - 1}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700 transition-colors"
+              onClick={() => setCurrentSlideIndex((prev) => Math.min(totalSlides - 1, prev + 1))}
+              disabled={currentSlideIndex === totalSlides - 1}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${ambianceStyles.pillInactive}`}
             >
-              <span>Next Page</span>
+              <span>Next</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Unlock Full Book Call To Action */}
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-            <div className="text-right hidden sm:block">
-              <span className="text-[11px] text-slate-400 block">Complete Edition</span>
-              <span className="text-sm font-bold text-amber-400 font-mono">
+          {/* Quick Buy Bar */}
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            <div className="text-right hidden md:block">
+              <span className={`text-[10px] uppercase tracking-wider block ${ambianceStyles.textMuted}`}>
+                Digital Edition
+              </span>
+              <span className={`font-serif font-bold text-sm ${ambianceStyles.textPrimary}`}>
                 ${displayPrice.toFixed(2)}
               </span>
             </div>
@@ -513,26 +652,26 @@ export function PreviewModal({
                   });
                 }
               }}
-              className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-md transition-all ${
+              className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold shadow-xs transition-all ${
                 inCart
-                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/50"
-                  : "bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20"
+                  ? "bg-emerald-50 text-emerald-800 border border-emerald-300"
+                  : ambianceStyles.accent
               }`}
             >
               {inCart ? (
                 <>
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  <span>Added to Cart</span>
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Item in Cart</span>
                 </>
               ) : (
                 <>
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>Unlock Full Book (${displayPrice.toFixed(2)})</span>
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>Unlock Complete Book (${displayPrice.toFixed(2)})</span>
                 </>
               )}
             </button>
           </div>
-        </div>
+        </footer>
       </div>
     </div>
   );
