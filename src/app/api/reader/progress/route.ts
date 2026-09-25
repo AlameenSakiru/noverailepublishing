@@ -90,6 +90,14 @@ export async function POST(req: Request) {
       },
     });
 
+    // Keep book pageCount synced with real PDF page count
+    if (total > 1) {
+      await prisma.book.update({
+        where: { id: bookId },
+        data: { pageCount: total },
+      }).catch(() => {});
+    }
+
     // Handle bookmark toggle if requested
     let bookmarkStatus = null;
     if (toggleBookmark) {

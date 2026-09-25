@@ -65,7 +65,10 @@ export default function CartPage() {
         return;
       }
 
-      // Redirect to checkout URL (Stripe or local sandbox completion)
+      // Clear cart locally upon successful checkout placement
+      clearCart();
+
+      // Redirect to checkout URL (Stripe or instant success)
       window.location.href = data.checkoutUrl;
     } catch {
       setCheckoutError("Network error initiating checkout.");

@@ -88,6 +88,23 @@ export async function POST(req: Request) {
 
       await fs.writeFile(filePath, buffer);
 
+      // Extract page count from PDF buffer
+      let pageCount = 0;
+      try {
+        const text = buffer.toString("latin1");
+        const countMatch = text.match(/\/Type\s*\/Pages[^>]*\/Count\s+(\d+)/);
+        if (countMatch && parseInt(countMatch[1], 10) > 0) {
+          pageCount = parseInt(countMatch[1], 10);
+        } else {
+          const pageMatches = text.match(/\/Type\s*\/Page[^s]/g);
+          if (pageMatches && pageMatches.length > 0) {
+            pageCount = pageMatches.length;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not extract PDF page count:", err);
+      }
+
       return NextResponse.json({
         success: true,
         type: "manuscript",
@@ -95,6 +112,7 @@ export async function POST(req: Request) {
         filename: uniqueFilename,
         originalName: file.name,
         size: file.size,
+        pageCount: pageCount > 0 ? pageCount : null,
       });
     } else {
       return NextResponse.json({ error: "Invalid upload type specified." }, { status: 400 });

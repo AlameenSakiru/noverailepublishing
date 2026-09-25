@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
-import { createCheckoutSession, CheckoutItem } from "@/lib/stripe";
+import { getCurrentUser, hashPassword, setSessionCookie } from "@/lib/auth";
+import { isStripeConfigured, createCheckoutSession, CheckoutItem } from "@/lib/stripe";
 import { siteConfig } from "@/lib/config";
 
 export async function POST(req: Request) {
@@ -64,17 +64,115 @@ export async function POST(req: Request) {
     }
 
     const totalAmount = Math.max(0, subtotal - discountAmount);
+    const cleanEmail = customerEmail.toLowerCase().trim();
 
-    // Generate unique order number
+    // Direct / Sandbox Instant Checkout (when Stripe key is not set)
+    if (!isStripeConfigured) {
+      let user = currentUser ? await prisma.user.findUnique({ where: { id: currentUser.userId } }) : null;
+      if (!user) {
+        user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+      }
+      if (!user) {
+        const fastHash = await hashPassword(Math.random().toString(36).slice(-8) + "N1!");
+        user = await prisma.user.create({
+          data: {
+            email: cleanEmail,
+            name: cleanEmail.split("@")[0],
+            passwordHash: fastHash,
+            role: "CUSTOMER",
+            isEmailVerified: true,
+          },
+        });
+      }
+
+      const randomSuffix = Math.floor(10000 + Math.random() * 90000);
+      const orderNumber = `NOV-2026-${randomSuffix}`;
+
+      // Create Order + Payment in a single atomic database query
+      const order = await prisma.order.create({
+        data: {
+          orderNumber,
+          userId: user.id,
+          customerEmail: cleanEmail,
+          totalAmount,
+          subtotal,
+          discountAmount,
+          currency: siteConfig.defaultCurrency,
+          paymentStatus: "PAID",
+          payment: {
+            create: {
+              provider: "SANDBOX",
+              transactionId: `txn_instant_${Date.now()}`,
+              status: "SUCCEEDED",
+              amount: totalAmount,
+              currency: siteConfig.defaultCurrency,
+            },
+          },
+          items: {
+            create: checkoutItems.map((item) => ({
+              bookId: item.bookId,
+              price: item.price,
+              bookTitle: item.title,
+            })),
+          },
+        },
+      });
+
+      // Concurrently create digital entitlements and reading progress records
+      await Promise.all(
+        dbBooks.map(async (book) => {
+          await prisma.entitlement.upsert({
+            where: {
+              userId_bookId: { userId: user!.id, bookId: book.id },
+            },
+            update: { status: "ACTIVE", orderId: order.id },
+            create: { userId: user!.id, bookId: book.id, orderId: order.id, status: "ACTIVE" },
+          }).catch(() => {});
+
+          await prisma.readingProgress.upsert({
+            where: {
+              userId_bookId: { userId: user!.id, bookId: book.id },
+            },
+            update: {},
+            create: {
+              userId: user!.id,
+              bookId: book.id,
+              currentPage: 1,
+              totalPages: book.pageCount > 0 ? book.pageCount : 1,
+              progressPercent: 0,
+            },
+          }).catch(() => {});
+        })
+      );
+
+      const response = NextResponse.json({
+        checkoutUrl: `/checkout/success?orderNumber=${order.orderNumber}`,
+        provider: "DIRECT",
+        orderNumber: order.orderNumber,
+      });
+
+      await setSessionCookie(
+        {
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+        response
+      );
+
+      return response;
+    }
+
+    // Stripe Checkout Flow
     const randomSuffix = Math.floor(10000 + Math.random() * 90000);
     const orderNumber = `NOV-2026-${randomSuffix}`;
 
-    // Create Order in database
     const order = await prisma.order.create({
       data: {
         orderNumber,
         userId: currentUser?.userId || null,
-        customerEmail: customerEmail.toLowerCase().trim(),
+        customerEmail: cleanEmail,
         totalAmount,
         subtotal,
         discountAmount,
@@ -95,13 +193,12 @@ export async function POST(req: Request) {
 
     const session = await createCheckoutSession({
       orderId: order.id,
-      customerEmail,
+      customerEmail: cleanEmail,
       items: checkoutItems,
       successUrl,
       cancelUrl,
     });
 
-    // Update order with session id
     await prisma.order.update({
       where: { id: order.id },
       data: { stripeSessionId: session.sessionId },

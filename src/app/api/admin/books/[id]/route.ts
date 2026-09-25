@@ -85,6 +85,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
       examAcronym,
       examAuthority,
       profession,
+      pageCount,
     } = body;
 
     let finalAuthorId = authorId;
@@ -158,6 +159,9 @@ export async function PUT(req: Request, { params }: RouteParams) {
         isbn: isbn ? isbn.trim() : null,
         edition: edition ? edition.trim() : "1st Edition",
         language: language ? language.trim() : "English",
+        ...(pageCount !== undefined && {
+          pageCount: parseInt(String(pageCount), 10) > 0 ? parseInt(String(pageCount), 10) : 1,
+        }),
         coverImage: coverImage ? coverImage.trim() : "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
         description: description.trim(),
         shortDescription: shortDescription ? shortDescription.trim() : description.slice(0, 160).trim(),

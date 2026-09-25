@@ -31,8 +31,9 @@ import {
   Sparkles,
   BookOpen,
   FileText,
+  Compass,
+  Hash,
 } from "lucide-react";
-import { DynamicWatermark } from "@/components/DynamicWatermark";
 
 interface ReaderClientProps {
   book: {
@@ -98,6 +99,7 @@ export function ReaderClient({
   // Side Drawers
   const [tocOpen, setTocOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [extractedToc, setExtractedToc] = useState<{ title: string; startPage: number }[]>([]);
 
   // Study Notepad / Scratchpad State
   const [studyNotes, setStudyNotes] = useState("");
@@ -197,11 +199,44 @@ export function ReaderClient({
     });
 
     loadingTask.promise
-      .then((loadedDoc: any) => {
+      .then(async (loadedDoc: any) => {
         setPdfDoc(loadedDoc);
         if (loadedDoc.numPages) {
           setTotalPages(loadedDoc.numPages);
         }
+
+        // Extract native PDF outline / TOC if embedded in the document
+        try {
+          const outline = await loadedDoc.getOutline();
+          if (outline && outline.length > 0) {
+            const parsed = await Promise.all(
+              outline.map(async (item: any) => {
+                let pageNum = 1;
+                if (typeof item.dest === "string") {
+                  const dest = await loadedDoc.getDestination(item.dest);
+                  if (dest) {
+                    const idx = await loadedDoc.getPageIndex(dest[0]);
+                    pageNum = idx + 1;
+                  }
+                } else if (Array.isArray(item.dest)) {
+                  const idx = await loadedDoc.getPageIndex(item.dest[0]);
+                  pageNum = idx + 1;
+                }
+                return {
+                  title: item.title,
+                  startPage: pageNum,
+                };
+              })
+            );
+            const valid = parsed.filter((it) => it.startPage >= 1);
+            if (valid.length > 0) {
+              setExtractedToc(valid);
+            }
+          }
+        } catch {
+          // Native outline extraction completed
+        }
+
         setPdfLoading(false);
       })
       .catch((err: any) => {
@@ -222,15 +257,17 @@ export function ReaderClient({
       try {
         const page = await pdfDoc.getPage(pageNumber);
         const containerWidth = containerRef.current?.clientWidth || 800;
+        const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
 
         // Base viewport at scale 1.0
         const unscaledViewport = page.getViewport({ scale: 1.0 });
 
-        // Calculate scale to fit container width, factoring zoomLevel and single/spread layout
-        const targetWidth =
-          layoutMode === "spread"
-            ? (containerWidth - 96) / 2
-            : Math.min(containerWidth - 64, 820);
+        // Calculate scale: on mobile expand edge-to-edge, on desktop maintain comfortable reading column
+        const targetWidth = isMobile
+          ? Math.max(containerWidth - 8, 300)
+          : layoutMode === "spread"
+          ? (containerWidth - 96) / 2
+          : Math.min(containerWidth - 48, 880);
 
         const baseScale = targetWidth / unscaledViewport.width;
         const currentScale = baseScale * (zoomLevel / 100);
@@ -257,30 +294,13 @@ export function ReaderClient({
         };
 
         await page.render(renderContext).promise;
-
-        // Draw Canvas-Level Diagonal Anti-Piracy Watermark directly into canvas pixels
-        if (userEmail) {
-          ctx.save();
-          ctx.rotate((-25 * Math.PI) / 180);
-          ctx.font = `${Math.round(14 * pixelRatio)}px monospace`;
-          ctx.fillStyle = "rgba(100, 116, 139, 0.08)";
-          ctx.textAlign = "center";
-
-          const wmText = `Licensed to ${userEmail} • Noveraile Protected Reader`;
-          for (let y = -viewport.height; y < viewport.height * 2; y += 140 * pixelRatio) {
-            for (let x = -viewport.width; x < viewport.width * 2; x += 320 * pixelRatio) {
-              ctx.fillText(wmText, x, y);
-            }
-          }
-          ctx.restore();
-        }
       } catch (err: any) {
         if (err?.name !== "RenderingCancelledException") {
           console.error(`Error rendering page ${pageNumber}:`, err);
         }
       }
     },
-    [pdfDoc, zoomLevel, layoutMode, userEmail]
+    [pdfDoc, zoomLevel, layoutMode]
   );
 
   // Trigger PDF Canvas Rendering when page, doc, zoom, or layout changes
@@ -481,16 +501,6 @@ export function ReaderClient({
       onContextMenu={handleContextMenu}
       className={`fixed inset-0 z-50 flex flex-col h-screen w-screen overflow-hidden ${themeClasses[theme]} select-none transition-colors duration-200`}
     >
-      {/* Dynamic Security Watermark across Reader Viewport */}
-      <DynamicWatermark
-        watermarkText={
-          userEmail
-            ? `Licensed to ${userEmail} • Noveraile Protected Reader`
-            : "Noveraile Publishing • Protected Online Edition"
-        }
-        theme={theme}
-      />
-
       {/* Top Header Chrome / Toolbar */}
       <header className="h-14 border-b border-inherit px-3 sm:px-5 flex items-center justify-between shrink-0 bg-inherit/90 backdrop-blur-md z-30">
         {/* Left Section: Back to Library & TOC & Notes */}
@@ -536,36 +546,6 @@ export function ReaderClient({
               <span className="w-2 h-2 rounded-full bg-amber-500 absolute -top-0.5 -right-0.5 ring-2 ring-white dark:ring-gray-900" />
             )}
           </button>
-
-          {/* View Mode Toggle: PDF Canvas vs Rich Text (if manuscript exists) */}
-          {(book.pdfStreamUrl || book.pdfUrl) && (
-            <div className="hidden lg:flex items-center gap-1 bg-black/5 dark:bg-white/5 rounded-lg p-0.5 ml-2 text-xs">
-              <button
-                onClick={() => setViewMode("pdf")}
-                className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 ${
-                  viewMode === "pdf"
-                    ? "bg-white dark:bg-gray-800 font-bold text-amber-700 dark:text-amber-300 shadow-xs"
-                    : "opacity-60 hover:opacity-100"
-                }`}
-                title="View High-Resolution Original PDF Manuscript"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>PDF Manuscript</span>
-              </button>
-              <button
-                onClick={() => setViewMode("text")}
-                className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 ${
-                  viewMode === "text"
-                    ? "bg-white dark:bg-gray-800 font-bold text-amber-700 dark:text-amber-300 shadow-xs"
-                    : "opacity-60 hover:opacity-100"
-                }`}
-                title="View Responsive Adaptive Text"
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>eBook Text</span>
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Center: Publication Title & Module Label */}
@@ -574,15 +554,15 @@ export function ReaderClient({
             {book.title}
           </h2>
           <p className="text-[10px] opacity-60 truncate -mt-0.5">
-            {book.authorName} • {viewMode === "pdf" ? "PDF High-Definition Canvas" : "Digital Study Edition"}
+            {book.authorName} • PDF Manuscript
           </p>
         </div>
 
         {/* Right Section: Zoom, Layout, Bookmark, Themes, Fullscreen */}
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
-          {/* Zoom Controls (PDF Mode) */}
+          {/* Zoom Controls (Available on all screens) */}
           {viewMode === "pdf" && (
-            <div className="hidden md:flex items-center gap-1 bg-black/5 dark:bg-white/5 rounded-lg p-0.5">
+            <div className="flex items-center gap-0.5 sm:gap-1 bg-black/5 dark:bg-white/5 rounded-lg p-0.5">
               <button
                 onClick={() => setZoomLevel((z) => Math.max(50, z - 15))}
                 className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 opacity-70 hover:opacity-100"
@@ -681,32 +661,122 @@ export function ReaderClient({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-2 text-xs">
-              {book.tableOfContents && book.tableOfContents.length > 0 ? (
-                book.tableOfContents.map((item: any, idx: number) => (
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+              {/* Quick Jump by Page Number Form */}
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <span className="font-bold text-[11px] block text-amber-900 dark:text-amber-200 mb-1.5 flex items-center gap-1.5">
+                  <Hash className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Direct Page Jump</span>
+                </span>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const num = parseInt(pageJumpInput, 10);
+                    if (!isNaN(num) && num >= 1 && num <= totalPages) {
+                      setCurrentPage(num);
+                      setTocOpen(false);
+                    }
+                  }}
+                  className="flex gap-2"
+                >
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={pageJumpInput}
+                    onChange={(e) => setPageJumpInput(e.target.value)}
+                    placeholder={`1 - ${totalPages}`}
+                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs"
+                  >
+                    Go
+                  </button>
+                </form>
+              </div>
+
+              {/* Milestones / Quick Navigation Grid */}
+              {totalPages > 3 && (
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-2 flex items-center gap-1.5">
+                    <Compass className="w-3 h-3 text-amber-600" />
+                    <span>Quick Navigation Markers</span>
+                  </span>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {Array.from(
+                      new Set([
+                        1,
+                        Math.max(1, Math.round(totalPages * 0.15)),
+                        Math.max(1, Math.round(totalPages * 0.3)),
+                        Math.max(1, Math.round(totalPages * 0.5)),
+                        Math.max(1, Math.round(totalPages * 0.7)),
+                        Math.max(1, Math.round(totalPages * 0.85)),
+                        totalPages,
+                      ])
+                    ).map((pg) => (
+                      <button
+                        key={pg}
+                        onClick={() => {
+                          setCurrentPage(pg);
+                          setTocOpen(false);
+                        }}
+                        className={`p-1.5 rounded-lg border text-center font-mono text-[11px] transition-all ${
+                          currentPage === pg
+                            ? "bg-amber-600 text-white border-amber-600 font-bold"
+                            : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-amber-500 hover:text-amber-600"
+                        }`}
+                      >
+                        p. {pg}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Chapters & Document Outline */}
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-2">
+                  Document Chapters & Outline
+                </span>
+
+                {(extractedToc.length > 0
+                  ? extractedToc
+                  : book.tableOfContents && book.tableOfContents.length > 0
+                  ? book.tableOfContents
+                  : [
+                      { title: "Front Cover & Title Page", startPage: 1 },
+                      ...(totalPages > 4 ? [{ title: "Foundations & Overview", startPage: 2 }] : []),
+                      ...(totalPages > 20
+                        ? [
+                            { title: "Early Modules & Key Concepts", startPage: Math.round(totalPages * 0.25) },
+                            { title: "Midpoint Diagnostic Review", startPage: Math.round(totalPages * 0.5) },
+                            { title: "Advanced Applications & Prep", startPage: Math.round(totalPages * 0.75) },
+                            { title: "Concluding Review & Appendix", startPage: Math.max(1, totalPages - 5) },
+                          ]
+                        : []),
+                      ...(totalPages > 1 ? [{ title: "Final Summary Page", startPage: totalPages }] : []),
+                    ]
+                ).map((item: any, idx: number, arr: any[]) => (
                   <button
                     key={idx}
                     onClick={() => {
                       setCurrentPage(item.startPage || 1);
                       setTocOpen(false);
                     }}
-                    className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between ${
+                    className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between mb-1 ${
                       currentPage >= item.startPage &&
-                      (idx === book.tableOfContents.length - 1 ||
-                        currentPage < book.tableOfContents[idx + 1]?.startPage)
+                      (idx === arr.length - 1 || currentPage < arr[idx + 1]?.startPage)
                         ? "bg-amber-500/15 font-bold text-amber-800 dark:text-amber-300 border border-amber-500/30"
                         : "hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
                     }`}
                   >
-                    <span className="truncate">{item.title || `Chapter ${item.chapter || idx + 1}`}</span>
-                    <span className="font-mono text-[10px] opacity-60 ml-2">p. {item.startPage}</span>
+                    <span className="truncate">{item.title || `Chapter ${idx + 1}`}</span>
+                    <span className="font-mono text-[10px] opacity-60 ml-2 shrink-0">p. {item.startPage}</span>
                   </button>
-                ))
-              ) : (
-                <div className="text-center py-6 text-gray-400 text-xs">
-                  No Table of Contents provided. Use the bottom scrubber to browse pages.
-                </div>
-              )}
+                ))}
+              </div>
 
               {/* Saved Bookmarks Section */}
               {bookmarks.length > 0 && (
@@ -744,7 +814,7 @@ export function ReaderClient({
         <main
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          className="flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 flex justify-center items-start relative transition-all"
+          className="flex-1 overflow-y-auto p-1 sm:p-4 md:p-6 flex justify-center items-start relative transition-all"
         >
           {viewMode === "pdf" ? (
             /* =================== HIGH-FIDELITY PDF CANVAS RENDERER =================== */

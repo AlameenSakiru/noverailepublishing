@@ -64,6 +64,7 @@ export async function POST(req: Request) {
       examAuthority,
       profession,
       samplePages,
+      pageCount,
     } = body;
 
     let finalAuthorId = authorId;
@@ -124,7 +125,7 @@ export async function POST(req: Request) {
         isbn,
         edition: edition || "1st Edition",
         language: language || "English",
-        pageCount: samplePages && Array.isArray(samplePages) ? samplePages.length : 1,
+        pageCount: pageCount && parseInt(String(pageCount), 10) > 0 ? parseInt(String(pageCount), 10) : (samplePages && Array.isArray(samplePages) ? samplePages.length : 1),
         coverImage: coverImage || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
         description,
         shortDescription: shortDescription || description.slice(0, 160),

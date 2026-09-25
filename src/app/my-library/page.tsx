@@ -173,8 +173,26 @@ export default async function MyLibraryPage({ searchParams }: MyLibraryPageProps
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {entitlements.map(({ book }) => {
                 const progress = progressMap.get(book.id);
-                const percent = progress?.progressPercent || 0;
-                const hasStarted = (progress?.currentPage || 1) > 1 || percent > 0;
+                const currentPage = progress?.currentPage || 1;
+                const totalPages =
+                  progress?.totalPages && progress.totalPages > 1
+                    ? progress.totalPages
+                    : book.pageCount && book.pageCount > 1
+                    ? book.pageCount
+                    : 1;
+
+                const percent =
+                  totalPages > 1
+                    ? Math.min(100, Math.round((currentPage / totalPages) * 100))
+                    : progress?.progressPercent || 0;
+
+                const hasStarted = currentPage > 1 || percent > 0;
+
+                // Handle valid cover image or graceful fallback
+                const isValidCover =
+                  book.coverImage &&
+                  !book.coverImage.startsWith("blob:") &&
+                  (book.coverImage.startsWith("http") || book.coverImage.startsWith("/"));
 
                 return (
                   <div
@@ -185,15 +203,27 @@ export default async function MyLibraryPage({ searchParams }: MyLibraryPageProps
                       {/* Book Cover Thumbnail with accurate 2:3 ratio */}
                       <Link
                         href={`/reader/${book.slug}`}
-                        className="relative w-24 sm:w-28 aspect-[2/3] rounded-md shadow-book group-hover:scale-105 transition-transform shrink-0 border border-black/10 overflow-hidden bg-white"
+                        className="relative w-24 sm:w-28 aspect-[2/3] rounded-md shadow-book group-hover:scale-105 transition-transform shrink-0 border border-black/10 overflow-hidden bg-slate-900 flex items-center justify-center text-white"
                       >
-                        <Image
-                          src={book.coverImage}
-                          alt={book.title}
-                          fill
-                          sizes="120px"
-                          className="object-cover"
-                        />
+                        {isValidCover ? (
+                          <Image
+                            src={book.coverImage}
+                            alt={book.title}
+                            fill
+                            sizes="120px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="p-3 text-center flex flex-col items-center justify-center h-full w-full bg-gradient-to-br from-slate-900 via-slate-800 to-amber-950 text-white">
+                            <BookOpen className="w-5 h-5 text-amber-400 mb-2 opacity-80" />
+                            <span className="font-serif text-[10px] font-bold leading-tight line-clamp-3">
+                              {book.title}
+                            </span>
+                            <span className="text-[8px] text-amber-200/70 mt-1 block truncate max-w-full">
+                              {book.author?.name}
+                            </span>
+                          </div>
+                        )}
                         <div className="absolute top-0 bottom-0 left-0 w-2.5 bg-gradient-to-r from-black/25 via-white/10 to-transparent pointer-events-none" />
                       </Link>
 
@@ -227,7 +257,7 @@ export default async function MyLibraryPage({ searchParams }: MyLibraryPageProps
                               {hasStarted ? `${Math.round(percent)}% complete` : "Not started"}
                             </span>
                             <span className="text-brand-muted text-[10px]">
-                              {progress?.currentPage || 1} of {book.pageCount} Units
+                              {totalPages > 1 ? `${currentPage} of ${totalPages} Pages` : `Page ${currentPage}`}
                             </span>
                           </div>
                           <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">

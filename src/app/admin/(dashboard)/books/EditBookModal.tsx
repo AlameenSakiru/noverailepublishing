@@ -34,6 +34,7 @@ export interface BookToEdit {
   price: number;
   salePrice: number | null;
   coverImage: string;
+  pageCount?: number;
   description: string;
   shortDescription: string;
   specifications?: string | any | null;
@@ -119,6 +120,7 @@ export function EditBookModal({
     imprintId: "",
     coverImage: "",
     manuscriptPdfUrl: "",
+    pageCount: "",
     drmEnabled: true,
     royaltyPlan: "70",
     description: "",
@@ -175,6 +177,7 @@ export function EditBookModal({
         imprintId: currentImprintId,
         coverImage: book.coverImage || "",
         manuscriptPdfUrl: specs.manuscriptPdfUrl || "",
+        pageCount: book.pageCount && book.pageCount > 0 ? String(book.pageCount) : (specs.pageCount ? String(specs.pageCount) : ""),
         drmEnabled: specs.drmEnabled ?? true,
         royaltyPlan: specs.royaltyPlan || "70",
         description: book.description || "",
@@ -236,6 +239,7 @@ export function EditBookModal({
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Failed to upload cover image.");
+        setFormData((prev) => ({ ...prev, coverImage: book?.coverImage || "" }));
         setCoverUploading(false);
         return;
       }
@@ -244,6 +248,7 @@ export function EditBookModal({
       setCoverUploading(false);
     } catch {
       setError("Network error while uploading cover image.");
+      setFormData((prev) => ({ ...prev, coverImage: book?.coverImage || "" }));
       setCoverUploading(false);
     }
   };
@@ -294,7 +299,11 @@ export function EditBookModal({
         return;
       }
 
-      setFormData((prev) => ({ ...prev, manuscriptPdfUrl: data.url }));
+      setFormData((prev) => ({
+        ...prev,
+        manuscriptPdfUrl: data.url,
+        ...(data.pageCount ? { pageCount: String(data.pageCount) } : {}),
+      }));
       setPdfUploading(false);
     } catch {
       setError("Network interruption uploading manuscript PDF.");
@@ -358,6 +367,19 @@ export function EditBookModal({
       return;
     }
 
+    if (pdfUploading) {
+      setError("Please wait for the PDF manuscript to finish uploading.");
+      return;
+    }
+    if (coverUploading) {
+      setError("Please wait for the cover image to finish uploading.");
+      return;
+    }
+    if (formData.coverImage?.startsWith("blob:")) {
+      setError("Cover image is still uploading or failed. Please re-select the image.");
+      return;
+    }
+
     setError(null);
     setSuccessMsg(null);
     setLoading(true);
@@ -365,6 +387,7 @@ export function EditBookModal({
     try {
       const payload = {
         ...formData,
+        pageCount: formData.pageCount && parseInt(formData.pageCount, 10) > 0 ? parseInt(formData.pageCount, 10) : undefined,
         authorName: formData.authorName.trim(),
         authorId: formData.authorId || null,
         imprintId: formData.imprintId || null,
@@ -972,12 +995,22 @@ export function EditBookModal({
                       <span>2. Book Interior & Manuscript (.pdf)</span>
                     </h4>
                     <p className="text-[11px] text-gray-500 mt-0.5">
-                      Upload the complete interior PDF version of your book. Customers with active entitlements read this inside the protected reader.
+                      Upload the complete interior PDF manuscript. Customers read this inside the high-definition reader.
                     </p>
                   </div>
-                  <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 font-mono text-[10px] font-semibold border border-rose-100">
-                    PDF Document
-                  </span>
+                  {pdfUploading ? (
+                    <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-mono text-[10px] font-semibold border border-blue-200 flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Uploading...
+                    </span>
+                  ) : formData.manuscriptPdfUrl ? (
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-mono text-[10px] font-bold border border-emerald-200 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" /> PDF ATTACHED
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-mono text-[10px] font-semibold border border-amber-200">
+                      No PDF Attached
+                    </span>
+                  )}
                 </div>
 
                 <input
@@ -988,101 +1021,187 @@ export function EditBookModal({
                   className="hidden"
                 />
 
-                {/* PDF Dropzone */}
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setIsDraggingPdf(true);
-                  }}
-                  onDragLeave={() => setIsDraggingPdf(false)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setIsDraggingPdf(false);
-                    const file = e.dataTransfer.files?.[0];
-                    if (file) processPdfFile(file);
-                  }}
-                  onClick={() => pdfInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-2 ${
-                    isDraggingPdf
-                      ? "border-brand-ink bg-brand-50/50 scale-[1.01]"
-                      : "border-gray-300 hover:border-gray-500 bg-gray-50/40 hover:bg-gray-50"
-                  }`}
-                >
-                  <div className="p-2.5 rounded-full bg-white shadow-xs text-rose-600 border border-gray-200">
-                    {pdfUploading ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-brand-700" />
-                    ) : (
-                      <FileText className="w-5 h-5" />
-                    )}
+                {/* STATE 1: UPLOADING STATE */}
+                {pdfUploading && (
+                  <div className="p-6 bg-blue-50/70 rounded-2xl border-2 border-blue-300 text-center space-y-3 animate-in fade-in">
+                    <div className="w-12 h-12 mx-auto rounded-full bg-blue-100 flex items-center justify-center text-blue-700 shadow-xs">
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-gray-900 text-sm block">
+                        Uploading Manuscript: {pdfFileName || "Selected PDF"}
+                      </span>
+                      <span className="text-xs text-blue-700 block mt-0.5 font-medium">
+                        {pdfFileSize ? `${pdfFileSize} • ` : ""}Transferring to server & analyzing pages...
+                      </span>
+                    </div>
+                    <div className="w-full max-w-sm mx-auto bg-blue-200/80 rounded-full h-2 overflow-hidden">
+                      <div className="bg-blue-600 h-full rounded-full w-3/4 animate-pulse" />
+                    </div>
+                    <p className="text-[11px] text-gray-500">Please keep this window open while the file uploads.</p>
                   </div>
+                )}
 
-                  <div>
-                    <span className="font-bold text-gray-900 text-xs block">
-                      {pdfUploading ? "Uploading PDF manuscript..." : "Drag & drop your Book PDF file here, or browse"}
-                    </span>
-                    <span className="text-[11px] text-gray-500 block mt-0.5">
-                      Complete interior manuscript (.pdf). Maximum file size: 100MB.
-                    </span>
-                  </div>
+                {/* STATE 2: ALREADY ATTACHED STATE */}
+                {!pdfUploading && formData.manuscriptPdfUrl && (
+                  <div className="space-y-3 animate-in fade-in">
+                    <div className="p-5 bg-emerald-50/80 rounded-2xl border-2 border-emerald-300 shadow-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-start sm:items-center gap-3.5">
+                          <div className="p-3 rounded-xl bg-white border border-emerald-200 text-rose-600 shadow-xs shrink-0">
+                            <FileText className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                                Manuscript Active & Attached
+                              </span>
+                              {formData.pageCount && (
+                                <span className="px-2 py-0.5 rounded-md bg-white border border-emerald-200 text-emerald-900 text-[10px] font-bold font-mono">
+                                  {formData.pageCount} Pages
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-bold block text-gray-900 text-sm mt-1 truncate max-w-md">
+                              {pdfFileName || formData.manuscriptPdfUrl.split("/").pop()}
+                            </span>
+                            <span className="text-[11px] text-emerald-700 block mt-0.5">
+                              {pdfFileSize ? `${pdfFileSize} • ` : ""}Ready for in-browser protected reader
+                            </span>
+                          </div>
+                        </div>
 
-                  <button
-                    type="button"
-                    className="px-3.5 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-800 text-white font-semibold text-[11px] transition-colors shadow-2xs"
-                  >
-                    Choose PDF File
-                  </button>
-                </div>
-
-                {/* PDF Uploaded Status Card */}
-                {formData.manuscriptPdfUrl && (
-                  <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in">
-                    <div className="flex items-center gap-3 text-emerald-950">
-                      <div className="p-2 rounded-xl bg-white border border-emerald-200 text-rose-600 shadow-2xs">
-                        <FileText className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <span className="font-bold block truncate max-w-sm text-xs">
-                          {pdfFileName || formData.manuscriptPdfUrl.split("/").pop() || "Book Interior Manuscript.pdf"}
-                        </span>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[11px] text-emerald-700 font-medium">
-                            {pdfFileSize ? `${pdfFileSize} • ` : ""}Uploaded & Ready for Digital Reader
-                          </span>
-                          <span className="px-1.5 py-0.2 rounded bg-emerald-200/80 text-emerald-900 font-mono text-[9px] font-bold">
-                            ATTACHED
-                          </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <a
+                            href={formData.manuscriptPdfUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-emerald-300 text-emerald-900 hover:bg-emerald-100 font-semibold text-xs transition-colors shadow-2xs"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>Preview PDF</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => pdfInputRef.current?.click()}
+                            className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-gray-800 hover:bg-gray-100 font-semibold text-xs transition-colors shadow-2xs"
+                          >
+                            Replace File
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleRemovePdf}
+                            className="p-1.5 rounded-lg bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 transition-colors shadow-2xs"
+                            title="Remove manuscript"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={formData.manuscriptPdfUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-emerald-300 text-emerald-900 hover:bg-emerald-100 font-semibold text-[11px] transition-colors shadow-2xs"
-                        title="Open PDF in new tab to verify"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>View / Test PDF</span>
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => pdfInputRef.current?.click()}
-                        className="px-3 py-1.5 rounded-lg bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100 font-semibold text-[11px] transition-colors"
-                      >
-                        Replace PDF
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleRemovePdf}
-                        className="px-2 py-1.5 rounded-lg bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 font-semibold text-[11px] transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                    {/* Drag replacement drop strip */}
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDraggingPdf(true);
+                      }}
+                      onDragLeave={() => setIsDraggingPdf(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDraggingPdf(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) processPdfFile(file);
+                      }}
+                      onClick={() => pdfInputRef.current?.click()}
+                      className={`border border-dashed rounded-xl p-3 text-center cursor-pointer transition-colors text-xs text-gray-500 hover:text-gray-800 hover:border-gray-400 ${
+                        isDraggingPdf ? "border-brand-ink bg-brand-50" : "border-gray-200 bg-gray-50/50"
+                      }`}
+                    >
+                      <span>Drag a new PDF here, or click to replace this manuscript file.</span>
                     </div>
                   </div>
                 )}
+
+                {/* STATE 3: EMPTY DROPZONE STATE */}
+                {!pdfUploading && !formData.manuscriptPdfUrl && (
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingPdf(true);
+                    }}
+                    onDragLeave={() => setIsDraggingPdf(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDraggingPdf(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) processPdfFile(file);
+                    }}
+                    onClick={() => pdfInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-2xl p-7 text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-2.5 ${
+                      isDraggingPdf
+                        ? "border-brand-ink bg-brand-50/50 scale-[1.01]"
+                        : "border-gray-300 hover:border-gray-500 bg-gray-50/40 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="p-3 rounded-full bg-white shadow-xs text-rose-600 border border-gray-200">
+                      <FileText className="w-6 h-6" />
+                    </div>
+
+                    <div>
+                      <span className="font-bold text-gray-900 text-sm block">
+                        Drag & drop your Book PDF file here, or browse
+                      </span>
+                      <span className="text-[11px] text-gray-500 block mt-0.5">
+                        Complete interior manuscript (.pdf). Maximum file size: 100MB.
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="px-4 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs transition-colors shadow-2xs"
+                    >
+                      Choose PDF File
+                    </button>
+                  </div>
+                )}
+
+                {/* Page Count & Direct URL Inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 border-t border-gray-100">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                      Total Book Pages
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.pageCount}
+                      onChange={(e) => setFormData({ ...formData, pageCount: e.target.value })}
+                      placeholder="e.g. 115"
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-900 font-bold focus:outline-none focus:ring-1 focus:ring-gray-900"
+                    />
+                    <span className="text-[10px] text-gray-400 mt-0.5 block">
+                      Auto-detected on PDF upload
+                    </span>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                      Or Direct Manuscript PDF URL
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.manuscriptPdfUrl}
+                      onChange={(e) => setFormData({ ...formData, manuscriptPdfUrl: e.target.value })}
+                      placeholder="https://... or /manuscripts/your-file.pdf"
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-900 font-mono focus:outline-none focus:ring-1 focus:ring-gray-900"
+                    />
+                    <span className="text-[10px] text-gray-400 mt-0.5 block">
+                      Local manuscript path or secure CDN URL
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* SECTION 3: DESCRIPTIONS */}
