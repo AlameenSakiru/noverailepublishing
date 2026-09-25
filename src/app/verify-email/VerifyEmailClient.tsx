@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -11,10 +10,7 @@ import {
   AlertCircle,
   ArrowRight,
   RotateCcw,
-  Sparkles,
-  Info,
   Edit2,
-  Check,
 } from "lucide-react";
 
 export function VerifyEmailClient() {
@@ -23,21 +19,13 @@ export function VerifyEmailClient() {
   const { refreshUser } = useAuth();
 
   const emailParam = searchParams.get("email") || "";
-  const codeParam = searchParams.get("code") || "";
   const redirectUrl = searchParams.get("redirect") || "/my-library";
 
   const [email, setEmail] = useState(emailParam);
   const [isEditingEmail, setIsEditingEmail] = useState(!emailParam);
   const [tempEmail, setTempEmail] = useState(emailParam);
 
-  const [digits, setDigits] = useState<string[]>(() => {
-    if (codeParam && codeParam.length === 6) {
-      return codeParam.split("");
-    }
-    return ["", "", "", "", "", ""];
-  });
-
-  const [demoCode, setDemoCode] = useState<string | null>(codeParam || null);
+  const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,19 +33,6 @@ export function VerifyEmailClient() {
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-  // Auto-fetch demo code if available and in development
-  useEffect(() => {
-    if (!email) return;
-    fetch(`/api/auth/verify-email/demo-code?email=${encodeURIComponent(email)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.demoCode) {
-          setDemoCode(data.demoCode);
-        }
-      })
-      .catch(() => {});
-  }, [email]);
 
   // If emailParam changes in URL, update state
   useEffect(() => {
@@ -68,16 +43,14 @@ export function VerifyEmailClient() {
     }
   }, [emailParam]);
 
-  // Focus input
+  // Auto focus first input on mount
   useEffect(() => {
-    if (codeParam && codeParam.length === 6) {
-      inputRefs.current[5]?.focus();
-    } else if (inputRefs.current[0] && !isEditingEmail) {
+    if (inputRefs.current[0] && !isEditingEmail) {
       inputRefs.current[0].focus();
     }
-  }, [codeParam, isEditingEmail]);
+  }, [isEditingEmail]);
 
-  // Resend cooldown timer
+  // Resend cooldown timer countdown
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = setInterval(() => {
@@ -124,14 +97,6 @@ export function VerifyEmailClient() {
 
     const nextIndex = Math.min(5, pasted.length);
     inputRefs.current[nextIndex]?.focus();
-  };
-
-  // Autofill demo PIN helper
-  const handleAutofillDemo = () => {
-    if (!demoCode) return;
-    const codeArr = demoCode.split("");
-    setDigits(codeArr);
-    setError(null);
   };
 
   // Save edited email
@@ -215,12 +180,8 @@ export function VerifyEmailClient() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setSuccess(data.message || "A fresh 6-digit verification code has been dispatched.");
+        setSuccess(data.message || `A new 6-digit code has been sent to ${targetEmail}.`);
         setResendCooldown(60);
-        if (data.demoCode) {
-          setDemoCode(data.demoCode);
-          setDigits(data.demoCode.split(""));
-        }
       } else {
         setError(data.error || "Failed to resend code.");
       }
@@ -248,7 +209,7 @@ export function VerifyEmailClient() {
           Verify Your Email
         </h1>
         <p className="text-xs text-brand-slate mt-1.5 leading-relaxed">
-          Enter the 6-digit security code sent to:
+          Enter the 6-digit security code sent to your email:
         </p>
 
         {/* Email display and change toggle */}
@@ -286,29 +247,6 @@ export function VerifyEmailClient() {
           </form>
         )}
       </div>
-
-      {/* Demo / Sandbox helper card when testing */}
-      {demoCode && (
-        <div className="mb-5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-950 text-xs text-left animate-in fade-in">
-          <div className="flex items-center gap-1.5 font-bold text-amber-900 mb-1">
-            <Info className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>Resend Sandbox / Testing PIN</span>
-          </div>
-          <p className="text-[11px] text-amber-900/80 leading-relaxed">
-            Resend trial accounts deliver live emails to your registered Resend inbox. For instant testing on any address, click the PIN below to autofill:
-          </p>
-          <button
-            type="button"
-            onClick={handleAutofillDemo}
-            className="w-full mt-2 text-center py-2 px-3 bg-white hover:bg-amber-50 rounded-xl border border-amber-500/40 font-mono font-bold text-base tracking-widest text-amber-950 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-          >
-            <span>{demoCode}</span>
-            <span className="text-[10px] font-sans font-normal text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
-              Click to autofill
-            </span>
-          </button>
-        </div>
-      )}
 
       {success && (
         <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-center gap-2 animate-in fade-in">
@@ -359,7 +297,7 @@ export function VerifyEmailClient() {
 
       {/* Resend Code Section */}
       <div className="mt-6 pt-5 border-t border-gray-100 flex flex-col items-center gap-2 text-xs">
-        <span className="text-brand-muted">Didn&apos;t receive the email code?</span>
+        <span className="text-brand-muted">Didn&apos;t receive the email code? Check spam or</span>
         <button
           type="button"
           onClick={handleResend}

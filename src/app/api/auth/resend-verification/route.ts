@@ -69,12 +69,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      emailSent: emailResult.success,
-      emailError: !emailResult.success ? emailResult.error : undefined,
-      message: emailResult.success
-        ? `A new 6-digit verification code has been sent to ${cleanEmail}.`
-        : `Generated 6-digit test code: ${code}`,
-      demoCode: !emailResult.success ? code : undefined,
+      message: `A fresh 6-digit verification code has been dispatched to ${cleanEmail}.`,
     });
   } catch (error: any) {
     console.error("Resend verification error:", error);

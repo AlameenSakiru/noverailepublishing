@@ -33,9 +33,8 @@ function LoginForm() {
         router.push(redirectUrl);
       }
     } else if (result.requiresVerification) {
-      const demoParam = result.demoCode ? `&code=${result.demoCode}` : "";
       router.push(
-        `/verify-email?email=${encodeURIComponent(result.email || email)}&redirect=${encodeURIComponent(redirectUrl)}${demoParam}`
+        `/verify-email?email=${encodeURIComponent(result.email || email)}&redirect=${encodeURIComponent(redirectUrl)}`
       );
     } else {
       setError(result.error || "Invalid credentials.");

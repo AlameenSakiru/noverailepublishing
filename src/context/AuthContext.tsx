@@ -20,12 +20,10 @@ interface AuthContextType {
     error?: string;
     requiresVerification?: boolean;
     email?: string;
-    demoCode?: string;
   }>;
   loginWithGoogle: (googlePayload: { credential?: string; email?: string; name?: string; avatarUrl?: string }) => Promise<{ success: boolean; user?: UserProfile; error?: string }>;
   register: (name: string, email: string, password: string) => Promise<{
     success: boolean;
-    demoCode?: string;
     email?: string;
     requiresVerification?: boolean;
     error?: string;
@@ -126,7 +124,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         success: true,
         requiresVerification: true,
         email: data.email || email,
-        demoCode: data.demoCode,
       };
     } catch (e: any) {
       return { success: false, error: e.message || "Network error" };

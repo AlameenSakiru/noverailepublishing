@@ -125,12 +125,7 @@ export async function POST(req: Request) {
       success: true,
       requiresVerification: true,
       email: cleanEmail,
-      emailSent: emailResult.success,
-      emailError: !emailResult.success ? emailResult.error : undefined,
-      demoCode: !emailResult.success ? verificationCode : undefined,
-      message: emailResult.success
-        ? `A 6-digit verification code was sent to ${cleanEmail}.`
-        : "Account created. Please enter the verification PIN below to confirm your account.",
+      message: `A 6-digit security code has been sent to ${cleanEmail}. Please enter it to verify your account.`,
     });
   } catch (error: any) {
     console.error("Registration error:", error);
