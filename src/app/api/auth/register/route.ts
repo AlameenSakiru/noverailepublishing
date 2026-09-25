@@ -97,9 +97,12 @@ export async function POST(req: Request) {
       console.error("Failed to generate or send verification code:", codeErr);
     }
 
+    const hasEmailProvider = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "");
+
     const response = NextResponse.json({
       success: true,
       requiresVerification: true,
+      demoCode: hasEmailProvider ? undefined : verificationCode,
       user: {
         userId: user.id,
         email: user.email,

@@ -11,7 +11,8 @@ import {
   AlertCircle,
   ArrowRight,
   RotateCcw,
-  BookOpen,
+  Sparkles,
+  Info,
 } from "lucide-react";
 
 export function VerifyEmailClient() {
@@ -20,10 +21,18 @@ export function VerifyEmailClient() {
   const { refreshUser } = useAuth();
 
   const emailParam = searchParams.get("email") || "";
+  const codeParam = searchParams.get("code") || "";
   const redirectUrl = searchParams.get("redirect") || "/my-library";
 
   const [email, setEmail] = useState(emailParam);
-  const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
+  const [digits, setDigits] = useState<string[]>(() => {
+    if (codeParam && codeParam.length === 6) {
+      return codeParam.split("");
+    }
+    return ["", "", "", "", "", ""];
+  });
+
+  const [demoCode, setDemoCode] = useState<string | null>(codeParam || null);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,12 +41,14 @@ export function VerifyEmailClient() {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Auto-focus first input on mount
+  // Auto-focus first input or last input if prefilled on mount
   useEffect(() => {
-    if (inputRefs.current[0]) {
+    if (codeParam && codeParam.length === 6) {
+      inputRefs.current[5]?.focus();
+    } else if (inputRefs.current[0]) {
       inputRefs.current[0].focus();
     }
-  }, []);
+  }, [codeParam]);
 
   // Resend cooldown timer countdown
   useEffect(() => {
@@ -50,7 +61,7 @@ export function VerifyEmailClient() {
 
   // Handle digit change
   const handleDigitChange = (index: number, value: string) => {
-    const char = value.slice(-1); // Take last character entered
+    const char = value.slice(-1);
     if (char && !/^[0-9]$/.test(char)) return;
 
     const newDigits = [...digits];
@@ -147,8 +158,12 @@ export function VerifyEmailClient() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setSuccess(data.message || "A new 6-digit code has been sent.");
+        setSuccess(data.message || "A new 6-digit code has been generated.");
         setResendCooldown(60);
+        if (data.demoCode) {
+          setDemoCode(data.demoCode);
+          setDigits(data.demoCode.split(""));
+        }
       } else {
         setError(data.error || "Failed to resend code.");
       }
@@ -169,7 +184,7 @@ export function VerifyEmailClient() {
         <span className="font-sans text-[10px] tracking-[0.35em] text-brand-muted uppercase block -mt-1 mb-4">
           PUBLISHING
         </span>
-        <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/20 text-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-3">
+        <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/20 text-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-xs">
           <Mail className="w-7 h-7" />
         </div>
         <h1 className="font-serif text-2xl font-bold text-brand-ink">
@@ -182,6 +197,22 @@ export function VerifyEmailClient() {
           </span>
         </p>
       </div>
+
+      {/* Demo helper card if live email API key is not connected yet */}
+      {demoCode && (
+        <div className="mb-5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-950 text-xs text-left animate-in fade-in">
+          <div className="flex items-center gap-1.5 font-bold text-amber-900 mb-1">
+            <Info className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>Development & Testing Notice</span>
+          </div>
+          <p className="text-[11px] text-amber-900/80 leading-relaxed">
+            Live email delivery provider (<code>RESEND_API_KEY</code>) is not set on Vercel yet. Your generated single-use test PIN is:
+          </p>
+          <div className="mt-2 text-center py-1.5 px-3 bg-white/90 rounded-xl border border-amber-500/30 font-mono font-bold text-base tracking-widest text-amber-950">
+            {demoCode}
+          </div>
+        </div>
+      )}
 
       {success && (
         <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-center gap-2 animate-in fade-in">

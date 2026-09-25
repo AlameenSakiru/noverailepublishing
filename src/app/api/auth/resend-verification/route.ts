@@ -75,9 +75,14 @@ export async function POST(req: Request) {
     // Send email
     await sendVerificationEmail(cleanEmail, user.name, code);
 
+    const hasEmailProvider = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "");
+
     return NextResponse.json({
       success: true,
-      message: `A new 6-digit verification code has been sent to ${cleanEmail}.`,
+      message: hasEmailProvider
+        ? `A new 6-digit verification code has been sent to ${cleanEmail}.`
+        : `Verification code generated. (Demo Code: ${code})`,
+      demoCode: hasEmailProvider ? undefined : code,
     });
   } catch (error: any) {
     console.error("Resend verification error:", error);
