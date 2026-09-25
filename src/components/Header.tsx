@@ -140,6 +140,12 @@ export function Header() {
                       <p className="text-[11px] text-brand-muted truncate">{user.email}</p>
                     </div>
                     <Link
+                      href="/account"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-50 font-medium"
+                    >
+                      Account & Security
+                    </Link>
+                    <Link
                       href="/my-library"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-50"
                     >
@@ -161,7 +167,7 @@ export function Header() {
                     )}
                     <button
                       onClick={logout}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-t border-gray-100"
                     >
                       Sign Out
                     </button>
@@ -237,9 +243,16 @@ export function Header() {
             About
           </Link>
           <Link
-            href="/my-library"
+            href="/account"
             onClick={() => setMobileMenuOpen(false)}
             className="block py-2 text-base font-semibold text-brand-ink"
+          >
+            Account & Security
+          </Link>
+          <Link
+            href="/my-library"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block py-2 text-base font-medium text-brand-slate hover:text-brand-ink"
           >
             My Library
           </Link>

@@ -14,6 +14,7 @@ interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; user?: UserProfile; error?: string }>;
+  loginWithGoogle: (googlePayload: { credential?: string; email?: string; name?: string; avatarUrl?: string }) => Promise<{ success: boolean; user?: UserProfile; error?: string }>;
   register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -65,6 +66,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async (googlePayload: {
+    credential?: string;
+    email?: string;
+    name?: string;
+    avatarUrl?: string;
+  }) => {
+    try {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(googlePayload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || "Google authentication failed" };
+      }
+      setUser(data.user);
+      router.refresh();
+      return { success: true, user: data.user };
+    } catch (e: any) {
+      return { success: false, error: e.message || "Network error during Google sign in" };
+    }
+  };
+
   const register = async (name: string, email: string, password: string) => {
     try {
       const res = await fetch("/api/auth/register", {
@@ -101,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isLoading,
         login,
+        loginWithGoogle,
         register,
         logout,
         refreshUser: fetchCurrentUser,
