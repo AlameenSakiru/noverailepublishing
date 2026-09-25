@@ -127,7 +127,7 @@ export async function GET(req: Request) {
         title: title,
         chapterTitle: chapterTitle,
         contentHtml: contentHtml,
-        watermarkText: access.watermarkText,
+        watermarkText: null,
         isPreview: access.isPreview,
       },
       {

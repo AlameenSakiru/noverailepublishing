@@ -116,10 +116,6 @@ export function PreviewModal({
 
         {/* Reading Page Content Body */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-10 relative bg-reader-paper select-none">
-          {/* Subtle diagonal preview watermark */}
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.06] rotate-[-25deg] select-none text-4xl sm:text-6xl font-serif font-black text-brand-ink">
-            FREE PREVIEW SAMPLE
-          </div>
 
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full text-brand-muted gap-3">

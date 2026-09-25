@@ -554,7 +554,7 @@ export function ReaderClient({
             {book.title}
           </h2>
           <p className="text-[10px] opacity-60 truncate -mt-0.5">
-            {book.authorName} • PDF Manuscript
+            By {book.authorName}
           </p>
         </div>
 
