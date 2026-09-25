@@ -72,6 +72,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
       shortDescription,
       categoryId,
       authorId,
+      authorName,
       imprintId,
       status,
       isFeatured,
@@ -86,7 +87,41 @@ export async function PUT(req: Request, { params }: RouteParams) {
       profession,
     } = body;
 
-    if (!title || !slug || !description || !categoryId || !authorId) {
+    let finalAuthorId = authorId;
+
+    if (authorName && typeof authorName === "string" && authorName.trim()) {
+      const cleanAuthorName = authorName.trim();
+      let author = await prisma.author.findFirst({
+        where: {
+          name: { equals: cleanAuthorName, mode: "insensitive" },
+        },
+      });
+
+      if (!author) {
+        const baseSlug =
+          cleanAuthorName
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "") || "author";
+
+        let finalSlug = baseSlug;
+        const collision = await prisma.author.findUnique({ where: { slug: finalSlug } });
+        if (collision) {
+          finalSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+        }
+
+        author = await prisma.author.create({
+          data: {
+            name: cleanAuthorName,
+            slug: finalSlug,
+            bio: `Author at Noveraile Publishing.`,
+          },
+        });
+      }
+      finalAuthorId = author.id;
+    }
+
+    if (!title || !slug || !description || !categoryId || !finalAuthorId) {
       return NextResponse.json({ error: "Required fields missing (Title, Slug, Description, Category, Author)." }, { status: 400 });
     }
 
@@ -129,7 +164,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
         price: parsedPrice,
         salePrice: parsedSalePrice,
         categoryId,
-        authorId,
+        authorId: finalAuthorId,
         imprintId: imprintId && imprintId !== "" ? imprintId : null,
         status: status || "PUBLISHED",
         isFeatured: Boolean(isFeatured),

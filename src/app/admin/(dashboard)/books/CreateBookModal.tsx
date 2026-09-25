@@ -24,13 +24,14 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { getAutoImprintId } from "@/lib/imprintMapping";
 
 interface CreateBookModalProps {
   isOpen: boolean;
   onClose: () => void;
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; slug?: string }[];
   authors: { id: string; name: string }[];
-  imprints: { id: string; name: string }[];
+  imprints: { id: string; name: string; slug?: string }[];
 }
 
 export function CreateBookModal({
@@ -70,9 +71,10 @@ export function CreateBookModal({
     subtitle: "",
     slug: "",
     edition: "1st Edition",
-    authorId: authors[0]?.id || "",
-    imprintId: imprints[0]?.id || "",
+    authorName: "",
+    authorId: "",
     categoryId: categories[0]?.id || "",
+    imprintId: getAutoImprintId(categories[0]?.id || "", categories, imprints),
     publishingRights: "OWNED",
     shortDescription: "",
     description: "",
@@ -103,6 +105,25 @@ export function CreateBookModal({
   });
 
   if (!isOpen) return null;
+
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCatId = e.target.value;
+    const autoImprint = getAutoImprintId(newCatId, categories, imprints);
+    const selectedCat = categories.find((c) => c.id === newCatId);
+    const isExamCat =
+      selectedCat?.slug?.includes("exam") ||
+      selectedCat?.slug?.includes("health") ||
+      selectedCat?.slug?.includes("nurs") ||
+      selectedCat?.slug?.includes("cyber") ||
+      selectedCat?.name?.toLowerCase().includes("exam");
+
+    setFormData((prev) => ({
+      ...prev,
+      categoryId: newCatId,
+      imprintId: autoImprint,
+      ...(isExamCat && !prev.isExamPrep ? { isExamPrep: true } : {}),
+    }));
+  };
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const title = e.target.value;
@@ -253,8 +274,8 @@ export function CreateBookModal({
       setError("Please select a category.");
       return false;
     }
-    if (!formData.authorId) {
-      setError("Please select an author.");
+    if (!formData.authorName.trim()) {
+      setError("Please enter the author's name.");
       return false;
     }
     if (!formData.description.trim()) {
@@ -310,7 +331,8 @@ export function CreateBookModal({
         price: numericPrice,
         salePrice: numericSalePrice,
         categoryId: formData.categoryId,
-        authorId: formData.authorId,
+        authorName: formData.authorName.trim(),
+        authorId: formData.authorId || null,
         imprintId: formData.imprintId || null,
         coverImage: formData.coverImageUrl,
         description: formData.description.trim(),
@@ -585,17 +607,33 @@ export function CreateBookModal({
                     <label className="block font-semibold text-gray-700 mb-1">
                       Author *
                     </label>
-                    <select
-                      value={formData.authorId}
-                      onChange={(e) => setFormData({ ...formData, authorId: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs bg-white text-gray-900 font-medium"
-                    >
+                    <input
+                      type="text"
+                      required
+                      list="create-modal-authors-datalist"
+                      value={formData.authorName}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const match = authors.find(
+                          (a) => a.name.toLowerCase() === val.trim().toLowerCase()
+                        );
+                        setFormData((prev) => ({
+                          ...prev,
+                          authorName: val,
+                          authorId: match ? match.id : "",
+                        }));
+                      }}
+                      placeholder="Type author name..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs bg-white text-gray-900 font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    />
+                    <datalist id="create-modal-authors-datalist">
                       {authors.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.name}
-                        </option>
+                        <option key={a.id} value={a.name} />
                       ))}
-                    </select>
+                    </datalist>
+                    <span className="text-[10px] text-gray-400 mt-1 block">
+                      Type any author name directly
+                    </span>
                   </div>
 
                   <div>
@@ -604,8 +642,8 @@ export function CreateBookModal({
                     </label>
                     <select
                       value={formData.categoryId}
-                      onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs bg-white text-gray-900 font-medium"
+                      onChange={handleCategoryChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                     >
                       {categories.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -613,24 +651,35 @@ export function CreateBookModal({
                         </option>
                       ))}
                     </select>
+                    <span className="text-[10px] text-gray-400 mt-1 block">
+                      Auto-sets the imprint & prep settings
+                    </span>
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-gray-700 mb-1">
-                      Imprint (Publisher)
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-semibold text-gray-700">
+                        Imprint (Publisher)
+                      </label>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/80 border border-amber-200 px-1.5 py-0.2 rounded">
+                        Auto-Chosen
+                      </span>
+                    </div>
                     <select
                       value={formData.imprintId}
                       onChange={(e) => setFormData({ ...formData, imprintId: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs bg-white text-gray-900 font-medium"
+                      className="w-full px-3 py-2 border border-amber-300 bg-amber-50/50 rounded-xl text-xs text-gray-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                     >
-                      <option value="">Noveraile Publishing</option>
+                      <option value="">Noveraile Publishing (Flagship)</option>
                       {imprints.map((imp) => (
                         <option key={imp.id} value={imp.id}>
                           {imp.name}
                         </option>
                       ))}
                     </select>
+                    <span className="text-[10px] text-amber-700 font-medium mt-1 block">
+                      Selected based on category
+                    </span>
                   </div>
                 </div>
               </div>

@@ -50,6 +50,7 @@ export async function POST(req: Request) {
       shortDescription,
       categoryId,
       authorId,
+      authorName,
       imprintId,
       previewPageNumbers,
       isFeatured,
@@ -65,8 +66,43 @@ export async function POST(req: Request) {
       samplePages,
     } = body;
 
-    if (!title || !slug || !description || !categoryId || !authorId) {
-      return NextResponse.json({ error: "Required fields missing." }, { status: 400 });
+    let finalAuthorId = authorId;
+
+    // Dynamically resolve or create author if authorName is supplied
+    if (authorName && typeof authorName === "string" && authorName.trim()) {
+      const cleanAuthorName = authorName.trim();
+      let author = await prisma.author.findFirst({
+        where: {
+          name: { equals: cleanAuthorName, mode: "insensitive" },
+        },
+      });
+
+      if (!author) {
+        const baseSlug =
+          cleanAuthorName
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "") || "author";
+
+        let finalSlug = baseSlug;
+        const collision = await prisma.author.findUnique({ where: { slug: finalSlug } });
+        if (collision) {
+          finalSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+        }
+
+        author = await prisma.author.create({
+          data: {
+            name: cleanAuthorName,
+            slug: finalSlug,
+            bio: `Author at Noveraile Publishing.`,
+          },
+        });
+      }
+      finalAuthorId = author.id;
+    }
+
+    if (!title || !slug || !description || !categoryId || !finalAuthorId) {
+      return NextResponse.json({ error: "Required fields missing (Title, Slug, Description, Category, Author)." }, { status: 400 });
     }
 
     const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, "-");
@@ -95,7 +131,7 @@ export async function POST(req: Request) {
         price: parseFloat(price) || 29.99,
         salePrice: salePrice ? parseFloat(salePrice) : null,
         categoryId,
-        authorId,
+        authorId: finalAuthorId,
         imprintId: imprintId || null,
         isFeatured: Boolean(isFeatured),
         isBestseller: Boolean(isBestseller),

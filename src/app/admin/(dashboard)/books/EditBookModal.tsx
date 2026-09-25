@@ -21,6 +21,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { getAutoImprintId } from "@/lib/imprintMapping";
 
 export interface BookToEdit {
   id: string;
@@ -42,6 +43,8 @@ export interface BookToEdit {
   isComingSoon: boolean;
   categoryId: string;
   authorId: string;
+  author?: { id: string; name: string } | null;
+  authorName?: string;
   imprintId: string | null;
   examMetadata?: {
     examName: string;
@@ -59,9 +62,9 @@ interface EditBookModalProps {
   isOpen: boolean;
   book: BookToEdit | null;
   onClose: () => void;
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; slug?: string }[];
   authors: { id: string; name: string }[];
-  imprints: { id: string; name: string }[];
+  imprints: { id: string; name: string; slug?: string }[];
   onBookUpdated?: (updatedBook: any) => void;
   onBookDeleted?: (bookId: string) => void;
 }
@@ -111,6 +114,7 @@ export function EditBookModal({
     salePrice: "",
     status: "PUBLISHED",
     categoryId: "",
+    authorName: "",
     authorId: "",
     imprintId: "",
     coverImage: "",
@@ -144,6 +148,17 @@ export function EditBookModal({
         specs = {};
       }
 
+      const existingAuthorName =
+        book.author?.name ||
+        book.authorName ||
+        authors.find((a) => a.id === book.authorId)?.name ||
+        "";
+
+      const currentCatId = book.categoryId || categories[0]?.id || "";
+      const currentImprintId =
+        book.imprintId ||
+        getAutoImprintId(currentCatId, categories, imprints);
+
       setFormData({
         title: book.title || "",
         subtitle: book.subtitle || "",
@@ -154,9 +169,10 @@ export function EditBookModal({
         price: book.price ? String(book.price) : "29.99",
         salePrice: book.salePrice ? String(book.salePrice) : "",
         status: book.status || "PUBLISHED",
-        categoryId: book.categoryId || categories[0]?.id || "",
-        authorId: book.authorId || authors[0]?.id || "",
-        imprintId: book.imprintId || "",
+        categoryId: currentCatId,
+        authorName: existingAuthorName,
+        authorId: book.authorId || "",
+        imprintId: currentImprintId,
         coverImage: book.coverImage || "",
         manuscriptPdfUrl: specs.manuscriptPdfUrl || "",
         drmEnabled: specs.drmEnabled ?? true,
@@ -183,7 +199,7 @@ export function EditBookModal({
       setShowDeleteConfirm(false);
       setDeleteError(null);
     }
-  }, [book, categories, authors]);
+  }, [book, categories, authors, imprints]);
 
   if (!isOpen || !book) return null;
 
@@ -315,8 +331,33 @@ export function EditBookModal({
     setFormData((prev) => ({ ...prev, slug: generated }));
   };
 
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCatId = e.target.value;
+    const autoImprint = getAutoImprintId(newCatId, categories, imprints);
+    const selectedCat = categories.find((c) => c.id === newCatId);
+    const isExamCat =
+      selectedCat?.name?.toLowerCase().includes("exam") ||
+      selectedCat?.name?.toLowerCase().includes("health") ||
+      selectedCat?.name?.toLowerCase().includes("nurs") ||
+      selectedCat?.name?.toLowerCase().includes("certif") ||
+      selectedCat?.name?.toLowerCase().includes("prep") ||
+      selectedCat?.name?.toLowerCase().includes("pharmacy");
+
+    setFormData((prev) => ({
+      ...prev,
+      categoryId: newCatId,
+      imprintId: autoImprint,
+      ...(isExamCat && !prev.isExamPrep ? { isExamPrep: true } : {}),
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.authorName.trim()) {
+      setError("Please specify the author name.");
+      return;
+    }
+
     setError(null);
     setSuccessMsg(null);
     setLoading(true);
@@ -324,6 +365,9 @@ export function EditBookModal({
     try {
       const payload = {
         ...formData,
+        authorName: formData.authorName.trim(),
+        authorId: formData.authorId || null,
+        imprintId: formData.imprintId || null,
         specifications: {
           manuscriptPdfUrl: formData.manuscriptPdfUrl || null,
           manuscriptFileName: pdfFileName || null,
@@ -684,7 +728,7 @@ export function EditBookModal({
                   </label>
                   <select
                     value={formData.categoryId}
-                    onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                    onChange={handleCategoryChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-ink"
                   >
                     {categories.map((c) => (
@@ -693,33 +737,57 @@ export function EditBookModal({
                       </option>
                     ))}
                   </select>
+                  <span className="text-[10px] text-gray-400 mt-1 block">
+                    Auto-assigns corresponding imprint
+                  </span>
                 </div>
 
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">
                     Author / Contributor *
                   </label>
-                  <select
-                    value={formData.authorId}
-                    onChange={(e) => setFormData({ ...formData, authorId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-ink"
-                  >
+                  <input
+                    type="text"
+                    required
+                    list="edit-modal-authors-datalist"
+                    value={formData.authorName}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const match = authors.find(
+                        (a) => a.name.toLowerCase() === val.trim().toLowerCase()
+                      );
+                      setFormData((prev) => ({
+                        ...prev,
+                        authorName: val,
+                        authorId: match ? match.id : "",
+                      }));
+                    }}
+                    placeholder="Type author name..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-brand-ink"
+                  />
+                  <datalist id="edit-modal-authors-datalist">
                     {authors.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
+                      <option key={a.id} value={a.name} />
                     ))}
-                  </select>
+                  </datalist>
+                  <span className="text-[10px] text-gray-400 mt-1 block">
+                    Type any author name directly
+                  </span>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block font-semibold text-gray-700 mb-1">
-                    Publishing Imprint
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold text-gray-700">
+                      Publishing Imprint
+                    </label>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/80 border border-amber-200 px-1.5 py-0.5 rounded">
+                      Auto-Chosen
+                    </span>
+                  </div>
                   <select
                     value={formData.imprintId}
                     onChange={(e) => setFormData({ ...formData, imprintId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-ink"
+                    className="w-full px-3 py-2 border border-amber-300 bg-amber-50/50 rounded-lg text-xs text-gray-900 font-semibold focus:outline-none focus:ring-1 focus:ring-brand-ink"
                   >
                     <option value="">None / Primary Noveraile Publishing</option>
                     {imprints.map((imp) => (
@@ -728,6 +796,9 @@ export function EditBookModal({
                       </option>
                     ))}
                   </select>
+                  <span className="text-[10px] text-amber-700 font-medium mt-1 block">
+                    Automatically matched to category
+                  </span>
                 </div>
               </div>
             </div>
