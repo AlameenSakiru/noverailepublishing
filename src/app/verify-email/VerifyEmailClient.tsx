@@ -13,6 +13,8 @@ import {
   RotateCcw,
   Sparkles,
   Info,
+  Edit2,
+  Check,
 } from "lucide-react";
 
 export function VerifyEmailClient() {
@@ -25,6 +27,9 @@ export function VerifyEmailClient() {
   const redirectUrl = searchParams.get("redirect") || "/my-library";
 
   const [email, setEmail] = useState(emailParam);
+  const [isEditingEmail, setIsEditingEmail] = useState(!emailParam);
+  const [tempEmail, setTempEmail] = useState(emailParam);
+
   const [digits, setDigits] = useState<string[]>(() => {
     if (codeParam && codeParam.length === 6) {
       return codeParam.split("");
@@ -41,16 +46,25 @@ export function VerifyEmailClient() {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Auto-focus first input or last input if prefilled on mount
+  // If emailParam changes in URL, update state
+  useEffect(() => {
+    if (emailParam) {
+      setEmail(emailParam);
+      setTempEmail(emailParam);
+      setIsEditingEmail(false);
+    }
+  }, [emailParam]);
+
+  // Focus input
   useEffect(() => {
     if (codeParam && codeParam.length === 6) {
       inputRefs.current[5]?.focus();
-    } else if (inputRefs.current[0]) {
+    } else if (inputRefs.current[0] && !isEditingEmail) {
       inputRefs.current[0].focus();
     }
-  }, [codeParam]);
+  }, [codeParam, isEditingEmail]);
 
-  // Resend cooldown timer countdown
+  // Resend cooldown timer
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = setInterval(() => {
@@ -99,6 +113,27 @@ export function VerifyEmailClient() {
     inputRefs.current[nextIndex]?.focus();
   };
 
+  // Autofill demo PIN helper
+  const handleAutofillDemo = () => {
+    if (!demoCode) return;
+    const codeArr = demoCode.split("");
+    setDigits(codeArr);
+    setError(null);
+  };
+
+  // Save edited email
+  const handleSaveEmail = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = tempEmail.trim().toLowerCase();
+    if (!clean || !clean.includes("@")) {
+      setError("Please provide a valid email address.");
+      return;
+    }
+    setEmail(clean);
+    setIsEditingEmail(false);
+    setError(null);
+  };
+
   // Submit Verification Code
   const handleVerify = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -108,8 +143,10 @@ export function VerifyEmailClient() {
       return;
     }
 
-    if (!email) {
-      setError("Please provide the email address associated with your account.");
+    const targetEmail = email.trim().toLowerCase();
+    if (!targetEmail || !targetEmail.includes("@")) {
+      setError("Please confirm your registered email address.");
+      setIsEditingEmail(true);
       return;
     }
 
@@ -120,22 +157,23 @@ export function VerifyEmailClient() {
       const res = await fetch("/api/auth/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email: targetEmail, code }),
       });
 
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setSuccess("Email verified successfully! Redirecting to your library...");
+        setSuccess("Email verified successfully! Opening your cloud library...");
         await refreshUser();
         setTimeout(() => {
           router.push(redirectUrl);
+          router.refresh();
         }, 1200);
       } else {
-        setError(data.error || "Invalid verification code.");
+        setError(data.error || "Invalid or expired verification code.");
       }
     } catch {
-      setError("Network error while verifying email. Please try again.");
+      setError("Network error while verifying email. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -143,7 +181,13 @@ export function VerifyEmailClient() {
 
   // Resend Verification Code
   const handleResend = async () => {
-    if (resendCooldown > 0 || resending || !email) return;
+    const targetEmail = email.trim().toLowerCase();
+    if (resendCooldown > 0 || resending) return;
+    if (!targetEmail) {
+      setIsEditingEmail(true);
+      setError("Please specify your email address first.");
+      return;
+    }
 
     setResending(true);
     setError(null);
@@ -152,13 +196,13 @@ export function VerifyEmailClient() {
       const res = await fetch("/api/auth/resend-verification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: targetEmail }),
       });
 
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setSuccess(data.message || "A new 6-digit code has been generated.");
+        setSuccess(data.message || "A fresh 6-digit verification code has been dispatched.");
         setResendCooldown(60);
         if (data.demoCode) {
           setDemoCode(data.demoCode);
@@ -168,7 +212,7 @@ export function VerifyEmailClient() {
         setError(data.error || "Failed to resend code.");
       }
     } catch {
-      setError("Network error while requesting code.");
+      setError("Network error while requesting a new code.");
     } finally {
       setResending(false);
     }
@@ -191,14 +235,46 @@ export function VerifyEmailClient() {
           Verify Your Email
         </h1>
         <p className="text-xs text-brand-slate mt-1.5 leading-relaxed">
-          We sent a 6-digit verification code to:
-          <span className="block font-bold text-brand-ink mt-0.5 font-mono text-[13px]">
-            {email || "your registered email"}
-          </span>
+          Enter the 6-digit security code sent to:
         </p>
+
+        {/* Email display and change toggle */}
+        {!isEditingEmail ? (
+          <div className="mt-2 inline-flex items-center gap-2 px-3.5 py-1.5 bg-slate-50 border border-brand-border rounded-xl text-xs font-mono font-medium text-brand-ink">
+            <span>{email || "No email provided"}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setTempEmail(email);
+                setIsEditingEmail(true);
+              }}
+              title="Change email"
+              className="text-brand-muted hover:text-brand-ink transition-colors p-0.5"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSaveEmail} className="mt-2 flex items-center gap-1.5 justify-center max-w-xs mx-auto">
+            <input
+              type="email"
+              value={tempEmail}
+              onChange={(e) => setTempEmail(e.target.value)}
+              placeholder="reader@example.com"
+              className="px-3 py-1.5 text-xs rounded-xl border border-brand-border bg-white text-brand-ink focus:outline-none focus:ring-2 focus:ring-amber-500 w-full"
+              required
+            />
+            <button
+              type="submit"
+              className="px-3 py-1.5 text-xs rounded-xl bg-brand-ink text-white font-semibold shrink-0 hover:bg-brand-900"
+            >
+              Save
+            </button>
+          </form>
+        )}
       </div>
 
-      {/* Demo helper card if live email API key is not connected yet */}
+      {/* Demo helper card when live email provider is not yet attached */}
       {demoCode && (
         <div className="mb-5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-950 text-xs text-left animate-in fade-in">
           <div className="flex items-center gap-1.5 font-bold text-amber-900 mb-1">
@@ -208,9 +284,16 @@ export function VerifyEmailClient() {
           <p className="text-[11px] text-amber-900/80 leading-relaxed">
             Live email delivery provider (<code>RESEND_API_KEY</code>) is not set on Vercel yet. Your generated single-use test PIN is:
           </p>
-          <div className="mt-2 text-center py-1.5 px-3 bg-white/90 rounded-xl border border-amber-500/30 font-mono font-bold text-base tracking-widest text-amber-950">
-            {demoCode}
-          </div>
+          <button
+            type="button"
+            onClick={handleAutofillDemo}
+            className="w-full mt-2 text-center py-2 px-3 bg-white/90 hover:bg-white rounded-xl border border-amber-500/40 font-mono font-bold text-base tracking-widest text-amber-950 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+          >
+            <span>{demoCode}</span>
+            <span className="text-[10px] font-sans font-normal text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
+              Click to autofill
+            </span>
+          </button>
         </div>
       )}
 

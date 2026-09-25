@@ -14,9 +14,22 @@ export interface UserProfile {
 interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; user?: UserProfile; error?: string }>;
+  login: (email: string, password: string) => Promise<{
+    success: boolean;
+    user?: UserProfile;
+    error?: string;
+    requiresVerification?: boolean;
+    email?: string;
+    demoCode?: string;
+  }>;
   loginWithGoogle: (googlePayload: { credential?: string; email?: string; name?: string; avatarUrl?: string }) => Promise<{ success: boolean; user?: UserProfile; error?: string }>;
-  register: (name: string, email: string, password: string) => Promise<{ success: boolean; demoCode?: string; error?: string }>;
+  register: (name: string, email: string, password: string) => Promise<{
+    success: boolean;
+    demoCode?: string;
+    email?: string;
+    requiresVerification?: boolean;
+    error?: string;
+  }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -57,7 +70,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       const data = await res.json();
       if (!res.ok) {
-        return { success: false, error: data.error || "Login failed" };
+        return {
+          success: false,
+          error: data.error || "Login failed",
+          requiresVerification: data.requiresVerification,
+          email: data.email,
+          demoCode: data.demoCode,
+        };
       }
       setUser(data.user);
       router.refresh();
@@ -102,9 +121,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) {
         return { success: false, error: data.error || "Registration failed" };
       }
-      setUser(data.user);
-      router.refresh();
-      return { success: true, demoCode: data.demoCode };
+      // Do NOT set user context until email verification is complete
+      return {
+        success: true,
+        requiresVerification: true,
+        email: data.email || email,
+        demoCode: data.demoCode,
+      };
     } catch (e: any) {
       return { success: false, error: e.message || "Network error" };
     }

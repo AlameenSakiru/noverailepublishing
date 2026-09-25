@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyPassword, setSessionCookie } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/security";
+import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid credential format." }, { status: 400 });
     }
 
-    // Protect against bcrypt DoS (passwords longer than 128 characters)
+    // Protect against bcrypt DoS
     if (password.length > 128) {
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
 
-    // Rate Limiting: 10 failed/login attempts per 15 minutes per IP + per email
+    // Rate Limiting: 15 attempts per 15 mins
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
     const ipRateLimitKey = `login_ip_${ip}`;
     const emailRateLimitKey = `login_email_${cleanEmail}`;
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Query with automatic retry for serverless DB wake-up
+    // Query user
     let user = null;
     let dbAttempts = 0;
     while (dbAttempts < 3) {
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
 
     if (user.status !== "ACTIVE") {
       return NextResponse.json(
-        { error: "This account has been deactivated. Please contact support." },
+        { error: "This account has been suspended or deactivated. Please contact support." },
         { status: 403 }
       );
     }
@@ -88,6 +89,47 @@ export async function POST(req: Request) {
       );
     }
 
+    // If user has not verified their email yet, require verification
+    if (!user.isEmailVerified && user.role === "CUSTOMER") {
+      const code = Math.floor(100000 + crypto.randomInt(900000)).toString();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      // Clean older unused codes
+      await prisma.verificationCode.deleteMany({
+        where: { email: cleanEmail, type: "EMAIL_VERIFICATION" },
+      });
+
+      // Save code
+      await prisma.verificationCode.create({
+        data: {
+          email: cleanEmail,
+          code,
+          type: "EMAIL_VERIFICATION",
+          expiresAt,
+        },
+      });
+
+      // Send verification email
+      try {
+        const { sendVerificationEmail } = await import("@/lib/email");
+        await sendVerificationEmail(cleanEmail, user.name, code);
+      } catch (err) {
+        console.error("Verification email dispatch failed:", err);
+      }
+
+      const hasEmailProvider = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "");
+
+      return NextResponse.json(
+        {
+          error: "Your email address is not verified yet. Please enter the 6-digit verification code sent to your inbox.",
+          requiresVerification: true,
+          email: cleanEmail,
+          demoCode: hasEmailProvider ? undefined : code,
+        },
+        { status: 403 }
+      );
+    }
+
     const response = NextResponse.json({
       success: true,
       user: {
@@ -95,6 +137,7 @@ export async function POST(req: Request) {
         email: user.email,
         name: user.name,
         role: user.role,
+        isEmailVerified: user.isEmailVerified,
       },
     });
 
@@ -104,6 +147,7 @@ export async function POST(req: Request) {
         email: user.email,
         name: user.name,
         role: user.role,
+        isEmailVerified: user.isEmailVerified,
       },
       response
     );

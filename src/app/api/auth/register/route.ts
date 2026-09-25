@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { hashPassword, setSessionCookie } from "@/lib/auth";
+import { hashPassword } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/security";
+import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +27,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid registration payload." }, { status: 400 });
     }
 
-    // Rate Limiting: max 5 registrations per hour per IP
+    // Rate Limiting: max 10 registrations per hour per IP
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
-    if (!checkRateLimit(`register_ip_${ip}`, 5, 60 * 60 * 1000)) {
+    if (!checkRateLimit(`register_ip_${ip}`, 10, 60 * 60 * 1000)) {
       return NextResponse.json(
         { error: "Too many registration attempts from your network. Please try again later." },
         { status: 429 }
@@ -54,74 +55,81 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Password cannot exceed 128 characters." }, { status: 400 });
     }
 
-    // Check existing
+    // Check if account already exists
     const existing = await prisma.user.findUnique({
       where: { email: cleanEmail },
     });
 
+    const passwordHash = await hashPassword(password);
+    let targetUser = existing;
+
     if (existing) {
-      return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
+      if (existing.isEmailVerified) {
+        return NextResponse.json(
+          { error: "An account with this email address already exists. Please sign in instead." },
+          { status: 409 }
+        );
+      }
+      // If user exists but was never verified, update name & password and allow them to verify
+      targetUser = await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          name: cleanName,
+          passwordHash,
+        },
+      });
+    } else {
+      // Create fresh unverified user
+      targetUser = await prisma.user.create({
+        data: {
+          name: cleanName,
+          email: cleanEmail,
+          passwordHash,
+          role: "CUSTOMER",
+          isEmailVerified: false,
+          status: "ACTIVE",
+        },
+      });
     }
 
-    const passwordHash = await hashPassword(password);
+    // Generate secure 6-digit verification code
+    const verificationCode = Math.floor(100000 + crypto.randomInt(900000)).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
-    // Create user strictly as CUSTOMER with isEmailVerified = false
-    const user = await prisma.user.create({
+    // Clear previous pending codes for this email
+    await prisma.verificationCode.deleteMany({
+      where: { email: cleanEmail, type: "EMAIL_VERIFICATION" },
+    });
+
+    // Save verification code
+    await prisma.verificationCode.create({
       data: {
-        name: cleanName,
         email: cleanEmail,
-        passwordHash,
-        role: "CUSTOMER",
-        isEmailVerified: false,
+        code: verificationCode,
+        type: "EMAIL_VERIFICATION",
+        expiresAt,
       },
     });
 
-    // Generate secure 6-digit verification code
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
+    // Dispatch verification email in background
     try {
-      await prisma.verificationCode.create({
-        data: {
-          email: cleanEmail,
-          code: verificationCode,
-          type: "EMAIL_VERIFICATION",
-          expiresAt,
-        },
-      });
-
-      // Dispatch verification email in background
       const { sendVerificationEmail } = await import("@/lib/email");
-      await sendVerificationEmail(cleanEmail, user.name, verificationCode);
+      await sendVerificationEmail(cleanEmail, targetUser.name, verificationCode);
     } catch (codeErr) {
-      console.error("Failed to generate or send verification code:", codeErr);
+      console.error("Failed to send verification email:", codeErr);
     }
 
     const hasEmailProvider = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "");
 
-    const response = NextResponse.json({
+    // Note: We deliberately DO NOT set a session cookie here.
+    // The user MUST verify their 6-digit code before an authenticated session is granted.
+    return NextResponse.json({
       success: true,
       requiresVerification: true,
+      email: cleanEmail,
       demoCode: hasEmailProvider ? undefined : verificationCode,
-      user: {
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
+      message: "Account registered successfully. Please verify your email with the 6-digit code.",
     });
-
-    await setSessionCookie(
-      {
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-      response
-    );
-
-    return response;
   } catch (error: any) {
     console.error("Registration error:", error);
     return NextResponse.json({ error: "An error occurred during account creation." }, { status: 500 });
