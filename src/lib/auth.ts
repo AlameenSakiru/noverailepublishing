@@ -91,22 +91,32 @@ export async function getCurrentUser(): Promise<SessionPayload | null> {
   const payload = verifyToken(token);
   if (!payload) return null;
 
-  // Verify that the user still exists and is ACTIVE
-  const user = await prisma.user.findUnique({
-    where: { id: payload.userId },
-    select: { id: true, email: true, name: true, role: true, status: true },
-  });
+  try {
+    // Verify that the user still exists and is ACTIVE
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, email: true, name: true, role: true, status: true },
+    });
 
-  if (!user || user.status !== "ACTIVE") {
-    return null;
+    if (!user || user.status !== "ACTIVE") {
+      return null;
+    }
+
+    return {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
+  } catch (error) {
+    console.warn("Database lookup in getCurrentUser failed, falling back to verified JWT payload:", error);
+    return {
+      userId: payload.userId,
+      email: payload.email,
+      name: payload.name,
+      role: payload.role,
+    };
   }
-
-  return {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-  };
 }
 
 export async function requireAuth(): Promise<SessionPayload> {
