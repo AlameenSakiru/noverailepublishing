@@ -257,6 +257,10 @@ export function ReaderClient({
       if (savedBookmarks) {
         setBookmarks(JSON.parse(savedBookmarks));
       }
+      const savedLayout = localStorage.getItem("noveraile_reader_layout");
+      if (savedLayout === "single" || savedLayout === "spread" || savedLayout === "scroll") {
+        setLayoutMode(savedLayout);
+      }
     } catch {
       // LocalStorage unavailable
     }
@@ -751,43 +755,61 @@ export function ReaderClient({
             </div>
           )}
 
-          {/* Layout Mode Selector: Single Page | Two-Page Spread | Continuous Scroll */}
+          {/* Layout Mode Selector: Single Page | Continuous Scroll | Two-Page Spread */}
           {viewMode === "pdf" && (
-            <div className="flex items-center gap-0.5 bg-black/5 dark:bg-white/5 rounded-lg p-0.5">
+            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 rounded-xl p-1 border border-black/5 dark:border-white/5">
               <button
-                onClick={() => setLayoutMode("single")}
-                className={`p-1 rounded-md text-xs transition-colors ${
+                onClick={() => {
+                  setLayoutMode("single");
+                  try {
+                    localStorage.setItem("noveraile_reader_layout", "single");
+                  } catch {}
+                }}
+                className={`px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                   layoutMode === "single"
                     ? "bg-amber-500 text-gray-950 font-bold shadow-xs"
-                    : "opacity-60 hover:opacity-100"
+                    : "opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5"
                 }`}
                 title="Single Page Book View"
               >
                 <Square className="w-3.5 h-3.5" />
+                <span className="hidden xl:inline text-[11px]">Page</span>
               </button>
 
               <button
-                onClick={() => setLayoutMode("spread")}
-                className={`hidden lg:inline-flex p-1 rounded-md text-xs transition-colors ${
-                  layoutMode === "spread"
-                    ? "bg-amber-500 text-gray-950 font-bold shadow-xs"
-                    : "opacity-60 hover:opacity-100"
-                }`}
-                title="Two-Page Book Spread"
-              >
-                <Columns className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                onClick={() => setLayoutMode("scroll")}
-                className={`p-1 rounded-md text-xs transition-colors ${
+                onClick={() => {
+                  setLayoutMode("scroll");
+                  try {
+                    localStorage.setItem("noveraile_reader_layout", "scroll");
+                  } catch {}
+                }}
+                className={`px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                   layoutMode === "scroll"
                     ? "bg-amber-500 text-gray-950 font-bold shadow-xs"
-                    : "opacity-60 hover:opacity-100"
+                    : "opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5"
                 }`}
                 title="Continuous Vertical Scroll (Amazon Kindle style)"
               >
                 <Rows className="w-3.5 h-3.5" />
+                <span className="hidden xl:inline text-[11px]">Scroll</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setLayoutMode("spread");
+                  try {
+                    localStorage.setItem("noveraile_reader_layout", "spread");
+                  } catch {}
+                }}
+                className={`hidden lg:inline-flex px-2 py-1 rounded-lg text-xs font-semibold items-center gap-1.5 transition-all ${
+                  layoutMode === "spread"
+                    ? "bg-amber-500 text-gray-950 font-bold shadow-xs"
+                    : "opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5"
+                }`}
+                title="Two-Page Book Spread"
+              >
+                <Columns className="w-3.5 h-3.5" />
+                <span className="hidden xl:inline text-[11px]">Spread</span>
               </button>
             </div>
           )}
