@@ -21,6 +21,7 @@ import {
   ZoomOut,
   Columns,
   Square,
+  Rows,
   Edit3,
   Copy,
   Trash2,
@@ -60,6 +61,135 @@ declare global {
   }
 }
 
+function ScrollReaderPageItem({
+  pdfDoc,
+  pageNumber,
+  zoomLevel,
+  theme,
+  canvasBackgrounds,
+  onVisible,
+}: {
+  pdfDoc: any;
+  pageNumber: number;
+  zoomLevel: number;
+  theme: "light" | "sepia" | "dark";
+  canvasBackgrounds: Record<string, string>;
+  onVisible: (pageNumber: number) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [rendered, setRendered] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const renderTaskRef = useRef<any>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            if (entry.intersectionRatio > 0.3) {
+              onVisible(pageNumber);
+            }
+          }
+        });
+      },
+      { rootMargin: "400px 0px 400px 0px", threshold: [0, 0.4] }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [pageNumber, onVisible]);
+
+  useEffect(() => {
+    if (!isVisible || !pdfDoc || !canvasRef.current) return;
+
+    let isMounted = true;
+
+    async function render() {
+      try {
+        if (renderTaskRef.current) {
+          try {
+            renderTaskRef.current.cancel();
+          } catch {}
+        }
+
+        const page = await pdfDoc.getPage(pageNumber);
+        const canvas = canvasRef.current;
+        if (!canvas || !isMounted) return;
+
+        const windowWidth = typeof window !== "undefined" ? window.innerWidth : 800;
+        const isMobile = windowWidth < 640;
+        const targetWidth = isMobile ? Math.min(windowWidth - 24, 560) : Math.min(windowWidth - 96, 880);
+
+        const unscaled = page.getViewport({ scale: 1.0 });
+        const baseScale = targetWidth / unscaled.width;
+        const currentScale = baseScale * (zoomLevel / 100);
+
+        const pixelRatio = typeof window !== "undefined" ? Math.max(window.devicePixelRatio || 1, 2) : 2;
+        const viewport = page.getViewport({ scale: currentScale * pixelRatio });
+
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.width = `${viewport.width / pixelRatio}px`;
+        canvas.style.height = `${viewport.height / pixelRatio}px`;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const renderTask = page.render({
+          canvasContext: ctx,
+          viewport,
+        });
+        renderTaskRef.current = renderTask;
+        await renderTask.promise;
+
+        if (isMounted) setRendered(true);
+      } catch (err: any) {
+        if (err?.name !== "RenderingCancelledException") {
+          console.error(`Scroll page ${pageNumber} render error:`, err);
+        }
+      }
+    }
+
+    render();
+
+    return () => {
+      isMounted = false;
+      if (renderTaskRef.current) {
+        try {
+          renderTaskRef.current.cancel();
+        } catch {}
+      }
+    };
+  }, [isVisible, pdfDoc, pageNumber, zoomLevel]);
+
+  return (
+    <div
+      id={`reader-scroll-page-${pageNumber}`}
+      ref={containerRef}
+      className="flex flex-col items-center w-full mb-8 scroll-mt-20"
+    >
+      <div className="flex items-center justify-between w-full max-w-[880px] px-2 py-1 text-xs opacity-50 font-mono">
+        <span>Page {pageNumber}</span>
+      </div>
+      <div className={`relative rounded-xl overflow-hidden shadow-reader ${canvasBackgrounds[theme]} transition-all border border-black/5`}>
+        {!rendered && (
+          <div className="w-[300px] sm:w-[680px] h-[450px] sm:h-[880px] flex items-center justify-center opacity-40">
+            <span className="text-xs font-mono">Loading Page {pageNumber}...</span>
+          </div>
+        )}
+        <canvas ref={canvasRef} className="block reader-canvas select-none" />
+      </div>
+    </div>
+  );
+}
+
 export function ReaderClient({
   book,
   initialPage = 1,
@@ -93,7 +223,7 @@ export function ReaderClient({
   const [theme, setTheme] = useState<"light" | "sepia" | "dark">("light");
   const [fontSize, setFontSize] = useState<"normal" | "large" | "xlarge">("normal");
   const [zoomLevel, setZoomLevel] = useState<number>(100);
-  const [layoutMode, setLayoutMode] = useState<"single" | "spread">("single");
+  const [layoutMode, setLayoutMode] = useState<"single" | "spread" | "scroll">("single");
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Side Drawers
@@ -368,6 +498,25 @@ export function ReaderClient({
     return () => clearTimeout(timer);
   }, [currentPage, totalPages, book.id]);
 
+  // Central Navigation & Page Scroll Handler
+  const goToPage = useCallback(
+    (pageNumber: number) => {
+      const target = Math.max(1, Math.min(totalPages, pageNumber));
+      setCurrentPage(target);
+      setPageJumpInput(target.toString());
+
+      if (layoutMode === "scroll") {
+        setTimeout(() => {
+          const el = document.getElementById(`reader-scroll-page-${target}`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }, 50);
+      }
+    },
+    [totalPages, layoutMode]
+  );
+
   // Synchronize Jump input
   useEffect(() => {
     setPageJumpInput(currentPage.toString());
@@ -376,24 +525,45 @@ export function ReaderClient({
 
   // Page Turn Handlers
   const handleNextPage = () => {
-    const step = layoutMode === "spread" ? 2 : 1;
-    setCurrentPage((p) => Math.min(totalPages, p + step));
+    if (layoutMode === "scroll") {
+      goToPage(currentPage + 1);
+    } else {
+      const step = layoutMode === "spread" ? 2 : 1;
+      goToPage(currentPage + step);
+    }
   };
 
   const handlePrevPage = () => {
-    const step = layoutMode === "spread" ? 2 : 1;
-    setCurrentPage((p) => Math.max(1, p - step));
+    if (layoutMode === "scroll") {
+      goToPage(currentPage - 1);
+    } else {
+      const step = layoutMode === "spread" ? 2 : 1;
+      goToPage(currentPage - step);
+    }
   };
 
   const handleJumpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const target = parseInt(pageJumpInput, 10);
     if (!isNaN(target) && target >= 1 && target <= totalPages) {
-      setCurrentPage(target);
+      goToPage(target);
     } else {
       setPageJumpInput(currentPage.toString());
     }
   };
+
+  // Auto-scroll to current page when switching into scroll mode
+  useEffect(() => {
+    if (layoutMode === "scroll" && currentPage > 1) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`reader-scroll-page-${currentPage}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [layoutMode]);
 
   // Bookmark Toggle
   const handleToggleBookmark = () => {
@@ -581,17 +751,45 @@ export function ReaderClient({
             </div>
           )}
 
-          {/* Single vs Two-Page Spread Mode (Large Screens in PDF view) */}
+          {/* Layout Mode Selector: Single Page | Two-Page Spread | Continuous Scroll */}
           {viewMode === "pdf" && (
-            <button
-              onClick={() => setLayoutMode((m) => (m === "single" ? "spread" : "single"))}
-              className={`hidden lg:inline-flex p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${
-                layoutMode === "spread" ? "text-amber-600 dark:text-amber-400 font-bold" : "opacity-70"
-              }`}
-              title={layoutMode === "spread" ? "Switch to Single Page" : "Switch to 2-Page Book Spread"}
-            >
-              {layoutMode === "spread" ? <Columns className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-            </button>
+            <div className="flex items-center gap-0.5 bg-black/5 dark:bg-white/5 rounded-lg p-0.5">
+              <button
+                onClick={() => setLayoutMode("single")}
+                className={`p-1 rounded-md text-xs transition-colors ${
+                  layoutMode === "single"
+                    ? "bg-amber-500 text-gray-950 font-bold shadow-xs"
+                    : "opacity-60 hover:opacity-100"
+                }`}
+                title="Single Page Book View"
+              >
+                <Square className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={() => setLayoutMode("spread")}
+                className={`hidden lg:inline-flex p-1 rounded-md text-xs transition-colors ${
+                  layoutMode === "spread"
+                    ? "bg-amber-500 text-gray-950 font-bold shadow-xs"
+                    : "opacity-60 hover:opacity-100"
+                }`}
+                title="Two-Page Book Spread"
+              >
+                <Columns className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={() => setLayoutMode("scroll")}
+                className={`p-1 rounded-md text-xs transition-colors ${
+                  layoutMode === "scroll"
+                    ? "bg-amber-500 text-gray-950 font-bold shadow-xs"
+                    : "opacity-60 hover:opacity-100"
+                }`}
+                title="Continuous Vertical Scroll (Amazon Kindle style)"
+              >
+                <Rows className="w-3.5 h-3.5" />
+              </button>
+            </div>
           )}
 
           {/* Bookmark Button */}
@@ -673,7 +871,7 @@ export function ReaderClient({
                     e.preventDefault();
                     const num = parseInt(pageJumpInput, 10);
                     if (!isNaN(num) && num >= 1 && num <= totalPages) {
-                      setCurrentPage(num);
+                      goToPage(num);
                       setTocOpen(false);
                     }
                   }}
@@ -719,7 +917,7 @@ export function ReaderClient({
                       <button
                         key={pg}
                         onClick={() => {
-                          setCurrentPage(pg);
+                          goToPage(pg);
                           setTocOpen(false);
                         }}
                         className={`p-1.5 rounded-lg border text-center font-mono text-[11px] transition-all ${
@@ -762,7 +960,7 @@ export function ReaderClient({
                   <button
                     key={idx}
                     onClick={() => {
-                      setCurrentPage(item.startPage || 1);
+                      goToPage(item.startPage || 1);
                       setTocOpen(false);
                     }}
                     className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between mb-1 ${
@@ -791,7 +989,7 @@ export function ReaderClient({
                       <button
                         key={bm.page}
                         onClick={() => {
-                          setCurrentPage(bm.page);
+                          goToPage(bm.page);
                           setTocOpen(false);
                         }}
                         className="w-full text-left p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 flex items-center justify-between text-xs transition-colors"
@@ -840,6 +1038,24 @@ export function ReaderClient({
                   >
                     Open eBook Study Format
                   </button>
+                </div>
+              ) : layoutMode === "scroll" ? (
+                /* Continuous Scroll Mode (Amazon Kindle style) with lazy canvas rendering */
+                <div className="w-full max-w-4xl flex flex-col items-center py-4">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <ScrollReaderPageItem
+                      key={pageNum}
+                      pdfDoc={pdfDoc}
+                      pageNumber={pageNum}
+                      zoomLevel={zoomLevel}
+                      theme={theme}
+                      canvasBackgrounds={canvasBackgrounds}
+                      onVisible={(pg) => {
+                        setCurrentPage(pg);
+                        setPageJumpInput(pg.toString());
+                      }}
+                    />
+                  ))}
                 </div>
               ) : (
                 /* PDF Canvas Container: Handles single page or two-page spread */
@@ -1040,7 +1256,7 @@ export function ReaderClient({
             min={1}
             max={totalPages}
             value={currentPage}
-            onChange={(e) => setCurrentPage(parseInt(e.target.value, 10))}
+            onChange={(e) => goToPage(parseInt(e.target.value, 10))}
             className="w-24 sm:w-48 md:w-64 h-1.5 bg-black/10 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
             title="Drag to Scrub Pages"
           />
