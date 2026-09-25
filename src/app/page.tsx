@@ -3,6 +3,7 @@ import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { BookCard } from "@/components/BookCard";
 import { siteConfig } from "@/lib/config";
+import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 import {
   ArrowRight,
   ShieldCheck,
@@ -102,27 +103,12 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          {/* Instant Search Bar in Hero */}
+          {/* Instant Autocomplete Search in Hero */}
           <div className="max-w-2xl mx-auto mt-12">
-            <form
-              action="/books"
-              method="GET"
-              className="relative flex items-center bg-white rounded-2xl shadow-book border border-brand-border p-2 focus-within:ring-2 focus-within:ring-brand-ink"
-            >
-              <Search className="w-5 h-5 text-brand-muted ml-3" />
-              <input
-                type="text"
-                name="q"
-                placeholder="Search across all genres: fiction, travel, leadership, exam prep..."
-                className="w-full px-3 py-2 text-sm text-brand-ink placeholder-gray-400 focus:outline-none bg-transparent"
-              />
-              <button
-                type="submit"
-                className="px-5 py-2.5 bg-brand-ink text-white text-xs font-semibold rounded-xl hover:bg-brand-900 transition-colors"
-              >
-                Search
-              </button>
-            </form>
+            <SearchAutocomplete
+              placeholder="Search across all genres: leadership, exam prep, travel, fiction..."
+              inputClassName="py-3.5 text-sm sm:text-base rounded-2xl shadow-book border-brand-border/80 focus:ring-2 focus:ring-brand-ink"
+            />
           </div>
         </div>
       </section>

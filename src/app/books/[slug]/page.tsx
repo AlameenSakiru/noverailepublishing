@@ -23,6 +23,19 @@ const getBook = cache(async (slug: string) => {
       category: true,
       imprint: true,
       examMetadata: true,
+      reviews: {
+        where: { isApproved: true },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 });
@@ -108,7 +121,7 @@ export default async function BookDetailPage({ params }: BookPageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <BookDetailClient book={book} isOwned={isOwned} />
+      <BookDetailClient book={book} isOwned={isOwned} currentUser={currentUser} />
     </div>
   );
 }

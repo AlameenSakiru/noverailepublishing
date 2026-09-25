@@ -1,18 +1,32 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookOpen, ShoppingBag, Search, Menu, X, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { siteConfig } from "@/lib/config";
+import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { itemCount } = useCart();
+
+  // Keyboard shortcut (Cmd+K / Ctrl+K) to open search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchModalOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Hide header on protected reader screen and admin console
   if (pathname?.startsWith("/reader/") || pathname?.startsWith("/admin")) {
@@ -74,15 +88,19 @@ export function Header() {
           </nav>
 
           {/* Action Icons & Account State */}
-          <div className="flex items-center gap-4">
-            {/* Search link */}
-            <Link
-              href="/books"
-              className="p-2 text-brand-slate hover:text-brand-ink hover:bg-brand-50 rounded-full transition-colors"
-              title="Search Catalog"
+          <div className="flex items-center gap-3">
+            {/* Search Trigger with Shortcut Chip */}
+            <button
+              type="button"
+              onClick={() => setSearchModalOpen(true)}
+              className="p-2 text-brand-slate hover:text-brand-ink hover:bg-brand-50 rounded-full transition-colors flex items-center gap-1.5"
+              title="Search Catalog (Ctrl+K)"
             >
               <Search className="w-5 h-5" />
-            </Link>
+              <span className="hidden xl:inline text-[10px] font-mono text-brand-muted bg-brand-50 px-1.5 py-0.5 rounded border border-brand-border">
+                ⌘K
+              </span>
+            </button>
 
             {/* Shopping Cart */}
             <Link
@@ -182,6 +200,14 @@ export function Header() {
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-brand-border bg-white px-4 pt-3 pb-6 space-y-3 animate-in fade-in duration-150">
+          {/* Mobile Quick Search Bar */}
+          <div className="py-2">
+            <SearchAutocomplete
+              placeholder="Search catalog, exams, authors..."
+              onSelect={() => setMobileMenuOpen(false)}
+            />
+          </div>
+
           <Link
             href="/"
             onClick={() => setMobileMenuOpen(false)}
@@ -252,6 +278,30 @@ export function Header() {
               </Link>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Floating Global Search Modal Overlay (Desktop & Tablet) */}
+      {searchModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-brand-border max-w-2xl w-full p-6 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-4 border-b border-brand-border mb-4">
+              <span className="text-xs font-semibold uppercase tracking-wider text-brand-slate">
+                Search Publications & Study Blueprints
+              </span>
+              <button
+                onClick={() => setSearchModalOpen(false)}
+                className="p-1 rounded-full text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <SearchAutocomplete
+              autoFocus
+              onSelect={() => setSearchModalOpen(false)}
+              placeholder="Search by title, author, exam (e.g. PTCB), or subject..."
+            />
+          </div>
         </div>
       )}
     </header>
