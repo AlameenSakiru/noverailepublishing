@@ -85,40 +85,16 @@ export async function POST(
       );
     }
 
-    // Determine user
-    let user = await getCurrentUser();
-    let isVerifiedPurchase = false;
-
+    // 1. User must be authenticated
+    const user = await getCurrentUser();
     if (!user) {
-      // Check if guest info provided
-      const email = guestEmail?.trim()?.toLowerCase() || `reader-${Date.now()}@noveraile.com`;
-      const name = guestName?.trim() || "Verified Reader";
-
-      // Find or create customer
-      let existingUser = await prisma.user.findUnique({
-        where: { email },
-      });
-
-      if (!existingUser) {
-        existingUser = await prisma.user.create({
-          data: {
-            email,
-            passwordHash: "$2a$10$GuestPlaceholderHashForReviews123456",
-            name,
-            role: "CUSTOMER",
-            status: "ACTIVE",
-          },
-        });
-      }
-      user = {
-        userId: existingUser.id,
-        email: existingUser.email,
-        name: existingUser.name,
-        role: existingUser.role,
-      };
+      return NextResponse.json(
+        { error: "Please sign in with the account you used to purchase this book to leave a review." },
+        { status: 401 }
+      );
     }
 
-    // Check if user owns the book (verified purchase)
+    // 2. Strict check: Must have an ACTIVE entitlement or PAID order for this book
     const entitlement = await prisma.entitlement.findFirst({
       where: {
         bookId,
@@ -130,11 +106,62 @@ export async function POST(
       },
     });
 
-    if (entitlement) {
-      isVerifiedPurchase = true;
+    const paidOrder = await prisma.orderItem.findFirst({
+      where: {
+        bookId,
+        order: {
+          paymentStatus: "PAID",
+          OR: [
+            { userId: user.userId },
+            { customerEmail: user.email },
+          ],
+        },
+      },
+    });
+
+    if (!entitlement && !paidOrder) {
+      return NextResponse.json(
+        {
+          error:
+            "Verified Purchase Required: Only readers who have purchased this publication can write a review.",
+        },
+        { status: 403 }
+      );
     }
 
-    // Create review
+    // 3. Check if user already reviewed this book (allow updating their review)
+    const existingReview = await prisma.review.findFirst({
+      where: {
+        bookId,
+        userId: user.userId,
+      },
+    });
+
+    if (existingReview) {
+      const updatedReview = await prisma.review.update({
+        where: { id: existingReview.id },
+        data: {
+          rating: Math.round(rating),
+          title: title.trim(),
+          comment: comment.trim(),
+          isVerifiedPurchase: true,
+          isApproved: true,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      return NextResponse.json({ success: true, review: updatedReview, updated: true }, { status: 200 });
+    }
+
+    // 4. Create new verified review
     const review = await prisma.review.create({
       data: {
         bookId,
@@ -142,7 +169,7 @@ export async function POST(
         rating: Math.round(rating),
         title: title.trim(),
         comment: comment.trim(),
-        isVerifiedPurchase,
+        isVerifiedPurchase: true,
         isApproved: true,
       },
       include: {

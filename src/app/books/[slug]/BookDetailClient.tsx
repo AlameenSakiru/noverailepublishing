@@ -785,13 +785,29 @@ export function BookDetailClient({
               </p>
             </div>
 
-            <button
-              onClick={() => setReviewModalOpen(true)}
-              className="px-5 py-2.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 self-start sm:self-auto"
-            >
-              <MessageSquare className="w-4 h-4 text-brand-300" />
-              <span>Write a Customer Review</span>
-            </button>
+            {isOwned ? (
+              <button
+                onClick={() => setReviewModalOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 self-start sm:self-auto"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                <span>Write a Verified Review</span>
+              </button>
+            ) : !currentUser ? (
+              <Link
+                href={`/login?redirect=/books/${book.slug}`}
+                className="px-4 py-2.5 rounded-xl border border-brand-border hover:bg-brand-50 text-brand-slate hover:text-brand-ink text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 self-start sm:self-auto"
+                title="Only readers who purchased this book can leave a review"
+              >
+                <Lock className="w-3.5 h-3.5 text-brand-muted" />
+                <span>Sign in to Review (Purchasers Only)</span>
+              </Link>
+            ) : (
+              <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs text-brand-muted self-start sm:self-auto">
+                <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Verified Purchasers Only</span>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -843,21 +859,57 @@ export function BookDetailClient({
                 </div>
               </div>
 
-              {/* Review Callout Box */}
-              <div className="p-5 rounded-2xl border border-brand-border bg-white text-xs">
-                <h4 className="font-serif font-bold text-brand-ink text-sm">
-                  Review this publication
-                </h4>
-                <p className="text-brand-slate mt-1 leading-relaxed font-light">
-                  Share your thoughts and learning outcome with other readers around the world.
-                </p>
-                <button
-                  onClick={() => setReviewModalOpen(true)}
-                  className="w-full mt-4 px-4 py-2.5 rounded-xl border border-brand-border bg-white hover:bg-brand-50 text-brand-ink text-xs font-semibold shadow-xs transition-colors"
-                >
-                  Write a Customer Review
-                </button>
-              </div>
+              {/* Review Callout Box: Conditioned by ownership */}
+              {isOwned ? (
+                <div className="p-5 rounded-2xl border border-brand-border bg-white text-xs shadow-xs">
+                  <div className="flex items-center gap-1.5 text-emerald-800 font-bold mb-1">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Verified Reader Review</span>
+                  </div>
+                  <p className="text-brand-slate mt-1 leading-relaxed font-light">
+                    You have purchased this publication. Share your diagnostic insights with other readers worldwide.
+                  </p>
+                  <button
+                    onClick={() => setReviewModalOpen(true)}
+                    className="w-full mt-4 px-4 py-2.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 text-brand-300" />
+                    <span>Write Your Review</span>
+                  </button>
+                </div>
+              ) : !currentUser ? (
+                <div className="p-5 rounded-2xl border border-brand-border bg-brand-50/50 text-xs shadow-xs">
+                  <div className="flex items-center gap-1.5 text-brand-ink font-bold mb-1">
+                    <Lock className="w-4 h-4 text-amber-600" />
+                    <span>Verified Purchase Required</span>
+                  </div>
+                  <p className="text-brand-slate mt-1 leading-relaxed font-light">
+                    To maintain strict reader trust and prevent unverified reviews, only customers who purchased this book can submit ratings.
+                  </p>
+                  <Link
+                    href={`/login?redirect=/books/${book.slug}`}
+                    className="w-full mt-4 px-4 py-2.5 rounded-xl border border-brand-border bg-white hover:bg-brand-100 text-brand-ink text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span>Sign In to Review</span>
+                  </Link>
+                </div>
+              ) : (
+                <div className="p-5 rounded-2xl border border-brand-border bg-brand-50/50 text-xs shadow-xs">
+                  <div className="flex items-center gap-1.5 text-brand-ink font-bold mb-1">
+                    <Lock className="w-4 h-4 text-amber-600" />
+                    <span>Verified Purchasers Only</span>
+                  </div>
+                  <p className="text-brand-slate mt-1 leading-relaxed font-light">
+                    Reviews are strictly reserved for readers who have purchased this publication. Purchase this edition to unlock verified reviews.
+                  </p>
+                  <button
+                    onClick={handleBuyNow}
+                    className="w-full mt-4 px-4 py-2.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <span>Purchase Book to Review</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Right: Reviews List */}
@@ -1051,7 +1103,34 @@ export function BookDetailClient({
               </p>
             </div>
 
-            {reviewSuccess ? (
+            {!isOwned ? (
+              <div className="p-8 text-center bg-brand-50/70 rounded-2xl border border-brand-border">
+                <Lock className="w-12 h-12 text-amber-600 mx-auto mb-3" />
+                <h4 className="font-serif font-bold text-xl text-brand-ink">
+                  Verified Purchase Required
+                </h4>
+                <p className="text-xs text-brand-slate mt-2 max-w-sm mx-auto leading-relaxed">
+                  Only readers who have purchased this publication can write reviews to guarantee authentic feedback for our community.
+                </p>
+                <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={() => {
+                      setReviewModalOpen(false);
+                      handleBuyNow();
+                    }}
+                    className="px-6 py-2.5 rounded-xl bg-brand-ink text-white text-xs font-semibold hover:bg-brand-900 transition-colors shadow-xs"
+                  >
+                    Purchase Book Now
+                  </button>
+                  <button
+                    onClick={() => setReviewModalOpen(false)}
+                    className="px-5 py-2.5 rounded-xl border border-brand-border text-xs text-brand-slate hover:bg-white transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : reviewSuccess ? (
               <div className="p-8 text-center bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-800">
                 <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto mb-3" />
                 <h4 className="font-serif font-bold text-lg">Thank You for Your Review!</h4>
@@ -1061,6 +1140,17 @@ export function BookDetailClient({
               </div>
             ) : (
               <form onSubmit={handleReviewSubmit} className="space-y-4">
+                {/* Verified Purchaser Account Bar */}
+                <div className="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200/80 text-xs text-emerald-900 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Verified Reader: <strong>{currentUser?.name || "Reader"}</strong></span>
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-200/70 text-emerald-900 px-2 py-0.5 rounded">
+                    Verified Purchase
+                  </span>
+                </div>
+
                 {reviewError && (
                   <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
@@ -1126,38 +1216,6 @@ export function BookDetailClient({
                   />
                 </div>
 
-                {/* Name / Email if not logged in */}
-                {!currentUser && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-brand-ink mb-1">
-                        Your Full Name
-                      </label>
-                      <input
-                        type="text"
-                        value={guestName}
-                        onChange={(e) => setGuestName(e.target.value)}
-                        placeholder="e.g. Dr. Jordan Hayes"
-                        required
-                        className="w-full px-3.5 py-2 rounded-xl border border-brand-border text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-brand-ink mb-1">
-                        Your Email (Private)
-                      </label>
-                      <input
-                        type="email"
-                        value={guestEmail}
-                        onChange={(e) => setGuestEmail(e.target.value)}
-                        placeholder="reader@example.com"
-                        required
-                        className="w-full px-3.5 py-2 rounded-xl border border-brand-border text-xs"
-                      />
-                    </div>
-                  </div>
-                )}
-
                 <div className="pt-4 flex items-center justify-end gap-3">
                   <button
                     type="button"
@@ -1176,7 +1234,7 @@ export function BookDetailClient({
                     ) : (
                       <>
                         <Send className="w-3.5 h-3.5 text-brand-300" />
-                        <span>Submit Review</span>
+                        <span>Submit Verified Review</span>
                       </>
                     )}
                   </button>

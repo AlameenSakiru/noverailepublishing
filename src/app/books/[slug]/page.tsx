@@ -71,15 +71,31 @@ export default async function BookDetailPage({ params }: BookPageProps) {
   let isOwned = false;
 
   if (currentUser) {
-    const entitlement = await prisma.entitlement.findUnique({
+    const entitlement = await prisma.entitlement.findFirst({
       where: {
-        userId_bookId: {
-          userId: currentUser.userId,
-          bookId: book.id,
+        bookId: book.id,
+        status: "ACTIVE",
+        OR: [
+          { userId: currentUser.userId },
+          { user: { email: currentUser.email } },
+        ],
+      },
+    });
+
+    const paidOrder = await prisma.orderItem.findFirst({
+      where: {
+        bookId: book.id,
+        order: {
+          paymentStatus: "PAID",
+          OR: [
+            { userId: currentUser.userId },
+            { customerEmail: currentUser.email },
+          ],
         },
       },
     });
-    isOwned = Boolean(entitlement && entitlement.status === "ACTIVE");
+
+    isOwned = Boolean(entitlement || paidOrder);
   }
 
   // Schema.org JSON-LD Structured Data for Book
