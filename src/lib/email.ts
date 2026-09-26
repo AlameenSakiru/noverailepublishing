@@ -44,9 +44,15 @@ export async function sendEmail({
     const info = await transporter.sendMail({
       from: fromAddress,
       to,
+      replyTo: smtpUser,
       subject,
       html,
-      text: text || html.replace(/<[^>]*>?/gm, ""),
+      text: text || html.replace(/<[^>]*>?/gm, "").trim(),
+      headers: {
+        "Auto-Submitted": "auto-generated",
+        "X-Auto-Response-Suppress": "All",
+        "X-Entity-Ref-ID": `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      },
     });
 
     console.log(`✅ [GMAIL SMTP SENT] From: ${fromAddress} -> To: ${to} (MessageId: ${info.messageId})`);
