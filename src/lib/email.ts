@@ -18,7 +18,7 @@ export interface SendEmailOptions {
 
 function getTransporter() {
   const smtpUser = (process.env.SMTP_USER || "noverailepublishing@gmail.com").trim();
-  const smtpPass = (process.env.SMTP_PASS || "gdvtxwkzsufqquef").trim().replace(/\s+/g, "");
+  const smtpPass = (process.env.SMTP_PASS || "").trim().replace(/\s+/g, "");
   const smtpHost = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
   const smtpPort = Number(process.env.SMTP_PORT) || 465;
 
