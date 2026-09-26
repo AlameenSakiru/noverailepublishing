@@ -20,13 +20,11 @@ interface AuthContextType {
     error?: string;
     requiresVerification?: boolean;
     email?: string;
-    code?: string;
   }>;
   loginWithGoogle: (googlePayload: { credential?: string; email?: string; name?: string; avatarUrl?: string }) => Promise<{ success: boolean; user?: UserProfile; error?: string }>;
   register: (name: string, email: string, password: string) => Promise<{
     success: boolean;
     email?: string;
-    code?: string;
     requiresVerification?: boolean;
     error?: string;
   }>;
@@ -70,14 +68,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       const data = await res.json();
       if (data.requiresVerification) {
-        if (typeof window !== "undefined" && data.code) {
-          sessionStorage.setItem(`pending_pin_${data.email || email}`, data.code);
-        }
         return {
           success: false,
           requiresVerification: true,
           email: data.email,
-          code: data.code,
           message: data.message,
         };
       }
@@ -132,15 +126,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) {
         return { success: false, error: data.error || "Registration failed" };
       }
-      if (typeof window !== "undefined" && data.code) {
-        sessionStorage.setItem(`pending_pin_${data.email || email}`, data.code);
-      }
       // Do NOT set user context until email verification is complete
       return {
         success: true,
         requiresVerification: true,
         email: data.email || email,
-        code: data.code,
       };
     } catch (e: any) {
       return { success: false, error: e.message || "Network error" };

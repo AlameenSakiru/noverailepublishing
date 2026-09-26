@@ -18,10 +18,22 @@ export async function POST(req: Request) {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // Verify user exists
-    const user = await prisma.user.findUnique({
-      where: { email: cleanEmail },
-    });
+    // Verify user exists with DB retry handling
+    let user = null;
+    let dbAttempts = 0;
+    while (dbAttempts < 3) {
+      try {
+        user = await prisma.user.findUnique({
+          where: { email: cleanEmail },
+        });
+        break;
+      } catch (dbErr: any) {
+        dbAttempts++;
+        console.warn(`Prisma findUnique attempt ${dbAttempts} failed:`, dbErr?.message || dbErr);
+        if (dbAttempts >= 3) throw dbErr;
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    }
 
     if (!user) {
       return NextResponse.json(
@@ -66,7 +78,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      code: code,
       message: `A fresh 6-digit verification code has been dispatched to ${cleanEmail}. Check your inbox and Spam folder.`,
     });
   } catch (error: any) {

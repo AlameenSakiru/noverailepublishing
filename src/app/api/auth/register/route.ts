@@ -125,7 +125,6 @@ export async function POST(req: Request) {
       success: true,
       requiresVerification: true,
       email: cleanEmail,
-      code: verificationCode,
       message: `A 6-digit security code has been sent to ${cleanEmail}. Please check your inbox or Spam folder.`,
     });
   } catch (error: any) {
