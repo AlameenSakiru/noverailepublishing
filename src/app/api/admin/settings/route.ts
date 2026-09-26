@@ -87,41 +87,31 @@ export async function POST(req: Request) {
 
     if (action === "TEST_SMTP") {
       const targetEmail = testEmail?.trim() || session.email;
-      const smtpUser = process.env.SMTP_USER || "noverailepublishing@gmail.com";
-      const smtpPass = (process.env.SMTP_PASS || "").replace(/\s+/g, "");
+      const { sendEmail } = await import("@/lib/email");
 
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || "smtp.gmail.com",
-        port: Number(process.env.SMTP_PORT) || 465,
-        secure: true,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
-
-      const info = await transporter.sendMail({
-        from: process.env.EMAIL_FROM || `"Noveraile Publishing" <${smtpUser}>`,
+      const result = await sendEmail({
         to: targetEmail,
-        replyTo: smtpUser,
         subject: "Noveraile Publishing — Admin Diagnostic Test",
         html: `
           <div style="font-family: sans-serif; padding: 24px; max-width: 500px; border: 1px solid #e2e8f0; border-radius: 12px;">
             <h2 style="color: #0f172a; margin-top: 0;">SMTP Diagnostic Succeeded ✅</h2>
             <p style="color: #475569; font-size: 14px;">Your Gmail SMTP delivery system is operational and authenticated with Google servers.</p>
             <div style="background: #f8fafc; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 12px; color: #334155;">
-              Sender: ${smtpUser}<br>
               Recipient: ${targetEmail}<br>
               Timestamp: ${new Date().toISOString()}
             </div>
           </div>
         `,
-        text: `SMTP Diagnostic Succeeded! Sender: ${smtpUser}, Recipient: ${targetEmail}`,
+        text: `SMTP Diagnostic Succeeded! Recipient: ${targetEmail}`,
       });
+
+      if (!result.success) {
+        return NextResponse.json({ error: result.error || "Failed to dispatch test email." }, { status: 500 });
+      }
 
       return NextResponse.json({
         success: true,
-        message: `Diagnostic email dispatched successfully to ${targetEmail} (Message ID: ${info.messageId})`,
+        message: `Diagnostic email dispatched successfully to ${targetEmail} (Message ID: ${result.id})`,
       });
     }
 
