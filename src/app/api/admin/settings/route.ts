@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, hashPassword, verifyPassword } from "@/lib/auth";
 import { siteConfig } from "@/lib/config";
 import { isStripeConfigured } from "@/lib/stripe";
 import {
@@ -72,8 +72,21 @@ export async function GET() {
     ]);
     const dbLatencyMs = Date.now() - startDb;
 
+    // Get current admin user details
+    const adminUser = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { id: true, name: true, email: true, role: true, isEmailVerified: true },
+    });
+
     return NextResponse.json({
       success: true,
+      adminUser: adminUser || {
+        id: session.userId,
+        name: session.name,
+        email: session.email,
+        role: session.role,
+        isEmailVerified: true,
+      },
       settings: {
         site: {
           name: process.env.NEXT_PUBLIC_SITE_NAME || siteConfig.name,
@@ -248,6 +261,118 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         message: "Settings saved and applied successfully!",
+      });
+    }
+
+    // 5. Change Administrator Password Action
+    if (action === "CHANGE_ADMIN_PASSWORD") {
+      const { currentPassword, newPassword, confirmPassword } = body;
+
+      if (!newPassword || typeof newPassword !== "string") {
+        return NextResponse.json({ error: "Please enter a new password." }, { status: 400 });
+      }
+
+      if (newPassword.length < 8) {
+        return NextResponse.json({ error: "New password must be at least 8 characters long." }, { status: 400 });
+      }
+
+      if (newPassword.length > 128) {
+        return NextResponse.json({ error: "New password cannot exceed 128 characters." }, { status: 400 });
+      }
+
+      if (confirmPassword && newPassword !== confirmPassword) {
+        return NextResponse.json({ error: "New passwords do not match." }, { status: 400 });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+      });
+
+      if (!user) {
+        return NextResponse.json({ error: "User account not found." }, { status: 404 });
+      }
+
+      // If user currently has a password hash, verify current password
+      if (user.passwordHash) {
+        if (!currentPassword || typeof currentPassword !== "string") {
+          return NextResponse.json({ error: "Current password is required to set a new password." }, { status: 400 });
+        }
+
+        const isMatch = await verifyPassword(currentPassword, user.passwordHash);
+        if (!isMatch) {
+          return NextResponse.json({ error: "The current password entered is incorrect." }, { status: 400 });
+        }
+      }
+
+      const newHash = await hashPassword(newPassword);
+
+      await prisma.user.update({
+        where: { id: session.userId },
+        data: { passwordHash: newHash },
+      });
+
+      // Record audit log
+      try {
+        await prisma.auditLog.create({
+          data: {
+            userId: session.userId,
+            action: "ADMIN_PASSWORD_CHANGED",
+            entityType: "User",
+            entityId: session.userId,
+            details: JSON.stringify({ email: session.email, changedAt: new Date().toISOString() }),
+          },
+        });
+      } catch {}
+
+      return NextResponse.json({
+        success: true,
+        message: "Administrator security password updated successfully!",
+      });
+    }
+
+    // 6. Update Admin Account Profile Action
+    if (action === "UPDATE_ADMIN_PROFILE") {
+      const { name, email } = body;
+      const updateData: { name?: string; email?: string } = {};
+
+      if (name && typeof name === "string" && name.trim().length >= 2) {
+        updateData.name = name.trim().slice(0, 70);
+      }
+
+      if (email && typeof email === "string") {
+        const cleanEmail = email.trim().toLowerCase();
+        if (cleanEmail.includes("@") && cleanEmail !== session.email) {
+          const existing = await prisma.user.findUnique({ where: { email: cleanEmail } });
+          if (existing && existing.id !== session.userId) {
+            return NextResponse.json({ error: "This email address is already in use by another account." }, { status: 409 });
+          }
+          updateData.email = cleanEmail;
+        }
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await prisma.user.update({
+          where: { id: session.userId },
+          data: updateData,
+        });
+
+        // Record audit log
+        try {
+          await prisma.auditLog.create({
+            data: {
+              userId: session.userId,
+              action: "ADMIN_PROFILE_UPDATED",
+              entityType: "User",
+              entityId: session.userId,
+              details: JSON.stringify(updateData),
+            },
+          });
+        } catch {}
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Admin profile details updated successfully!",
       });
     }
 

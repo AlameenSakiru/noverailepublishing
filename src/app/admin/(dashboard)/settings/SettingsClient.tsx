@@ -27,7 +27,19 @@ import {
   Radio,
   Smartphone,
   Building2,
+  Eye,
+  EyeOff,
+  User,
+  X,
 } from "lucide-react";
+
+export interface AdminUserData {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  isEmailVerified?: boolean;
+}
 
 interface SettingsData {
   site: {
@@ -73,9 +85,33 @@ interface SettingsData {
   };
 }
 
-export function SettingsClient({ initialSettings }: { initialSettings: SettingsData }) {
+export function SettingsClient({
+  initialSettings,
+  initialAdminUser,
+}: {
+  initialSettings: SettingsData;
+  initialAdminUser?: AdminUserData;
+}) {
   const [settings, setSettings] = useState<SettingsData>(initialSettings);
+  const [adminUser, setAdminUser] = useState<AdminUserData>(
+    initialAdminUser || {
+      id: "admin-1",
+      name: "Company Administrator",
+      email: "noverailepublishing@gmail.com",
+      role: "ADMIN",
+      isEmailVerified: true,
+    }
+  );
   const [activeTab, setActiveTab] = useState<"PAYMENTS" | "EMAIL" | "STOREFRONT" | "SECURITY">("PAYMENTS");
+
+  // Admin Password Management State
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordAlert, setPasswordAlert] = useState<{ success: boolean; message: string } | null>(null);
 
   // Editable Form States
   const [siteName, setSiteName] = useState(settings.site.name);
@@ -258,6 +294,68 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
       }
     } finally {
       setCleaningCodes(false);
+    }
+  };
+
+  // Password Security Strength Calculation
+  const hasMinLength = newPassword.length >= 8;
+  const hasUpper = /[A-Z]/.test(newPassword);
+  const hasNumber = /[0-9]/.test(newPassword);
+  const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+  const strengthScore = [hasMinLength, hasUpper, hasNumber, hasSpecial].filter(Boolean).length;
+  const strengthLabels = ["Very Weak", "Weak", "Moderate", "Strong", "Very Secure"];
+  const strengthColors = ["bg-red-500", "bg-orange-500", "bg-yellow-500", "bg-emerald-500", "bg-emerald-600"];
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordAlert(null);
+
+    if (newPassword.length < 8) {
+      setPasswordAlert({ success: false, message: "New password must be at least 8 characters long." });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordAlert({ success: false, message: "New passwords do not match." });
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "CHANGE_ADMIN_PASSWORD",
+          currentPassword: currentPassword.trim(),
+          newPassword: newPassword.trim(),
+          confirmPassword: confirmPassword.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPasswordAlert({
+          success: true,
+          message: data.message || "Administrator password updated successfully!",
+        });
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        setPasswordAlert({
+          success: false,
+          message: data.error || "Failed to update administrator password.",
+        });
+      }
+    } catch {
+      setPasswordAlert({
+        success: false,
+        message: "Network error while updating password. Please try again.",
+      });
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -809,6 +907,218 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
       {/* ========================================================================= */}
       {activeTab === "SECURITY" && (
         <div className="space-y-6 animate-in fade-in">
+          {/* Administrator Credentials & Password Management Card */}
+          <div className="bg-white rounded-2xl border border-gray-200/90 p-6 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200/60 text-amber-700 flex items-center justify-center">
+                  <ShieldCheck className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-gray-950 flex items-center gap-2">
+                    <span>Company Administrator Credentials</span>
+                    <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider">
+                      Super Admin
+                    </span>
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Primary administrative login email, password management, and 2-Step verification.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  2-Step Email PIN Active
+                </span>
+              </div>
+            </div>
+
+            {/* Admin Profile Overview Box */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-gray-50/80 border border-gray-200/80 space-y-1">
+                <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Company Login Email</span>
+                </div>
+                <div className="font-mono text-sm font-bold text-gray-900 select-all">
+                  {adminUser.email}
+                </div>
+                <p className="text-[11px] text-gray-500 pt-0.5">
+                  Used to access the management console at <code>/admin/login</code>.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/70 space-y-1">
+                <div className="text-[11px] font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-amber-700" />
+                  <span>2-Step Verification Protection</span>
+                </div>
+                <div className="text-xs font-semibold text-amber-950">
+                  Enforced on Every Sign-In & Sign-Up
+                </div>
+                <p className="text-[11px] text-amber-800/80 pt-0.5">
+                  Requires 6-digit one-time security code sent to <code>{adminUser.email}</code>.
+                </p>
+              </div>
+            </div>
+
+            {/* Change Password Form */}
+            <form onSubmit={handleChangePassword} className="pt-2 border-t border-gray-100 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-bold text-gray-950 uppercase tracking-wider flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-amber-600" />
+                    <span>Change Administrator Security Password</span>
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Update your administrative password. Requires minimum 8 characters.
+                  </p>
+                </div>
+              </div>
+
+              {passwordAlert && (
+                <div
+                  className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-2.5 animate-in fade-in ${
+                    passwordAlert.success
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                      : "bg-rose-50 border-rose-200 text-rose-900"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {passwordAlert.success ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                    )}
+                    <span className="font-medium">{passwordAlert.message}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPasswordAlert(null)}
+                    className="text-[11px] font-bold hover:underline opacity-70 cursor-pointer"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Current Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showCurrentPass ? "text" : "password"}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                      required
+                      className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-gray-200 text-xs font-mono text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPass(!showCurrentPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 cursor-pointer"
+                    >
+                      {showCurrentPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPass ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                      required
+                      className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-gray-200 text-xs font-mono text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPass(!showNewPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 cursor-pointer"
+                    >
+                      {showNewPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type={showNewPass ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-mono text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Password Strength Meter */}
+              {newPassword.length > 0 && (
+                <div className="space-y-1.5 p-3 rounded-xl bg-gray-50 border border-gray-200/60 animate-in fade-in">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-semibold text-gray-700">
+                      Password Security Strength: {strengthLabels[strengthScore]}
+                    </span>
+                    <span className="font-mono text-gray-400">{strengthScore}/4 requirements</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden flex gap-1">
+                    {[1, 2, 3, 4].map((step) => (
+                      <div
+                        key={step}
+                        className={`h-full flex-1 rounded-full transition-all duration-300 ${
+                          strengthScore >= step ? strengthColors[strengthScore] : "bg-gray-300"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[10px] text-gray-500">
+                    <span className={`flex items-center gap-1 ${hasMinLength ? "text-emerald-600 font-medium" : ""}`}>
+                      {hasMinLength ? <Check className="w-3 h-3 text-emerald-500" /> : <X className="w-3 h-3 opacity-40" />}
+                      8+ characters
+                    </span>
+                    <span className={`flex items-center gap-1 ${hasUpper ? "text-emerald-600 font-medium" : ""}`}>
+                      {hasUpper ? <Check className="w-3 h-3 text-emerald-500" /> : <X className="w-3 h-3 opacity-40" />}
+                      Uppercase letter
+                    </span>
+                    <span className={`flex items-center gap-1 ${hasNumber ? "text-emerald-600 font-medium" : ""}`}>
+                      {hasNumber ? <Check className="w-3 h-3 text-emerald-500" /> : <X className="w-3 h-3 opacity-40" />}
+                      Number (0-9)
+                    </span>
+                    <span className={`flex items-center gap-1 ${hasSpecial ? "text-emerald-600 font-medium" : ""}`}>
+                      {hasSpecial ? <Check className="w-3 h-3 text-emerald-500" /> : <X className="w-3 h-3 opacity-40" />}
+                      Special character
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="submit"
+                  disabled={changingPassword || newPassword.length < 8 || newPassword !== confirmPassword}
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-xs shadow-xs transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Lock className={`w-3.5 h-3.5 ${changingPassword ? "animate-pulse" : ""}`} />
+                  <span>{changingPassword ? "Updating Password..." : "Update Admin Password"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
           {/* Security & Database Health */}
           <div className="bg-white rounded-2xl border border-gray-200/90 p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100">

@@ -92,6 +92,23 @@ export default async function AdminSettingsPage() {
     },
   };
 
-  return <SettingsClient initialSettings={initialSettings} />;
-}
+  const adminUser = await prisma.user.findFirst({
+    where: { role: "ADMIN" },
+    select: { id: true, name: true, email: true, role: true, isEmailVerified: true },
+  });
 
+  return (
+    <SettingsClient
+      initialSettings={initialSettings}
+      initialAdminUser={
+        adminUser || {
+          id: "admin-1",
+          name: "Company Administrator",
+          email: "noverailepublishing@gmail.com",
+          role: "ADMIN",
+          isEmailVerified: true,
+        }
+      }
+    />
+  );
+}

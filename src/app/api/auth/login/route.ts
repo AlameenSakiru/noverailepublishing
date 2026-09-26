@@ -89,69 +89,44 @@ export async function POST(req: Request) {
       );
     }
 
-    // Require 6-digit security code verification for reader/customer logins
-    if (user.role === "CUSTOMER") {
-      const code = Math.floor(100000 + crypto.randomInt(900000)).toString();
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    // Require 6-digit security code verification for all accounts (Admin, Editor, Customer)
+    const code = Math.floor(100000 + crypto.randomInt(900000)).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-      // Clean older unused codes
-      await prisma.verificationCode.deleteMany({
-        where: { email: cleanEmail, type: "EMAIL_VERIFICATION" },
-      });
+    // Clean older unused codes
+    await prisma.verificationCode.deleteMany({
+      where: { email: cleanEmail, type: "EMAIL_VERIFICATION" },
+    });
 
-      // Save code
-      await prisma.verificationCode.create({
-        data: {
-          email: cleanEmail,
-          code,
-          type: "EMAIL_VERIFICATION",
-          expiresAt,
-        },
-      });
-
-      // Send sign-in security verification email
-      try {
-        const { sendVerificationEmail } = await import("@/lib/email");
-        await sendVerificationEmail(cleanEmail, user.name, code, "SIGN_IN");
-      } catch (err) {
-        console.error("Sign-in verification email dispatch failed:", err);
-      }
-
-      return NextResponse.json(
-        {
-          success: true,
-          message: "A 6-digit sign-in security code has been sent to your email.",
-          requiresVerification: true,
-          email: cleanEmail,
-        },
-        { status: 200 }
-      );
-    }
-
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isEmailVerified: user.isEmailVerified,
+    // Save code
+    await prisma.verificationCode.create({
+      data: {
+        email: cleanEmail,
+        code,
+        type: "EMAIL_VERIFICATION",
+        expiresAt,
       },
     });
 
-    await setSessionCookie(
-      {
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isEmailVerified: user.isEmailVerified,
-      },
-      response
-    );
+    // Send sign-in security verification email
+    try {
+      const { sendVerificationEmail } = await import("@/lib/email");
+      await sendVerificationEmail(cleanEmail, user.name, code, "SIGN_IN");
+    } catch (err) {
+      console.error("Sign-in verification email dispatch failed:", err);
+    }
 
-    return response;
+    return NextResponse.json(
+      {
+        success: true,
+        message: `A 6-digit security verification code has been dispatched to ${cleanEmail}.`,
+        requiresVerification: true,
+        email: cleanEmail,
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
+
     console.error("Login error:", error);
 
     const msg = error?.message || "";
