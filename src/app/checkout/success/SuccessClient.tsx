@@ -9,9 +9,12 @@ import { useAuth } from "@/context/AuthContext";
 
 interface SuccessClientProps {
   order: any;
+  reference?: string;
+  sessionId?: string;
+  provider?: string;
 }
 
-export function SuccessClient({ order }: SuccessClientProps) {
+export function SuccessClient({ order, reference, sessionId, provider }: SuccessClientProps) {
   const { clearCart, itemCount } = useCart();
   const { refreshUser } = useAuth();
   const hasClearedRef = useRef(false);
@@ -31,7 +34,11 @@ export function SuccessClient({ order }: SuccessClientProps) {
         const res = await fetch("/api/checkout/claim-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderNumber: order.orderNumber }),
+          body: JSON.stringify({
+            orderNumber: order.orderNumber,
+            reference: reference || order.stripeSessionId,
+            sessionId,
+          }),
         });
         if (res.ok) {
           await refreshUser();
@@ -42,7 +49,8 @@ export function SuccessClient({ order }: SuccessClientProps) {
     };
 
     claimSession();
-  }, [order.orderNumber]); // Safe dependency that does not mutate on cart state changes
+  }, [order.orderNumber, reference, sessionId]); // Safe dependencies
+
 
   const firstItem = order.items?.[0];
   const firstBook = firstItem?.book;

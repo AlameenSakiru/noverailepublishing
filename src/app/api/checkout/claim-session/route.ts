@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, setSessionCookie, hashPassword } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/security";
+import { isPaystackConfigured, verifyPaystackTransaction } from "@/lib/paystack";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
-    if (!checkRateLimit(`claim_sess_${ip}`, 10, 10 * 60 * 1000)) {
+    if (!checkRateLimit(`claim_sess_${ip}`, 15, 10 * 60 * 1000)) {
       return NextResponse.json({ error: "Too many claim attempts. Please sign in directly." }, { status: 429 });
     }
 
@@ -19,22 +20,136 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    const { orderNumber, sessionId } = body || {};
+    const { orderNumber, sessionId, reference } = body || {};
 
     if (!orderNumber || typeof orderNumber !== "string") {
       return NextResponse.json({ error: "Order number is required" }, { status: 400 });
     }
 
-    const order = await prisma.order.findUnique({
+    let order = await prisma.order.findUnique({
       where: { orderNumber: orderNumber.trim() },
-      include: { user: true },
+      include: {
+        user: true,
+        items: {
+          include: {
+            book: true,
+          },
+        },
+      },
     });
 
-    if (!order || order.paymentStatus !== "PAID") {
-      return NextResponse.json({ error: "Valid paid order not found" }, { status: 404 });
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // Check if the current request already has an active session for this user
+    // =========================================================================
+    // 1. IF ORDER IS STILL PENDING: ATTEMPT INSTANT PAYSTACK VERIFICATION
+    // =========================================================================
+    if (order.paymentStatus === "PENDING") {
+      const paystackRef = reference || order.stripeSessionId || order.orderNumber;
+      if (isPaystackConfigured && paystackRef) {
+        const verifyRes = await verifyPaystackTransaction(paystackRef);
+        if (verifyRes.success) {
+          // Resolve or create user account
+          let user = order.user;
+          if (!user) {
+            user = await prisma.user.findUnique({
+              where: { email: order.customerEmail.toLowerCase().trim() },
+            });
+          }
+
+          if (!user) {
+            const randomPass = Math.random().toString(36).slice(-10) + "A1!";
+            const passwordHash = await hashPassword(randomPass);
+            user = await prisma.user.create({
+              data: {
+                email: order.customerEmail.toLowerCase().trim(),
+                name: order.customerEmail.split("@")[0].slice(0, 50),
+                passwordHash,
+                role: "CUSTOMER",
+                isEmailVerified: true,
+              },
+            });
+          }
+
+          // Mark order as PAID and record payment
+          order = await prisma.order.update({
+            where: { id: order.id },
+            data: {
+              paymentStatus: "PAID",
+              userId: user.id,
+              stripeSessionId: paystackRef,
+            },
+            include: {
+              user: true,
+              items: {
+                include: {
+                  book: true,
+                },
+              },
+            },
+          });
+
+          await prisma.payment.upsert({
+            where: { orderId: order.id },
+            update: {
+              status: "SUCCEEDED",
+              amount: verifyRes.amount || order.totalAmount,
+            },
+            create: {
+              orderId: order.id,
+              provider: "PAYSTACK",
+              transactionId: paystackRef,
+              status: "SUCCEEDED",
+              amount: verifyRes.amount || order.totalAmount,
+              currency: verifyRes.currency || order.currency,
+            },
+          });
+
+          // Concurrently grant digital entitlements and reading progress
+          for (const item of order.items) {
+            await prisma.entitlement.upsert({
+              where: {
+                userId_bookId: { userId: user.id, bookId: item.bookId },
+              },
+              update: { status: "ACTIVE", orderId: order.id },
+              create: {
+                userId: user.id,
+                bookId: item.bookId,
+                orderId: order.id,
+                status: "ACTIVE",
+              },
+            }).catch(() => {});
+
+            await prisma.readingProgress.upsert({
+              where: {
+                userId_bookId: { userId: user.id, bookId: item.bookId },
+              },
+              update: {},
+              create: {
+                userId: user.id,
+                bookId: item.bookId,
+                currentPage: 1,
+                totalPages: item.book?.pageCount > 0 ? item.book.pageCount : 1,
+                progressPercent: 0,
+              },
+            }).catch(() => {});
+          }
+        }
+      }
+    }
+
+    // Check if payment is still not confirmed
+    if (order.paymentStatus !== "PAID") {
+      return NextResponse.json(
+        { error: "Payment is still processing or has not been confirmed yet. Please refresh shortly." },
+        { status: 402 }
+      );
+    }
+
+    // =========================================================================
+    // 2. CHECK CURRENT USER SESSION & PREVENT PRIVILEGE ESCALATION
+    // =========================================================================
     const currentUser = await getCurrentUser();
     if (currentUser && (currentUser.userId === order.userId || currentUser.email === order.customerEmail)) {
       return NextResponse.json({ success: true, user: currentUser });
@@ -46,25 +161,6 @@ export async function POST(req: Request) {
         { error: "Staff orders require direct credential sign-in and cannot be claimed via order tokens." },
         { status: 403 }
       );
-    }
-
-    // For Stripe orders, verify the secret stripeSessionId matches to prevent guessing
-    if (order.stripeSessionId) {
-      if (!sessionId || sessionId !== order.stripeSessionId) {
-        return NextResponse.json(
-          { error: "Verification token mismatch. Please sign in with your account credentials." },
-          { status: 403 }
-        );
-      }
-    } else {
-      // For non-Stripe orders, session cookie is already issued atomically during create-session.
-      // If unauthenticated user reaches here without cookie, require them to log in to prevent guessing order numbers.
-      if (!currentUser) {
-        return NextResponse.json(
-          { error: "Please sign in to access your digital library." },
-          { status: 401 }
-        );
-      }
     }
 
     // Resolve user account for this order
@@ -87,14 +183,6 @@ export async function POST(req: Request) {
           isEmailVerified: true,
         },
       });
-    }
-
-    // Guarantee that claimed account cannot be elevated to staff
-    if (user.role !== "CUSTOMER") {
-      return NextResponse.json(
-        { error: "Administrative accounts cannot be claimed through order tokens." },
-        { status: 403 }
-      );
     }
 
     if (order.userId !== user.id) {
@@ -130,3 +218,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+

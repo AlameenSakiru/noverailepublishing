@@ -23,6 +23,10 @@ import {
   Save,
   HelpCircle,
   ArrowRight,
+  Zap,
+  Radio,
+  Smartphone,
+  Building2,
 } from "lucide-react";
 
 interface SettingsData {
@@ -34,6 +38,13 @@ interface SettingsData {
     currency: string;
     storageDriver: string;
     jwtSessionExpiryDays: number;
+  };
+  paystack: {
+    isConfigured: boolean;
+    mode: "LIVE" | "TEST" | "UNCONFIGURED";
+    publicKey: string;
+    secretKeyMasked: string;
+    webhookUrl: string;
   };
   payment: {
     isStripeConfigured: boolean;
@@ -72,12 +83,19 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
   const [contactEmail, setContactEmail] = useState(settings.site.contactEmail);
   const [currency, setCurrency] = useState(settings.site.currency);
 
+  // Paystack
+  const [paystackPublicKey, setPaystackPublicKey] = useState(settings.paystack?.publicKey || "");
+  const [paystackSecretKey, setPaystackSecretKey] = useState("");
+
+  // Stripe
   const [stripePublishableKey, setStripePublishableKey] = useState(settings.payment.publishableKey);
   const [stripeSecretKey, setStripeSecretKey] = useState("");
   const [stripeWebhookSecret, setStripeWebhookSecret] = useState("");
 
   // Action states
-  const [copied, setCopied] = useState(false);
+  const [copiedPaystackWebhook, setCopiedPaystackWebhook] = useState(false);
+  const [copiedStripeWebhook, setCopiedStripeWebhook] = useState(false);
+  const [testingPaystack, setTestingPaystack] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
   const [cleaningCodes, setCleaningCodes] = useState(false);
@@ -85,10 +103,16 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
   const [refreshing, setRefreshing] = useState(false);
   const [actionAlert, setActionAlert] = useState<{ success: boolean; message: string } | null>(null);
 
-  const handleCopyWebhook = () => {
+  const handleCopyPaystackWebhook = () => {
+    navigator.clipboard.writeText(settings.paystack.webhookUrl);
+    setCopiedPaystackWebhook(true);
+    setTimeout(() => setCopiedPaystackWebhook(false), 2500);
+  };
+
+  const handleCopyStripeWebhook = () => {
     navigator.clipboard.writeText(settings.payment.webhookUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    setCopiedStripeWebhook(true);
+    setTimeout(() => setCopiedStripeWebhook(false), 2500);
   };
 
   const handleRefresh = async () => {
@@ -103,10 +127,39 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
         setSiteTagline(data.settings.site.tagline);
         setContactEmail(data.settings.site.contactEmail);
         setCurrency(data.settings.site.currency);
+        setPaystackPublicKey(data.settings.paystack?.publicKey || "");
         setStripePublishableKey(data.settings.payment.publishableKey);
       }
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const handleTestPaystack = async () => {
+    setTestingPaystack(true);
+    setActionAlert(null);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "TEST_PAYSTACK" }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActionAlert({
+          success: true,
+          message: data.message || "Paystack connection is live and healthy!",
+        });
+      } else {
+        setActionAlert({
+          success: false,
+          message: data.error || "Failed to verify Paystack connection. Please check your Secret Key.",
+        });
+      }
+    } catch {
+      setActionAlert({ success: false, message: "Network error during Paystack test." });
+    } finally {
+      setTestingPaystack(false);
     }
   };
 
@@ -125,6 +178,8 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
           siteTagline,
           contactEmail,
           currency,
+          paystackPublicKey: paystackPublicKey || undefined,
+          paystackSecretKey: paystackSecretKey.trim() || undefined,
           stripePublishableKey: stripePublishableKey || undefined,
           stripeSecretKey: stripeSecretKey.trim() || undefined,
           stripeWebhookSecret: stripeWebhookSecret.trim() || undefined,
@@ -134,6 +189,7 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
       const data = await res.json();
       if (res.ok && data.success) {
         setActionAlert({ success: true, message: data.message || "Settings updated successfully!" });
+        setPaystackSecretKey("");
         setStripeSecretKey("");
         setStripeWebhookSecret("");
         await handleRefresh();
@@ -205,6 +261,8 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
     }
   };
 
+  const isPaystackActive = settings.paystack?.isConfigured;
+
   return (
     <div className="space-y-8 max-w-6xl pb-16">
       {/* Top Header */}
@@ -215,7 +273,7 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
             <span>Platform Settings & Control Center</span>
           </h1>
           <p className="text-xs text-gray-500 mt-1">
-            Configure payment gateways, transactional email, storefront metadata, and security policies.
+            Configure Paystack payment gateway, transactional email, storefront metadata, and security policies.
           </p>
         </div>
 
@@ -224,7 +282,7 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
             type="button"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-semibold shadow-2xs transition-colors"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
             <span>{refreshing ? "Checking..." : "Refresh Diagnostics"}</span>
@@ -252,7 +310,7 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
           <button
             type="button"
             onClick={() => setActionAlert(null)}
-            className="text-xs font-bold hover:underline opacity-70"
+            className="text-xs font-bold hover:underline opacity-70 cursor-pointer"
           >
             Dismiss
           </button>
@@ -264,20 +322,20 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
         <button
           type="button"
           onClick={() => setActiveTab("PAYMENTS")}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "PAYMENTS"
               ? "bg-[#0f172a] text-white shadow-xs"
               : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
           }`}
         >
           <CreditCard className={`w-3.5 h-3.5 ${activeTab === "PAYMENTS" ? "text-amber-400" : "text-gray-400"}`} />
-          <span>Payment Gateways</span>
+          <span>Payment Gateways (Paystack)</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("EMAIL")}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "EMAIL"
               ? "bg-[#0f172a] text-white shadow-xs"
               : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
@@ -290,7 +348,7 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
         <button
           type="button"
           onClick={() => setActiveTab("STOREFRONT")}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "STOREFRONT"
               ? "bg-[#0f172a] text-white shadow-xs"
               : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
@@ -303,7 +361,7 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
         <button
           type="button"
           onClick={() => setActiveTab("SECURITY")}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "SECURITY"
               ? "bg-[#0f172a] text-white shadow-xs"
               : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
@@ -324,147 +382,211 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-200/60 text-emerald-700 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5" />
+                  <Zap className="w-5 h-5 text-emerald-600" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-gray-950">Active Checkout Engine</h2>
-                  <p className="text-xs text-gray-500">How customers pay for digital publications</p>
+                  <h2 className="text-sm font-bold text-gray-950">Paystack Checkout Engine</h2>
+                  <p className="text-xs text-gray-500">Primary payment gateway for reader purchases</p>
                 </div>
               </div>
 
-              <div>
+              <div className="flex items-center gap-2">
                 <span
                   className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${
-                    settings.payment.isStripeConfigured
+                    isPaystackActive
                       ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                       : "bg-amber-50 text-amber-800 border border-amber-200"
                   }`}
                 >
                   <span
                     className={`w-2 h-2 rounded-full ${
-                      settings.payment.isStripeConfigured ? "bg-emerald-500" : "bg-amber-500"
+                      isPaystackActive ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
                     }`}
                   />
-                  {settings.payment.isStripeConfigured
-                    ? `Live Stripe (${settings.payment.stripeMode})`
-                    : "Sandbox Mode (Instant 1-Click Simulation)"}
+                  {isPaystackActive
+                    ? `Paystack Active (${settings.paystack.mode} Mode)`
+                    : "Sandbox Mode (1-Click Simulation Active)"}
                 </span>
+
+                {isPaystackActive && (
+                  <button
+                    type="button"
+                    onClick={handleTestPaystack}
+                    disabled={testingPaystack}
+                    className="px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${testingPaystack ? "animate-spin" : ""}`} />
+                    <span>{testingPaystack ? "Testing..." : "Test Connection"}</span>
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Explanation Box */}
-            <div className="mt-5 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-2">
-              <div className="font-semibold text-slate-900 flex items-center gap-1.5">
-                <Info className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>How Noveraile Checkout Works:</span>
+            {/* Accepted Channels Badges */}
+            <div className="mt-5">
+              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-2">
+                Supported Customer Payment Channels (Auto-Enabled via Paystack)
+              </span>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 font-medium">
+                  <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Debit / Credit Cards (Mastercard, Visa, Verve)</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 font-medium">
+                  <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Direct Bank Transfer</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 font-medium">
+                  <Smartphone className="w-3.5 h-3.5 text-amber-600" />
+                  <span>USSD (*737#, *894#, etc.)</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 font-medium">
+                  <Radio className="w-3.5 h-3.5 text-purple-600" />
+                  <span>Apple Pay & Mobile Money</span>
+                </span>
               </div>
-              <p>
-                • <strong>Sandbox Mode (Current Default)</strong>: When Stripe API keys are empty, the platform lets you test the complete reader purchasing flow with simulated 1-click checkouts without spending real money.
-              </p>
-              <p>
-                • <strong>Live Stripe Mode</strong>: Enter your Stripe API credentials below to accept real Credit/Debit cards, Apple Pay, and Google Pay worldwide.
-              </p>
             </div>
           </div>
 
-          {/* Stripe Configuration Form */}
-          <form onSubmit={handleSaveSettings} className="bg-white rounded-2xl border border-gray-200/90 p-6 shadow-xs space-y-5">
-            <div>
-              <h3 className="text-sm font-bold text-gray-950 flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-amber-500" />
-                <span>Stripe API Credentials</span>
-              </h3>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Obtain these keys from your{" "}
-                <a
-                  href="https://dashboard.stripe.com/apikeys"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-brand-ink underline"
-                >
-                  Stripe Dashboard (API Keys)
-                </a>
-              </p>
+          {/* Paystack Configuration Form */}
+          <form onSubmit={handleSaveSettings} className="bg-white rounded-2xl border border-gray-200/90 p-6 shadow-xs space-y-6">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="text-sm font-bold text-gray-950 flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-emerald-600" />
+                  <span>Paystack API Credentials</span>
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Get your Public and Secret keys from the{" "}
+                  <a
+                    href="https://dashboard.paystack.com/#/settings/developer"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-emerald-700 hover:underline inline-flex items-center gap-1"
+                  >
+                    <span>Paystack Dashboard (Settings &gt; API Keys & Webhooks)</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Stripe Publishable Key
+                  Paystack Public Key
                 </label>
                 <input
                   type="text"
-                  value={stripePublishableKey}
-                  onChange={(e) => setStripePublishableKey(e.target.value)}
+                  value={paystackPublicKey}
+                  onChange={(e) => setPaystackPublicKey(e.target.value)}
                   placeholder="pk_live_... or pk_test_..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 font-mono text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-ink"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 font-mono text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Client-safe identifier starting with <code>pk_live_</code> or <code>pk_test_</code>.
+                </p>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Stripe Secret Key (Private)
+                  Paystack Secret Key (Private)
                 </label>
                 <input
                   type="password"
-                  value={stripeSecretKey}
-                  onChange={(e) => setStripeSecretKey(e.target.value)}
+                  value={paystackSecretKey}
+                  onChange={(e) => setPaystackSecretKey(e.target.value)}
                   placeholder={
-                    settings.payment.secretKeyMasked
-                      ? `Currently set (${settings.payment.secretKeyMasked}). Leave blank to keep.`
+                    settings.paystack?.secretKeyMasked
+                      ? `Currently set (${settings.paystack.secretKeyMasked}). Leave blank to keep.`
                       : "sk_live_... or sk_test_..."
                   }
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 font-mono text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-ink"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 font-mono text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Stripe Webhook Signing Secret (Optional for local testing, required for production)
-                </label>
-                <input
-                  type="password"
-                  value={stripeWebhookSecret}
-                  onChange={(e) => setStripeWebhookSecret(e.target.value)}
-                  placeholder={
-                    settings.payment.webhookSecretMasked
-                      ? `Currently set (${settings.payment.webhookSecretMasked}). Leave blank to keep.`
-                      : "whsec_..."
-                  }
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 font-mono text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-ink"
-                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Never shared publicly. Used on the server to initialize checkout and verify charges.
+                </p>
               </div>
             </div>
 
-            {/* Webhook Endpoint Box */}
-            <div className="p-4 bg-amber-50/60 border border-amber-200/80 rounded-xl space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">
-                  Your Webhook Endpoint URL
+            {/* Paystack Webhook Configuration Box */}
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Paystack Webhook URL</span>
                 </span>
-                <span className="text-[11px] text-amber-700 font-medium">Event: checkout.session.completed</span>
+                <span className="text-[11px] text-emerald-700 font-medium">Event: charge.success (Instant Book Delivery)</span>
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl font-mono text-xs text-gray-900 truncate select-all">
-                  {settings.payment.webhookUrl}
+                <div className="w-full px-3.5 py-2 bg-white border border-emerald-300 rounded-xl font-mono text-xs text-gray-900 truncate select-all">
+                  {settings.paystack.webhookUrl}
                 </div>
                 <button
                   type="button"
-                  onClick={handleCopyWebhook}
-                  className="px-3.5 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1.5 shadow-2xs"
+                  onClick={handleCopyPaystackWebhook}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copied ? "Copied!" : "Copy URL"}</span>
+                  {copiedPaystackWebhook ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-300" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                  <span>{copiedPaystackWebhook ? "Copied!" : "Copy Webhook"}</span>
                 </button>
+              </div>
+
+              <div className="text-[11px] text-emerald-800 leading-relaxed pt-1">
+                <strong>Setup Step:</strong> In your Paystack Dashboard, navigate to{" "}
+                <em>Settings &gt; API Keys & Webhooks</em>, paste this URL into the <strong>Webhook URL</strong> field, and click Save.
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            {/* Stripe Secondary Gateway (Collapsible or Optional) */}
+            <div className="pt-4 border-t border-gray-100">
+              <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">
+                Secondary Gateway: Stripe (Optional)
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">
+                    Stripe Publishable Key
+                  </label>
+                  <input
+                    type="text"
+                    value={stripePublishableKey}
+                    onChange={(e) => setStripePublishableKey(e.target.value)}
+                    placeholder="pk_live_... or pk_test_..."
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 font-mono text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-brand-ink"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">
+                    Stripe Secret Key
+                  </label>
+                  <input
+                    type="password"
+                    value={stripeSecretKey}
+                    onChange={(e) => setStripeSecretKey(e.target.value)}
+                    placeholder={
+                      settings.payment.secretKeyMasked
+                        ? `Currently set (${settings.payment.secretKeyMasked})`
+                        : "sk_live_..."
+                    }
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 font-mono text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-brand-ink"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3">
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-xs shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-6 py-2.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-xs shadow-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>{saving ? "Saving Changes..." : "Save Payment Settings"}</span>
@@ -548,7 +670,7 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
               <button
                 type="submit"
                 disabled={sendingTest}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors shrink-0 flex items-center justify-center gap-2 shadow-2xs disabled:opacity-50"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors shrink-0 flex items-center justify-center gap-2 shadow-2xs cursor-pointer disabled:opacity-50"
               >
                 <Send className={`w-3.5 h-3.5 ${sendingTest ? "animate-pulse" : ""}`} />
                 <span>{sendingTest ? "Dispatching..." : "Send Test Email"}</span>
@@ -632,7 +754,7 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Default Currency
+                Default Storefront Currency
               </label>
               <select
                 value={currency}
@@ -640,11 +762,14 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
                 className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand-ink"
               >
                 <option value="USD">USD ($) - US Dollar</option>
+                <option value="NGN">NGN (₦) - Nigerian Naira</option>
                 <option value="EUR">EUR (€) - Euro</option>
                 <option value="GBP">GBP (£) - British Pound</option>
                 <option value="CAD">CAD ($) - Canadian Dollar</option>
                 <option value="AUD">AUD ($) - Australian Dollar</option>
-                <option value="NGN">NGN (₦) - Nigerian Naira</option>
+                <option value="GHS">GHS (₵) - Ghanaian Cedi</option>
+                <option value="ZAR">ZAR (R) - South African Rand</option>
+                <option value="KES">KES (KSh) - Kenyan Shilling</option>
               </select>
             </div>
 
@@ -665,7 +790,7 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-xs shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-xs shadow-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
               <span>{saving ? "Saving Changes..." : "Save Storefront Settings"}</span>
@@ -737,7 +862,7 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
               type="button"
               onClick={handleCleanExpiredCodes}
               disabled={cleaningCodes}
-              className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
             >
               <Trash2 className="w-3.5 h-3.5 text-gray-600" />
               <span>{cleaningCodes ? "Cleaning..." : "Purge Expired Codes"}</span>
@@ -748,3 +873,4 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
     </div>
   );
 }
+

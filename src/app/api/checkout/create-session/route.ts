@@ -3,6 +3,7 @@ import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, hashPassword, setSessionCookie } from "@/lib/auth";
 import { isStripeConfigured, createCheckoutSession, CheckoutItem } from "@/lib/stripe";
+import { isPaystackConfigured, initializePaystackTransaction } from "@/lib/paystack";
 import { siteConfig } from "@/lib/config";
 import { checkRateLimit, getClientIp } from "@/lib/security";
 
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Malformed checkout payload." }, { status: 400 });
     }
 
-    const { items, couponCode, email: guestEmail } = body || {};
+    const { items, couponCode, email: guestEmail, preferredGateway } = body || {};
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Cart is empty." }, { status: 400 });
@@ -110,65 +111,40 @@ export async function POST(req: Request) {
     }
 
     const totalAmount = Math.max(0, subtotal - discountAmount);
+    const defaultCurrency = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || siteConfig.defaultCurrency || "USD";
 
-    // Direct / Sandbox Instant Checkout (when Stripe key is not configured)
-    if (!isStripeConfigured) {
-      let user = currentUser ? await prisma.user.findUnique({ where: { id: currentUser.userId } }) : null;
-      let isNewlyCreatedUser = false;
+    // Determine target payment provider
+    // If Paystack is configured, use Paystack (or if preferredGateway is PAYSTACK)
+    const usePaystack = isPaystackConfigured && (!preferredGateway || preferredGateway === "PAYSTACK");
+    const useStripe = !usePaystack && isStripeConfigured && (!preferredGateway || preferredGateway === "STRIPE");
 
-      if (!user) {
-        const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
-        if (existingUser) {
-          // Strict Guard: Never allow administrative accounts to be referenced via unauthenticated guest checkout
-          if (existingUser.role === "ADMIN" || existingUser.role === "EDITOR") {
-            return NextResponse.json(
-              { error: "Administrative accounts cannot check out as guest. Please sign in first." },
-              { status: 403 }
-            );
-          }
-          user = existingUser;
-          // Note: Since this is an unauthenticated guest checkout for an existing account,
-          // we do NOT auto-issue a session cookie to prevent account takeover without password.
-        } else {
-          // Create new customer account with cryptographically random password
-          const fastHash = await hashPassword(crypto.randomBytes(16).toString("hex") + "N1!");
-          user = await prisma.user.create({
-            data: {
-              email: cleanEmail,
-              name: cleanEmail.split("@")[0].slice(0, 50),
-              passwordHash: fastHash,
-              role: "CUSTOMER",
-              isEmailVerified: true,
-            },
-          });
-          isNewlyCreatedUser = true;
-        }
-      }
-
-      // Strong cryptographic order identifier
+    // =========================================================================
+    // 1. PAYSTACK CHECKOUT FLOW
+    // =========================================================================
+    if (usePaystack) {
       const randomSuffix = crypto.randomBytes(4).toString("hex").toUpperCase();
       const orderNumber = `NOV-2026-${randomSuffix}`;
 
-      // Create Order + Payment in a single atomic database query
+      // Look up existing user if guest
+      let userId = currentUser?.userId || null;
+      if (!userId) {
+        const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
+        if (existingUser) {
+          userId = existingUser.id;
+        }
+      }
+
+      // Create PENDING order in DB
       const order = await prisma.order.create({
         data: {
           orderNumber,
-          userId: user.id,
+          userId,
           customerEmail: cleanEmail,
           totalAmount,
           subtotal,
           discountAmount,
-          currency: siteConfig.defaultCurrency,
-          paymentStatus: "PAID",
-          payment: {
-            create: {
-              provider: "SANDBOX",
-              transactionId: `txn_instant_${Date.now()}`,
-              status: "SUCCEEDED",
-              amount: totalAmount,
-              currency: siteConfig.defaultCurrency,
-            },
-          },
+          currency: defaultCurrency,
+          paymentStatus: "PENDING",
           items: {
             create: checkoutItems.map((item) => ({
               bookId: item.bookId,
@@ -179,69 +155,156 @@ export async function POST(req: Request) {
         },
       });
 
-      // Concurrently create digital entitlements and reading progress records
-      await Promise.all(
-        dbBooks.map(async (book) => {
-          await prisma.entitlement.upsert({
-            where: {
-              userId_bookId: { userId: user!.id, bookId: book.id },
-            },
-            update: { status: "ACTIVE", orderId: order.id },
-            create: { userId: user!.id, bookId: book.id, orderId: order.id, status: "ACTIVE" },
-          }).catch(() => {});
+      const callbackUrl = `${siteConfig.url}/checkout/success?orderNumber=${order.orderNumber}&reference=${order.orderNumber}&provider=paystack`;
 
-          await prisma.readingProgress.upsert({
-            where: {
-              userId_bookId: { userId: user!.id, bookId: book.id },
-            },
-            update: {},
-            create: {
-              userId: user!.id,
-              bookId: book.id,
-              currentPage: 1,
-              totalPages: book.pageCount > 0 ? book.pageCount : 1,
-              progressPercent: 0,
-            },
-          }).catch(() => {});
-        })
-      );
-
-      const response = NextResponse.json({
-        checkoutUrl: `/checkout/success?orderNumber=${order.orderNumber}`,
-        provider: "DIRECT",
-        orderNumber: order.orderNumber,
+      const paystackRes = await initializePaystackTransaction({
+        email: cleanEmail,
+        amount: totalAmount,
+        reference: order.orderNumber,
+        callbackUrl,
+        currency: defaultCurrency,
+        metadata: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerEmail: cleanEmail,
+          itemsCount: checkoutItems.length,
+          itemTitles: checkoutItems.map((i) => i.title).join(", "),
+        },
       });
 
-      // Issue session cookie ONLY if the user was already authenticated OR if they newly created their account in this request
-      if (currentUser || isNewlyCreatedUser) {
-        await setSessionCookie(
+      if (!paystackRes.success || !paystackRes.authorizationUrl) {
+        console.error("❌ Paystack initialization failed:", paystackRes.error);
+        return NextResponse.json(
           {
-            userId: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
+            error:
+              paystackRes.error ||
+              "Unable to initialize Paystack checkout. Please check your Paystack API keys in Admin Settings.",
           },
-          response
+          { status: 400 }
         );
       }
 
-      return response;
+      // Store reference / access code in order
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          stripeSessionId: paystackRes.reference || order.orderNumber,
+        },
+      });
+
+      return NextResponse.json({
+        checkoutUrl: paystackRes.authorizationUrl,
+        provider: "PAYSTACK",
+        orderNumber: order.orderNumber,
+      });
     }
 
-    // Stripe Checkout Flow
+    // =========================================================================
+    // 2. STRIPE CHECKOUT FLOW
+    // =========================================================================
+    if (useStripe) {
+      const randomSuffix = crypto.randomBytes(4).toString("hex").toUpperCase();
+      const orderNumber = `NOV-2026-${randomSuffix}`;
+
+      const order = await prisma.order.create({
+        data: {
+          orderNumber,
+          userId: currentUser?.userId || null,
+          customerEmail: cleanEmail,
+          totalAmount,
+          subtotal,
+          discountAmount,
+          currency: defaultCurrency,
+          paymentStatus: "PENDING",
+          items: {
+            create: checkoutItems.map((item) => ({
+              bookId: item.bookId,
+              price: item.price,
+              bookTitle: item.title,
+            })),
+          },
+        },
+      });
+
+      const successUrl = `${siteConfig.url}/checkout/success?orderNumber=${order.orderNumber}&session_id={CHECKOUT_SESSION_ID}&provider=stripe`;
+      const cancelUrl = `${siteConfig.url}/cart`;
+
+      const session = await createCheckoutSession({
+        orderId: order.id,
+        customerEmail: cleanEmail,
+        items: checkoutItems,
+        successUrl,
+        cancelUrl,
+      });
+
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { stripeSessionId: session.sessionId },
+      });
+
+      return NextResponse.json({
+        checkoutUrl: session.url,
+        provider: session.provider,
+        orderNumber: order.orderNumber,
+      });
+    }
+
+    // =========================================================================
+    // 3. DIRECT / SANDBOX INSTANT CHECKOUT (When neither gateway is configured)
+    // =========================================================================
+    let user = currentUser ? await prisma.user.findUnique({ where: { id: currentUser.userId } }) : null;
+    let isNewlyCreatedUser = false;
+
+    if (!user) {
+      const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
+      if (existingUser) {
+        // Strict Guard: Never allow administrative accounts to be referenced via unauthenticated guest checkout
+        if (existingUser.role === "ADMIN" || existingUser.role === "EDITOR") {
+          return NextResponse.json(
+            { error: "Administrative accounts cannot check out as guest. Please sign in first." },
+            { status: 403 }
+          );
+        }
+        user = existingUser;
+      } else {
+        // Create new customer account with cryptographically random password
+        const fastHash = await hashPassword(crypto.randomBytes(16).toString("hex") + "N1!");
+        user = await prisma.user.create({
+          data: {
+            email: cleanEmail,
+            name: cleanEmail.split("@")[0].slice(0, 50),
+            passwordHash: fastHash,
+            role: "CUSTOMER",
+            isEmailVerified: true,
+          },
+        });
+        isNewlyCreatedUser = true;
+      }
+    }
+
     const randomSuffix = crypto.randomBytes(4).toString("hex").toUpperCase();
     const orderNumber = `NOV-2026-${randomSuffix}`;
 
+    // Create Order + Payment in a single atomic database query
     const order = await prisma.order.create({
       data: {
         orderNumber,
-        userId: currentUser?.userId || null,
+        userId: user.id,
         customerEmail: cleanEmail,
         totalAmount,
         subtotal,
         discountAmount,
-        currency: siteConfig.defaultCurrency,
-        paymentStatus: "PENDING",
+        currency: defaultCurrency,
+        paymentStatus: "PAID",
+        payment: {
+          create: {
+            provider: "SANDBOX",
+            transactionId: `txn_instant_${Date.now()}`,
+            status: "SUCCEEDED",
+            amount: totalAmount,
+            currency: defaultCurrency,
+          },
+        },
         items: {
           create: checkoutItems.map((item) => ({
             bookId: item.bookId,
@@ -252,29 +315,56 @@ export async function POST(req: Request) {
       },
     });
 
-    const successUrl = `${siteConfig.url}/checkout/success?orderNumber=${order.orderNumber}&session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${siteConfig.url}/cart`;
+    // Concurrently create digital entitlements and reading progress records
+    await Promise.all(
+      dbBooks.map(async (book) => {
+        await prisma.entitlement.upsert({
+          where: {
+            userId_bookId: { userId: user!.id, bookId: book.id },
+          },
+          update: { status: "ACTIVE", orderId: order.id },
+          create: { userId: user!.id, bookId: book.id, orderId: order.id, status: "ACTIVE" },
+        }).catch(() => {});
 
-    const session = await createCheckoutSession({
-      orderId: order.id,
-      customerEmail: cleanEmail,
-      items: checkoutItems,
-      successUrl,
-      cancelUrl,
-    });
+        await prisma.readingProgress.upsert({
+          where: {
+            userId_bookId: { userId: user!.id, bookId: book.id },
+          },
+          update: {},
+          create: {
+            userId: user!.id,
+            bookId: book.id,
+            currentPage: 1,
+            totalPages: book.pageCount > 0 ? book.pageCount : 1,
+            progressPercent: 0,
+          },
+        }).catch(() => {});
+      })
+    );
 
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { stripeSessionId: session.sessionId },
-    });
-
-    return NextResponse.json({
-      checkoutUrl: session.url,
-      provider: session.provider,
+    const response = NextResponse.json({
+      checkoutUrl: `/checkout/success?orderNumber=${order.orderNumber}`,
+      provider: "SANDBOX",
       orderNumber: order.orderNumber,
     });
+
+    // Issue session cookie ONLY if the user was already authenticated OR if they newly created their account in this request
+    if (currentUser || isNewlyCreatedUser) {
+      await setSessionCookie(
+        {
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+        response
+      );
+    }
+
+    return response;
   } catch (error: any) {
     console.error("Create checkout session error:", error);
     return NextResponse.json({ error: "Unable to initiate checkout." }, { status: 500 });
   }
 }
+

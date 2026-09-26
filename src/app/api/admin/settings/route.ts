@@ -3,6 +3,12 @@ import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { siteConfig } from "@/lib/config";
 import { isStripeConfigured } from "@/lib/stripe";
+import {
+  isPaystackConfigured,
+  getPaystackPublicKey,
+  getPaystackMode,
+  testPaystackConnection,
+} from "@/lib/paystack";
 import fs from "fs";
 import path from "path";
 
@@ -36,8 +42,15 @@ export async function GET() {
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const webhookUrl = `${appUrl}/api/checkout/webhook`;
+    const paystackWebhookUrl = `${appUrl}/api/checkout/paystack-webhook`;
+    const stripeWebhookUrl = `${appUrl}/api/checkout/webhook`;
 
+    // Paystack credentials
+    const paystackPublicKey = getPaystackPublicKey();
+    const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || "";
+    const paystackMode = getPaystackMode();
+
+    // Stripe credentials
     const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "";
     const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
@@ -71,14 +84,22 @@ export async function GET() {
           storageDriver: process.env.STORAGE_DRIVER || "local",
           jwtSessionExpiryDays: Number(process.env.SESSION_EXPIRY_DAYS) || 30,
         },
+        paystack: {
+          isConfigured: isPaystackConfigured,
+          mode: paystackMode,
+          publicKey: paystackPublicKey,
+          secretKeyMasked: paystackSecretKey ? `sk_...${paystackSecretKey.slice(-4)}` : "",
+          webhookUrl: paystackWebhookUrl,
+        },
         payment: {
           isStripeConfigured: Boolean(stripeSecretKey.trim()),
           stripeMode,
           publishableKey: stripePublishableKey,
           secretKeyMasked: stripeSecretKey ? `sk_...${stripeSecretKey.slice(-4)}` : "",
           webhookSecretMasked: stripeWebhookSecret ? `whsec_...${stripeWebhookSecret.slice(-4)}` : "",
-          webhookUrl,
-          allowSandboxCheckout: process.env.ALLOW_SANDBOX_CHECKOUT === "true" || !stripeSecretKey.trim(),
+          webhookUrl: stripeWebhookUrl,
+          allowSandboxCheckout:
+            process.env.ALLOW_SANDBOX_CHECKOUT === "true" || (!isPaystackConfigured && !stripeSecretKey.trim()),
         },
         email: {
           smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -114,7 +135,19 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { action } = body || {};
 
-    // 1. Live SMTP Test Action
+    // 1. Paystack Live Diagnostic Test Action
+    if (action === "TEST_PAYSTACK") {
+      const result = await testPaystackConnection();
+      if (!result.success) {
+        return NextResponse.json({ error: result.error || "Failed to verify Paystack connection." }, { status: 400 });
+      }
+      return NextResponse.json({
+        success: true,
+        message: result.message || "Paystack connection is active and verified!",
+      });
+    }
+
+    // 2. Live SMTP Test Action
     if (action === "TEST_SMTP") {
       const { testEmail } = body;
       const targetEmail = testEmail?.trim() || session.email;
@@ -151,7 +184,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // 2. Clean Expired Verification Codes Action
+    // 3. Clean Expired Verification Codes Action
     if (action === "CLEAN_EXPIRED_CODES") {
       const deleted = await prisma.verificationCode.deleteMany({
         where: { expiresAt: { lt: new Date() } },
@@ -162,9 +195,19 @@ export async function POST(req: Request) {
       });
     }
 
-    // 3. Update Settings Action (Stripe keys, Storefront identity, Currency)
+    // 4. Update Settings Action (Paystack keys, Stripe keys, Storefront identity, Currency)
     if (action === "SAVE_SETTINGS") {
-      const { siteName, siteTagline, contactEmail, currency, stripePublishableKey, stripeSecretKey, stripeWebhookSecret } = body;
+      const {
+        siteName,
+        siteTagline,
+        contactEmail,
+        currency,
+        paystackPublicKey,
+        paystackSecretKey,
+        stripePublishableKey,
+        stripeSecretKey,
+        stripeWebhookSecret,
+      } = body;
 
       const updates: Record<string, string> = {};
 
@@ -173,9 +216,19 @@ export async function POST(req: Request) {
       if (contactEmail) updates.NEXT_PUBLIC_CONTACT_EMAIL = contactEmail.trim().toLowerCase();
       if (currency) updates.NEXT_PUBLIC_DEFAULT_CURRENCY = currency.trim().toUpperCase();
 
+      // Paystack configuration
+      if (paystackPublicKey !== undefined) {
+        updates.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY = paystackPublicKey.trim();
+        updates.PAYSTACK_PUBLIC_KEY = paystackPublicKey.trim();
+      }
+      if (paystackSecretKey !== undefined && paystackSecretKey.trim() !== "") {
+        updates.PAYSTACK_SECRET_KEY = paystackSecretKey.trim();
+      }
+
+      // Stripe configuration
       if (stripePublishableKey !== undefined) updates.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = stripePublishableKey.trim();
-      if (stripeSecretKey !== undefined) updates.STRIPE_SECRET_KEY = stripeSecretKey.trim();
-      if (stripeWebhookSecret !== undefined) updates.STRIPE_WEBHOOK_SECRET = stripeWebhookSecret.trim();
+      if (stripeSecretKey !== undefined && stripeSecretKey.trim() !== "") updates.STRIPE_SECRET_KEY = stripeSecretKey.trim();
+      if (stripeWebhookSecret !== undefined && stripeWebhookSecret.trim() !== "") updates.STRIPE_WEBHOOK_SECRET = stripeWebhookSecret.trim();
 
       updateEnvFile(updates);
 
@@ -204,3 +257,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error?.message || "Failed to perform settings action." }, { status: 500 });
   }
 }
+

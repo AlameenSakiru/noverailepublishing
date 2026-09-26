@@ -290,15 +290,27 @@ export default function CartPage() {
             <button
               onClick={handleCheckout}
               disabled={isCheckingOut}
-              className="w-full mt-6 py-3.5 px-6 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full mt-6 py-3.5 px-6 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-50"
             >
               <Lock className="w-4 h-4 text-brand-300" />
-              <span>{isCheckingOut ? "Processing..." : "Proceed to Secure Checkout"}</span>
+              <span>{isCheckingOut ? "Connecting to Secure Gateway..." : "Proceed to Secure Checkout"}</span>
             </button>
 
-            <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-brand-muted">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>256-Bit SSL Encrypted Direct Payment</span>
+            {/* Payment Method Badges & Security */}
+            <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-brand-muted">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Paystack Encrypted Checkout • Instant Access</span>
+              </div>
+              <div className="flex items-center justify-center gap-2 text-[10px] text-gray-400">
+                <span>Cards</span>
+                <span>•</span>
+                <span>Bank Transfer</span>
+                <span>•</span>
+                <span>USSD</span>
+                <span>•</span>
+                <span>Apple Pay</span>
+              </div>
             </div>
           </div>
         </div>
@@ -306,3 +318,4 @@ export default function CartPage() {
     </div>
   );
 }
+

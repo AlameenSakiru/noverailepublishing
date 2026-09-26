@@ -2,19 +2,31 @@ import React from "react";
 import prisma from "@/lib/prisma";
 import { siteConfig } from "@/lib/config";
 import { isStripeConfigured } from "@/lib/stripe";
+import {
+  isPaystackConfigured,
+  getPaystackPublicKey,
+  getPaystackMode,
+} from "@/lib/paystack";
 import { SettingsClient } from "./SettingsClient";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Settings & Integrations | Noveraile Admin",
-  description: "Platform payment gateways, email SMTP delivery, and configuration diagnostics.",
+  description: "Platform payment gateways, Paystack, email SMTP delivery, and configuration diagnostics.",
 };
 
 export default async function AdminSettingsPage() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const webhookUrl = `${appUrl}/api/checkout/webhook`;
+  const paystackWebhookUrl = `${appUrl}/api/checkout/paystack-webhook`;
+  const stripeWebhookUrl = `${appUrl}/api/checkout/webhook`;
 
+  // Paystack
+  const paystackPublicKey = getPaystackPublicKey();
+  const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || "";
+  const paystackMode = getPaystackMode();
+
+  // Stripe
   const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "";
   const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
@@ -45,14 +57,22 @@ export default async function AdminSettingsPage() {
       storageDriver: process.env.STORAGE_DRIVER || "local",
       jwtSessionExpiryDays: Number(process.env.SESSION_EXPIRY_DAYS) || 30,
     },
+    paystack: {
+      isConfigured: isPaystackConfigured,
+      mode: paystackMode,
+      publicKey: paystackPublicKey,
+      secretKeyMasked: paystackSecretKey ? `sk_...${paystackSecretKey.slice(-4)}` : "",
+      webhookUrl: paystackWebhookUrl,
+    },
     payment: {
       isStripeConfigured: Boolean(stripeSecretKey.trim()),
       stripeMode,
       publishableKey: stripePublishableKey,
       secretKeyMasked: stripeSecretKey ? `sk_...${stripeSecretKey.slice(-4)}` : "",
       webhookSecretMasked: stripeWebhookSecret ? `whsec_...${stripeWebhookSecret.slice(-4)}` : "",
-      webhookUrl,
-      allowSandboxCheckout: process.env.ALLOW_SANDBOX_CHECKOUT === "true" || !stripeSecretKey.trim(),
+      webhookUrl: stripeWebhookUrl,
+      allowSandboxCheckout:
+        process.env.ALLOW_SANDBOX_CHECKOUT === "true" || (!isPaystackConfigured && !stripeSecretKey.trim()),
     },
     email: {
       smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -74,3 +94,4 @@ export default async function AdminSettingsPage() {
 
   return <SettingsClient initialSettings={initialSettings} />;
 }
+
