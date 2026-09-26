@@ -82,9 +82,10 @@ export async function sendEmail({
       text: text || html.replace(/<[^>]*>?/gm, "").trim(),
       attachments,
       headers: {
-        "Auto-Submitted": "auto-generated",
-        "X-Auto-Response-Suppress": "All",
-        "X-Entity-Ref-ID": `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        "X-Mailer": "Noveraile Security Mailer",
+        "X-Priority": "1 (Highest)",
+        "Importance": "high",
+        "List-Unsubscribe": `<mailto:${smtpUser}?subject=unsubscribe>`,
       },
     });
 

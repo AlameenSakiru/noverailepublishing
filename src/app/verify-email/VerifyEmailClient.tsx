@@ -34,6 +34,10 @@ export function VerifyEmailClient() {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  const [devPin, setDevPin] = useState<string | null>(null);
+
+  const codeParam = searchParams.get("code") || "";
+
   // If emailParam changes in URL, update state
   useEffect(() => {
     if (emailParam) {
@@ -41,7 +45,16 @@ export function VerifyEmailClient() {
       setTempEmail(emailParam);
       setIsEditingEmail(false);
     }
-  }, [emailParam]);
+    const target = (emailParam || email).trim().toLowerCase();
+    if (codeParam) {
+      setDevPin(codeParam);
+    } else if (target && typeof window !== "undefined") {
+      const cached = sessionStorage.getItem(`pending_pin_${target}`);
+      if (cached) {
+        setDevPin(cached);
+      }
+    }
+  }, [emailParam, email, codeParam]);
 
   // Auto focus first input on mount
   useEffect(() => {
@@ -97,6 +110,13 @@ export function VerifyEmailClient() {
 
     const nextIndex = Math.min(5, pasted.length);
     inputRefs.current[nextIndex]?.focus();
+  };
+
+  // Auto-fill dev code helper
+  const handleAutoFillDevPin = (code: string) => {
+    const chars = code.split("").slice(0, 6);
+    setDigits(chars);
+    setError(null);
   };
 
   // Save edited email
@@ -181,6 +201,9 @@ export function VerifyEmailClient() {
 
       if (res.ok && data.success) {
         setSuccess(data.message || `A new 6-digit code has been sent to ${targetEmail}.`);
+        if (data.code) {
+          setDevPin(data.code);
+        }
         setResendCooldown(60);
       } else {
         setError(data.error || "Failed to resend code.");
@@ -247,6 +270,21 @@ export function VerifyEmailClient() {
           </form>
         )}
       </div>
+
+      {devPin && (
+        <div className="mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+          <span className="font-medium">
+            PIN Generated: <strong className="font-mono text-sm tracking-wider">{devPin}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={() => handleAutoFillDevPin(devPin)}
+            className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-[11px] transition-colors cursor-pointer"
+          >
+            Auto-Fill
+          </button>
+        </div>
+      )}
 
       {success && (
         <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-center gap-2 animate-in fade-in">

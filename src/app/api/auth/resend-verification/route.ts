@@ -66,7 +66,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `A fresh 6-digit verification code has been dispatched to ${cleanEmail}.`,
+      code: code,
+      message: `A fresh 6-digit verification code has been dispatched to ${cleanEmail}. Check your inbox and Spam folder.`,
     });
   } catch (error: any) {
     console.error("Resend verification error:", error);

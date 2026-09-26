@@ -125,7 +125,8 @@ export async function POST(req: Request) {
       success: true,
       requiresVerification: true,
       email: cleanEmail,
-      message: `A 6-digit security code has been sent to ${cleanEmail}. Please enter it to verify your account.`,
+      code: verificationCode,
+      message: `A 6-digit security code has been sent to ${cleanEmail}. Please check your inbox or Spam folder.`,
     });
   } catch (error: any) {
     console.error("Registration error:", error);

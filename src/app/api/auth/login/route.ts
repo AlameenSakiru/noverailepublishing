@@ -119,9 +119,10 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         success: true,
-        message: `A 6-digit security verification code has been dispatched to ${cleanEmail}.`,
+        message: `A 6-digit security verification code has been dispatched to ${cleanEmail}. Check your inbox or Spam folder.`,
         requiresVerification: true,
         email: cleanEmail,
+        code: code,
       },
       { status: 200 }
     );

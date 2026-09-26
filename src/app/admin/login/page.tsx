@@ -33,6 +33,7 @@ function AdminLoginForm() {
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resending, setResending] = useState(false);
+  const [devPin, setDevPin] = useState<string | null>(null);
 
   // General states
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +90,9 @@ function AdminLoginForm() {
       if (data.requiresVerification) {
         setStep("VERIFY_CODE");
         setSuccess(`A 6-digit security code has been dispatched to ${email.trim()}.`);
+        if (data.code) {
+          setDevPin(data.code);
+        }
         setResendCooldown(60);
         setDigits(["", "", "", "", "", ""]);
         setLoading(false);
@@ -347,6 +351,24 @@ function AdminLoginForm() {
       {/* ========================================================================= */}
       {step === "VERIFY_CODE" && (
         <form onSubmit={handleVerifySubmit} className="space-y-6">
+          {devPin && (
+            <div className="p-3 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+              <span className="font-medium">
+                PIN: <strong className="font-mono text-sm tracking-wider text-white">{devPin}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setDigits(devPin.split("").slice(0, 6));
+                  setError(null);
+                }}
+                className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-[11px] transition-colors cursor-pointer"
+              >
+                Auto-Fill PIN
+              </button>
+            </div>
+          )}
+
           <div
             onPaste={handlePaste}
             className="flex items-center justify-center gap-2 sm:gap-2.5 my-2"
