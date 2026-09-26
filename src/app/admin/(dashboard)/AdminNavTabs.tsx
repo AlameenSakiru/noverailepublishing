@@ -10,6 +10,7 @@ import {
   FolderTree,
   Users,
   Tag,
+  Sliders,
 } from "lucide-react";
 
 export function AdminNavTabs() {
@@ -22,6 +23,7 @@ export function AdminNavTabs() {
     { label: "Categories", href: "/admin/categories", icon: FolderTree },
     { label: "Customer Access", href: "/admin/customers", icon: Users },
     { label: "Discounts", href: "/admin/coupons", icon: Tag },
+    { label: "Settings", href: "/admin/settings", icon: Sliders },
   ];
 
   return (
