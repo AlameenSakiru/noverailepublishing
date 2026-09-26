@@ -131,6 +131,12 @@ function LoginForm() {
             <label className="block text-xs font-semibold text-brand-slate">
               Password
             </label>
+            <Link
+              href={`/forgot-password?email=${encodeURIComponent(email)}`}
+              className="text-[11px] font-semibold text-amber-700 hover:text-amber-800 hover:underline transition-colors"
+            >
+              Forgot password?
+            </Link>
           </div>
           <div className="relative">
             <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />

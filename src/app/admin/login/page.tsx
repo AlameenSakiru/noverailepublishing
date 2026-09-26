@@ -277,9 +277,17 @@ function AdminLoginForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-300 mb-1.5 uppercase tracking-wider">
-              Security Password
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-medium text-gray-300 uppercase tracking-wider">
+                Security Password
+              </label>
+              <Link
+                href={`/forgot-password?email=${encodeURIComponent(email)}`}
+                className="text-[11px] font-semibold text-amber-400 hover:text-amber-300 hover:underline transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}

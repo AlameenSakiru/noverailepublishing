@@ -197,6 +197,97 @@ export async function sendVerificationEmail(
   });
 }
 
+export async function sendPasswordResetEmail(
+  toEmail: string,
+  recipientName: string,
+  code: string
+) {
+  const title = "Reset Your Password";
+  const subject = `${code} is your Noveraile Publishing password reset code`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 15px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 540px; background-color: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; padding: 36px 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+          <!-- Header -->
+          <tr>
+            <td align="center" style="padding-bottom: 24px; border-bottom: 1px solid #f1f5f9;">
+              <div style="font-family: Georgia, serif; font-size: 20px; font-weight: 700; letter-spacing: 0.15em; color: #0f172a;">
+                NOVERAILE
+              </div>
+              <div style="font-size: 9px; letter-spacing: 0.35em; color: #64748b; text-transform: uppercase; margin-top: 2px;">
+                PUBLISHING
+              </div>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding-top: 28px; padding-bottom: 24px;">
+              <h2 style="font-family: Georgia, serif; font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">
+                Password Reset Request
+              </h2>
+              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
+                Hello <strong>${recipientName || "Reader"}</strong>,<br><br>
+                We received a request to reset the password for your Noveraile Publishing account. Please enter the 6-digit security PIN below to choose a new password:
+              </p>
+
+              <!-- 6-Digit Code Box -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 24px 0;">
+                <tr>
+                  <td align="center" style="background-color: #fdfaf6; border: 2px dashed #f59e0b; border-radius: 16px; padding: 20px;">
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #b45309; display: block; margin-bottom: 8px;">
+                      Your Password Reset PIN
+                    </span>
+                    <span style="font-family: 'Courier New', Courier, monospace; font-size: 32px; font-weight: 800; letter-spacing: 0.25em; color: #0f172a; display: block;">
+                      ${code}
+                    </span>
+                    <span style="font-size: 11px; color: #94a3b8; display: block; margin-top: 8px;">
+                      Expires in 15 minutes • Single-Use
+                    </span>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="font-size: 13px; line-height: 1.6; color: #64748b; margin: 0;">
+                If you did not request this password reset, you can safely disregard this email. Your password will remain unchanged.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding-top: 24px; border-top: 1px solid #f1f5f9; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.5;">
+              Noveraile Publishing Security • Protected Cloud Library<br>
+              Support: noverailepublishing@gmail.com
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+ </body>
+</html>
+  `.trim();
+
+  return sendEmail({
+    to: toEmail,
+    subject,
+    html,
+    text: `Your Noveraile Publishing password reset code is: ${code}. It expires in 15 minutes.`,
+  });
+}
+
+
 export interface BroadcastEmailOptions {
   toEmail: string;
   recipientName?: string;
