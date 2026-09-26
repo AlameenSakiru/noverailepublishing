@@ -11,6 +11,7 @@ import {
   Users,
   Tag,
   Sliders,
+  Megaphone,
 } from "lucide-react";
 
 export function AdminNavTabs() {
@@ -23,6 +24,7 @@ export function AdminNavTabs() {
     { label: "Categories", href: "/admin/categories", icon: FolderTree },
     { label: "Customer Access", href: "/admin/customers", icon: Users },
     { label: "Discounts", href: "/admin/coupons", icon: Tag },
+    { label: "Broadcasts", href: "/admin/broadcasts", icon: Megaphone },
     { label: "Settings", href: "/admin/settings", icon: Sliders },
   ];
 
