@@ -9,7 +9,7 @@ export interface SendEmailOptions {
 
 // Strictly configured Gmail SMTP Transporter
 const smtpUser = process.env.SMTP_USER?.trim() || "alameens2008@gmail.com";
-const smtpPass = (process.env.SMTP_PASS?.trim() || "gdvtxwkzsufqquef").replace(/\s+/g, "");
+const smtpPass = (process.env.SMTP_PASS?.trim() || "hctjvxoljcvvvmyg").replace(/\s+/g, "");
 const smtpHost = process.env.SMTP_HOST?.trim() || "smtp.gmail.com";
 const smtpPort = Number(process.env.SMTP_PORT) || 465;
 
