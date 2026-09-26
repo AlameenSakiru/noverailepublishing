@@ -60,14 +60,28 @@ export async function sendEmail({
   }
 }
 
-export async function sendVerificationEmail(toEmail: string, recipientName: string, code: string) {
+export async function sendVerificationEmail(
+  toEmail: string,
+  recipientName: string,
+  code: string,
+  purpose: "REGISTRATION" | "SIGN_IN" = "REGISTRATION"
+) {
+  const isSignIn = purpose === "SIGN_IN";
+  const title = isSignIn ? "Verify Your Sign-In Attempt" : "Verify Your Reader Email Address";
+  const actionText = isSignIn
+    ? `We detected a sign-in attempt to your Noveraile Publishing reader account. Please enter the 6-digit security code below to complete your sign-in:`
+    : `Thank you for joining Noveraile Publishing. Please enter the 6-digit security verification code below to activate your personal cloud library:`;
+  const subject = isSignIn
+    ? `${code} is your Noveraile Publishing sign-in code`
+    : `${code} is your Noveraile Publishing verification code`;
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Verify Your Noveraile Account</title>
+  <title>${title}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 15px;">
@@ -90,11 +104,11 @@ export async function sendVerificationEmail(toEmail: string, recipientName: stri
           <tr>
             <td style="padding-top: 28px; padding-bottom: 24px;">
               <h2 style="font-family: Georgia, serif; font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">
-                Verify Your Reader Email Address
+                ${title}
               </h2>
               <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
                 Hello <strong>${recipientName || "Reader"}</strong>,<br><br>
-                Thank you for joining Noveraile Publishing. Please enter the 6-digit security verification code below to activate your personal cloud library:
+                ${actionText}
               </p>
 
               <!-- 6-Digit Code Box -->
@@ -131,14 +145,14 @@ export async function sendVerificationEmail(toEmail: string, recipientName: stri
       </td>
     </tr>
   </table>
-</body>
+ </body>
 </html>
   `.trim();
 
   return sendEmail({
     to: toEmail,
-    subject: `${code} is your Noveraile Publishing verification code`,
+    subject,
     html,
-    text: `Your Noveraile Publishing verification code is: ${code}. It expires in 15 minutes.`,
+    text: `Your Noveraile Publishing security code is: ${code}. It expires in 15 minutes.`,
   });
 }

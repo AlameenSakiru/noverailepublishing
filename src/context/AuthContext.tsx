@@ -67,6 +67,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
+      if (data.requiresVerification) {
+        return {
+          success: false,
+          requiresVerification: true,
+          email: data.email,
+          message: data.message,
+        };
+      }
       if (!res.ok) {
         return {
           success: false,

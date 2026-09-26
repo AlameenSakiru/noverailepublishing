@@ -89,8 +89,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // If user has not verified their email yet, require verification
-    if (!user.isEmailVerified && user.role === "CUSTOMER") {
+    // Require 6-digit security code verification for reader/customer logins
+    if (user.role === "CUSTOMER") {
       const code = Math.floor(100000 + crypto.randomInt(900000)).toString();
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
@@ -109,21 +109,22 @@ export async function POST(req: Request) {
         },
       });
 
-      // Send verification email
+      // Send sign-in security verification email
       try {
         const { sendVerificationEmail } = await import("@/lib/email");
-        await sendVerificationEmail(cleanEmail, user.name, code);
+        await sendVerificationEmail(cleanEmail, user.name, code, "SIGN_IN");
       } catch (err) {
-        console.error("Verification email dispatch failed:", err);
+        console.error("Sign-in verification email dispatch failed:", err);
       }
 
       return NextResponse.json(
         {
-          error: "Your email address is not verified yet. Please enter the 6-digit verification code sent to your inbox.",
+          success: true,
+          message: "A 6-digit sign-in security code has been sent to your email.",
           requiresVerification: true,
           email: cleanEmail,
         },
-        { status: 403 }
+        { status: 200 }
       );
     }
 

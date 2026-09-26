@@ -30,14 +30,6 @@ export async function POST(req: Request) {
       );
     }
 
-    if (user.isEmailVerified) {
-      return NextResponse.json({
-        success: true,
-        message: "Email is already verified. You can log in directly.",
-        alreadyVerified: true,
-      });
-    }
-
     // Generate secure 6-digit numeric PIN
     const code = Math.floor(100000 + crypto.randomInt(900000)).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
