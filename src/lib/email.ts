@@ -40,7 +40,7 @@ function getEnvSetting(key: string, defaultValue: string = ""): string {
 
 function getTransporter() {
   const smtpUser = getEnvSetting("SMTP_USER", "noverailepublishing@gmail.com");
-  const smtpPass = getEnvSetting("SMTP_PASS", "").replace(/\s+/g, "");
+  const smtpPass = getEnvSetting("SMTP_PASS", "mgmjwrldkpfnyagg").replace(/\s+/g, "");
   const smtpHost = getEnvSetting("SMTP_HOST", "smtp.gmail.com");
   const smtpPort = Number(getEnvSetting("SMTP_PORT", "465")) || 465;
 
