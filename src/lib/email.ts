@@ -7,25 +7,30 @@ export interface SendEmailOptions {
   text?: string;
 }
 
-// Strictly configured Gmail SMTP Transporter
-const smtpUser = process.env.SMTP_USER?.trim() || "noverailepublishing@gmail.com";
-const smtpPass = (process.env.SMTP_PASS?.trim() || "gdvtxwkzsufqquef").replace(/\s+/g, "");
-const smtpHost = process.env.SMTP_HOST?.trim() || "smtp.gmail.com";
-const smtpPort = Number(process.env.SMTP_PORT) || 465;
+function getTransporter() {
+  const smtpUser = (process.env.SMTP_USER || "noverailepublishing@gmail.com").trim();
+  const smtpPass = (process.env.SMTP_PASS || "gdvtxwkzsufqquef").trim().replace(/\s+/g, "");
+  const smtpHost = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
+  const smtpPort = Number(process.env.SMTP_PORT) || 465;
 
-const transporter = nodemailer.createTransport({
-  host: smtpHost,
-  port: smtpPort,
-  secure: true,
-  auth: {
-    user: smtpUser,
-    pass: smtpPass,
-  },
-  // Ensure reliable TLS connection
-  tls: {
-    rejectUnauthorized: true,
-  },
-});
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: true,
+    auth: {
+      user: smtpUser,
+      pass: smtpPass,
+    },
+    tls: {
+      rejectUnauthorized: true,
+    },
+  });
+
+  const fromAddress =
+    process.env.EMAIL_FROM?.trim() || `"Noveraile Publishing" <${smtpUser}>`;
+
+  return { transporter, fromAddress, smtpUser };
+}
 
 export async function sendEmail({
   to,
@@ -34,7 +39,7 @@ export async function sendEmail({
   text,
 }: SendEmailOptions): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
-    const fromAddress = `"Noveraile Publishing" <${smtpUser}>`;
+    const { transporter, fromAddress, smtpUser } = getTransporter();
 
     const info = await transporter.sendMail({
       from: fromAddress,
@@ -44,7 +49,7 @@ export async function sendEmail({
       text: text || html.replace(/<[^>]*>?/gm, ""),
     });
 
-    console.log(`✅ [GMAIL SMTP SENT] To: ${to} (MessageId: ${info.messageId})`);
+    console.log(`✅ [GMAIL SMTP SENT] From: ${fromAddress} -> To: ${to} (MessageId: ${info.messageId})`);
     return { success: true, id: info.messageId };
   } catch (err: any) {
     console.error("❌ [GMAIL SMTP ERROR]:", err);
