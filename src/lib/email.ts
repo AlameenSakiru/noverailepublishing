@@ -16,11 +16,33 @@ export interface SendEmailOptions {
   }>;
 }
 
+function getEnvSetting(key: string, defaultValue: string = ""): string {
+  if (process.env[key] && process.env[key]!.trim() !== "") {
+    return process.env[key]!.trim();
+  }
+  try {
+    const envPath = path.join(process.cwd(), ".env");
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, "utf-8");
+      const regex = new RegExp(`^${key}=["']?([^"'\\r\\n]+)["']?`, "m");
+      const match = content.match(regex);
+      if (match && match[1]) {
+        const val = match[1].trim();
+        process.env[key] = val;
+        return val;
+      }
+    }
+  } catch (e) {
+    console.warn(`Could not read fallback ${key} from .env:`, e);
+  }
+  return defaultValue;
+}
+
 function getTransporter() {
-  const smtpUser = (process.env.SMTP_USER || "noverailepublishing@gmail.com").trim();
-  const smtpPass = (process.env.SMTP_PASS || "").trim().replace(/\s+/g, "");
-  const smtpHost = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
-  const smtpPort = Number(process.env.SMTP_PORT) || 465;
+  const smtpUser = getEnvSetting("SMTP_USER", "noverailepublishing@gmail.com");
+  const smtpPass = getEnvSetting("SMTP_PASS", "").replace(/\s+/g, "");
+  const smtpHost = getEnvSetting("SMTP_HOST", "smtp.gmail.com");
+  const smtpPort = Number(getEnvSetting("SMTP_PORT", "465")) || 465;
 
   const transporter = nodemailer.createTransport({
     host: smtpHost,
@@ -36,7 +58,7 @@ function getTransporter() {
   });
 
   const fromAddress =
-    process.env.EMAIL_FROM?.trim() || `"Noveraile Publishing" <${smtpUser}>`;
+    getEnvSetting("EMAIL_FROM", `"Noveraile Publishing" <${smtpUser}>`);
 
   return { transporter, fromAddress, smtpUser };
 }
