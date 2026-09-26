@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  KeyRound,
   Mail,
   RotateCcw,
   CheckCircle2,
@@ -41,12 +40,6 @@ function AdminLoginForm() {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Auto-fill company admin credentials
-  const handleFillCredentials = () => {
-    setEmail("noverailepublishing@gmail.com");
-    setPassword("AdminPass2026!");
-    setError(null);
-  };
 
   // Resend cooldown timer countdown
   useEffect(() => {
@@ -247,27 +240,6 @@ function AdminLoginForm() {
         </p>
       </div>
 
-      {/* Staff Demo Helper Badge (Step 1 only) */}
-      {step === "CREDENTIALS" && (
-        <div className="mb-5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="font-semibold text-amber-300 flex items-center gap-1.5">
-              <KeyRound className="w-3.5 h-3.5 text-amber-400" /> Company Admin Credentials
-            </span>
-            <button
-              type="button"
-              onClick={handleFillCredentials}
-              className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-[11px] transition-colors cursor-pointer"
-            >
-              Auto-Fill
-            </button>
-          </div>
-          <div className="font-mono text-[11px] space-y-0.5 text-gray-300">
-            <div>Email: <span className="text-white font-medium">noverailepublishing@gmail.com</span></div>
-            <div>Password: <span className="text-white font-medium">AdminPass2026!</span></div>
-          </div>
-        </div>
-      )}
 
       {success && (
         <div className="mb-5 p-3 rounded-xl bg-emerald-950/60 border border-emerald-700/70 text-emerald-200 text-xs flex items-center gap-2 animate-in fade-in">
