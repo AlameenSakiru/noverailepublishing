@@ -478,10 +478,12 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
                 </label>
                 <input
                   type="text"
+                  name="paystack_pub_key_setting"
+                  autoComplete="off"
                   value={paystackPublicKey}
                   onChange={(e) => setPaystackPublicKey(e.target.value)}
                   placeholder="pk_live_... or pk_test_..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 font-mono text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 font-mono text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-600 bg-white"
                 />
                 <p className="text-[11px] text-gray-400 mt-1">
                   Client-safe identifier starting with <code>pk_live_</code> or <code>pk_test_</code>.
@@ -494,6 +496,8 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
                 </label>
                 <input
                   type="password"
+                  name="paystack_sec_key_setting"
+                  autoComplete="new-password"
                   value={paystackSecretKey}
                   onChange={(e) => setPaystackSecretKey(e.target.value)}
                   placeholder={
@@ -501,13 +505,14 @@ export function SettingsClient({ initialSettings }: { initialSettings: SettingsD
                       ? `Currently set (${settings.paystack.secretKeyMasked}). Leave blank to keep.`
                       : "sk_live_... or sk_test_..."
                   }
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 font-mono text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 font-mono text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-600 bg-white"
                 />
                 <p className="text-[11px] text-gray-400 mt-1">
                   Never shared publicly. Used on the server to initialize checkout and verify charges.
                 </p>
               </div>
             </div>
+
 
             {/* Paystack Webhook Configuration Box */}
             <div className="p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl space-y-2.5">
