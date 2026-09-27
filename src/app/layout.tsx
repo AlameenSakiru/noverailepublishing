@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { siteConfig } from "@/lib/config";
@@ -51,8 +50,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full scroll-smooth" suppressHydrationWarning>
+      <head>
+        <script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-T40Y4VFKPX"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-T40Y4VFKPX');
+            `,
+          }}
+        />
+      </head>
       <body className="flex flex-col min-h-screen antialiased bg-[#fbfaf8] text-brand-ink selection:bg-brand-200 selection:text-brand-900" suppressHydrationWarning>
-        <GoogleAnalytics gaId="G-T40Y4VFKPX" />
         <AuthProvider>
           <CartProvider>
             <Header />
