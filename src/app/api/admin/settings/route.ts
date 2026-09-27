@@ -47,7 +47,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://noverailepublishing-tsukifi.vercel.app";
     const paystackWebhookUrl = `${appUrl}/api/checkout/paystack-webhook`;
     const stripeWebhookUrl = `${appUrl}/api/checkout/webhook`;
 

@@ -23,7 +23,7 @@ export const metadata = {
 };
 
 export default async function AdminSettingsPage() {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://noverailepublishing-tsukifi.vercel.app";
   const paystackWebhookUrl = `${appUrl}/api/checkout/paystack-webhook`;
   const nowpaymentsWebhookUrl = `${appUrl}/api/checkout/nowpayments-webhook`;
   const stripeWebhookUrl = `${appUrl}/api/checkout/webhook`;
