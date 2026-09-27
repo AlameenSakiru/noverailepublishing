@@ -168,10 +168,16 @@ export function BookCard({
         {/* Price & Action Row */}
         <div className="mt-auto pt-4 flex items-center justify-between border-t border-gray-100">
           <div className="flex items-baseline gap-2">
-            <span className="text-lg font-bold text-brand-ink">
-              ${activePrice.toFixed(2)}
-            </span>
-            {hasDiscount && (
+            {activePrice <= 0.001 ? (
+              <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 uppercase tracking-wider">
+                FREE
+              </span>
+            ) : (
+              <span className="text-lg font-bold text-brand-ink">
+                ${activePrice.toFixed(2)}
+              </span>
+            )}
+            {hasDiscount && activePrice > 0.001 && (
               <span className="text-xs text-brand-muted line-through">
                 ${price.toFixed(2)}
               </span>

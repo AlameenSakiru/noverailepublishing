@@ -458,21 +458,32 @@ export function BookDetailClient({
             </div>
 
             {/* Pricing Line */}
-            <div className="flex items-baseline gap-3 mb-2">
-              <span className="font-serif text-3xl sm:text-4xl font-extrabold text-brand-ink">
-                ${activePrice.toFixed(2)}
-              </span>
-              {hasDiscount && (
-                <>
-                  <span className="text-base text-brand-muted line-through">
-                    ${book.price.toFixed(2)}
-                  </span>
-                  <span className="text-xs font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded">
-                    Save ${discountAmount.toFixed(2)} ({discountPercent}% OFF)
-                  </span>
-                </>
-              )}
-            </div>
+            {activePrice <= 0.001 ? (
+              <div className="flex items-center gap-2.5 mb-2">
+                <span className="font-serif text-3xl sm:text-4xl font-extrabold text-emerald-800">
+                  FREE
+                </span>
+                <span className="text-xs font-bold text-emerald-900 bg-emerald-100/90 px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-200">
+                  Complimentary Publication
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-baseline gap-3 mb-2">
+                <span className="font-serif text-3xl sm:text-4xl font-extrabold text-brand-ink">
+                  ${activePrice.toFixed(2)}
+                </span>
+                {hasDiscount && (
+                  <>
+                    <span className="text-base text-brand-muted line-through">
+                      ${book.price.toFixed(2)}
+                    </span>
+                    <span className="text-xs font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded">
+                      Save ${discountAmount.toFixed(2)} ({discountPercent}% OFF)
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
 
             <p className="text-xs text-brand-slate leading-relaxed">
               Permanent direct-to-reader license. Start reading in 10 seconds in your web browser — zero downloads, e-readers, or software installations required.
@@ -503,9 +514,20 @@ export function BookDetailClient({
                   <div className="flex flex-col sm:flex-row gap-3">
                     <button
                       onClick={handleBuyNow}
-                      className="flex-1 px-8 py-4 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+                      className={`flex-1 px-8 py-4 rounded-xl text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99] ${
+                        activePrice <= 0.001
+                          ? "bg-emerald-700 hover:bg-emerald-800 shadow-emerald-900/10"
+                          : "bg-brand-ink hover:bg-brand-900"
+                      }`}
                     >
-                      <span>Buy Now • Instant Cloud Access</span>
+                      {activePrice <= 0.001 ? (
+                        <Sparkles className="w-4 h-4 text-emerald-200" />
+                      ) : null}
+                      <span>
+                        {activePrice <= 0.001
+                          ? "Claim Free Book • Instant Access"
+                          : "Buy Now • Instant Cloud Access"}
+                      </span>
                     </button>
 
                     <button

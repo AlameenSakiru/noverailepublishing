@@ -120,6 +120,7 @@ export async function POST(req: Request) {
 
     // Apply coupon if valid
     let discountAmount = 0;
+    let verifiedCoupon: any = null;
 
     if (couponCode && typeof couponCode === "string") {
       const cleanCouponCode = couponCode.trim().toUpperCase().slice(0, 30);
@@ -137,6 +138,7 @@ export async function POST(req: Request) {
         const isMinOrderValid = !coupon.minOrderAmount || subtotal >= coupon.minOrderAmount;
 
         if (isDateValid && isUsageValid && isMinOrderValid) {
+          verifiedCoupon = coupon;
           if (coupon.discountType === "PERCENTAGE") {
             discountAmount = (subtotal * coupon.discountValue) / 100;
           } else {
@@ -148,6 +150,193 @@ export async function POST(req: Request) {
 
     const totalAmount = Math.max(0, subtotal - discountAmount);
     const defaultCurrency = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || siteConfig.defaultCurrency || "USD";
+
+    // =========================================================================
+    // 0. FREE PUBLICATION / $0.00 CLAIM FLOW (NO PAYMENT GATEWAY NEEDED)
+    // =========================================================================
+    if (totalAmount <= 0.001) {
+      const randomSuffix = crypto.randomBytes(4).toString("hex").toUpperCase();
+      const orderNumber = `NOV-2026-${randomSuffix}`;
+
+      // Resolve user account for customer
+      let user = currentUser ? await prisma.user.findUnique({ where: { id: currentUser.userId } }) : null;
+      if (!user) {
+        user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+      }
+
+      if (!user) {
+        const randomPass = Math.random().toString(36).slice(-10) + "A1!";
+        const passwordHash = await hashPassword(randomPass);
+        user = await prisma.user.create({
+          data: {
+            email: cleanEmail,
+            name: cleanSenderName || cleanEmail.split("@")[0],
+            passwordHash,
+            role: "CUSTOMER",
+            isEmailVerified: true,
+          },
+        });
+      }
+
+      // Create PAID order immediately in DB
+      const order = await prisma.order.create({
+        data: {
+          orderNumber,
+          userId: user.id,
+          customerEmail: cleanEmail,
+          totalAmount: 0,
+          subtotal,
+          discountAmount,
+          currency: defaultCurrency,
+          paymentStatus: "PAID",
+          isGift: cleanIsGift,
+          recipientName: cleanRecipientName,
+          recipientEmail: cleanRecipientEmail,
+          giftMessage: cleanGiftMessage,
+          items: {
+            create: checkoutItems.map((item) => ({
+              bookId: item.bookId,
+              price: item.price,
+              bookTitle: item.title,
+            })),
+          },
+        },
+        include: {
+          items: {
+            include: {
+              book: {
+                include: {
+                  author: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Record free payment record
+      await prisma.payment.create({
+        data: {
+          orderId: order.id,
+          provider: "FREE_CLAIM",
+          transactionId: `FREE-${order.orderNumber}`,
+          status: "SUCCEEDED",
+          amount: 0,
+          currency: defaultCurrency,
+        },
+      });
+
+      // If coupon used, record usage and increment count
+      if (verifiedCoupon) {
+        await prisma.couponUse.create({
+          data: {
+            couponId: verifiedCoupon.id,
+            userId: user.id,
+            orderId: order.id,
+          },
+        }).catch(() => {});
+
+        await prisma.coupon.update({
+          where: { id: verifiedCoupon.id },
+          data: { usedCount: { increment: 1 } },
+        }).catch(() => {});
+      }
+
+      // Digital entitlements activation (Recipient if gift, else buyer)
+      let entitlementUserId = user.id;
+      if (cleanIsGift && cleanRecipientEmail) {
+        let recipientUser = await prisma.user.findUnique({ where: { email: cleanRecipientEmail } });
+        if (!recipientUser) {
+          const randomPass = Math.random().toString(36).slice(-10) + "A1!";
+          const passwordHash = await hashPassword(randomPass);
+          recipientUser = await prisma.user.create({
+            data: {
+              email: cleanRecipientEmail,
+              name: cleanRecipientName || cleanRecipientEmail.split("@")[0],
+              passwordHash,
+              role: "CUSTOMER",
+              isEmailVerified: true,
+            },
+          });
+        }
+        entitlementUserId = recipientUser.id;
+      }
+
+      for (const item of order.items) {
+        await prisma.entitlement.upsert({
+          where: {
+            userId_bookId: { userId: entitlementUserId, bookId: item.bookId },
+          },
+          update: {
+            status: "ACTIVE",
+            orderId: order.id,
+            isGift: cleanIsGift,
+            giftSenderName: cleanIsGift ? cleanSenderName : null,
+            giftSenderEmail: cleanIsGift ? cleanEmail : null,
+            giftMessage: cleanIsGift ? cleanGiftMessage : null,
+          },
+          create: {
+            userId: entitlementUserId,
+            bookId: item.bookId,
+            orderId: order.id,
+            status: "ACTIVE",
+            isGift: cleanIsGift,
+            giftSenderName: cleanIsGift ? cleanSenderName : null,
+            giftSenderEmail: cleanIsGift ? cleanEmail : null,
+            giftMessage: cleanGiftMessage,
+          },
+        }).catch(() => {});
+
+        await prisma.readingProgress.upsert({
+          where: {
+            userId_bookId: { userId: entitlementUserId, bookId: item.bookId },
+          },
+          update: {},
+          create: {
+            userId: entitlementUserId,
+            bookId: item.bookId,
+            currentPage: 1,
+            totalPages: item.book?.pageCount > 0 ? item.book.pageCount : 1,
+            progressPercent: 0,
+          },
+        }).catch(() => {});
+
+        // Dispatch gift email if gift
+        if (cleanIsGift && cleanRecipientEmail) {
+          sendGiftDeliveryEmail({
+            recipientEmail: cleanRecipientEmail,
+            recipientName: cleanRecipientName || cleanRecipientEmail.split("@")[0],
+            senderName: cleanSenderName,
+            senderEmail: cleanEmail,
+            giftMessage: cleanGiftMessage || undefined,
+            bookTitle: item.book?.title || item.bookTitle,
+            bookAuthor: item.book?.author?.name || undefined,
+            bookCoverUrl: item.book?.coverImage || undefined,
+          }).catch((err) => console.error("Free gift email dispatch error:", err));
+        }
+      }
+
+      const response = NextResponse.json({
+        checkoutUrl: `/checkout/success?orderNumber=${order.orderNumber}&provider=free`,
+        provider: "FREE",
+        orderNumber: order.orderNumber,
+      });
+
+      // Set cookie if guest claimed
+      if (!currentUser && user) {
+        await setSessionCookie(
+          {
+            userId: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          },
+          response
+        );
+      }
+
+      return response;
+    }
 
     // Resolve active base URL dynamically (supports Vercel, custom domain, or local dev)
     const origin = req.headers.get("origin") || req.headers.get("referer");

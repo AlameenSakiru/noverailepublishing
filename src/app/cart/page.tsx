@@ -467,61 +467,77 @@ export default function CartPage() {
               </form>
             )}
 
-            {/* Payment Method Selector */}
-            <div className="mt-5 pt-4 border-t border-gray-100">
-              <label className="block text-xs font-bold text-brand-ink mb-2">
-                Payment Method
-              </label>
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("CARD")}
-                  className={`p-3 rounded-xl border text-left transition-all relative ${
-                    paymentMethod === "CARD"
-                      ? "bg-brand-50/70 border-brand-ink shadow-xs ring-1 ring-brand-ink"
-                      : "bg-white border-gray-200 hover:border-gray-300 text-gray-600"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <CreditCard className={`w-4 h-4 ${paymentMethod === "CARD" ? "text-brand-ink" : "text-gray-400"}`} />
-                    {paymentMethod === "CARD" && (
-                      <span className="w-2 h-2 rounded-full bg-brand-ink"></span>
-                    )}
+            {/* Payment Method Selector (or Free Claim Banner if Total is 0) */}
+            {total <= 0.001 ? (
+              <div className="mt-5 pt-4 border-t border-gray-100">
+                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wide">
+                      100% Free Publication Claim
+                    </h4>
+                    <p className="text-xs text-emerald-800/90 mt-0.5 leading-relaxed font-light">
+                      No credit card, crypto, or payment gateway required. Click below to add this title directly to your library.
+                    </p>
                   </div>
-                  <div className="text-xs font-bold text-brand-ink">Cards & Bank</div>
-                  <div className="text-[10px] text-brand-muted mt-0.5">Paystack • Instant</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("CRYPTO")}
-                  className={`p-3 rounded-xl border text-left transition-all relative ${
-                    paymentMethod === "CRYPTO"
-                      ? "bg-gradient-to-br from-amber-50/90 to-amber-100/40 border-amber-500 shadow-xs ring-1 ring-amber-500"
-                      : "bg-white border-gray-200 hover:border-gray-300 text-gray-600"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <Coins className={`w-4 h-4 ${paymentMethod === "CRYPTO" ? "text-amber-600" : "text-gray-400"}`} />
-                    {paymentMethod === "CRYPTO" && (
-                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                    )}
-                  </div>
-                  <div className="text-xs font-bold text-brand-ink flex items-center gap-1">
-                    <span>Crypto</span>
-                    <span className="text-[9px] px-1 py-0.5 rounded bg-amber-200 text-amber-900 font-extrabold">300+</span>
-                  </div>
-                  <div className="text-[10px] text-amber-800/80 font-medium mt-0.5">USDT, BTC, SOL</div>
-                </button>
-              </div>
-
-              {paymentMethod === "CRYPTO" && (
-                <div className="mt-2.5 p-2.5 rounded-lg bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-900 flex items-center gap-2">
-                  <Zap className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>Powered by NOWPayments. Auto-confirms on-chain with instant library access.</span>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="mt-5 pt-4 border-t border-gray-100">
+                <label className="block text-xs font-bold text-brand-ink mb-2">
+                  Payment Method
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("CARD")}
+                    className={`p-3 rounded-xl border text-left transition-all relative ${
+                      paymentMethod === "CARD"
+                        ? "bg-brand-50/70 border-brand-ink shadow-xs ring-1 ring-brand-ink"
+                        : "bg-white border-gray-200 hover:border-gray-300 text-gray-600"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <CreditCard className={`w-4 h-4 ${paymentMethod === "CARD" ? "text-brand-ink" : "text-gray-400"}`} />
+                      {paymentMethod === "CARD" && (
+                        <span className="w-2 h-2 rounded-full bg-brand-ink"></span>
+                      )}
+                    </div>
+                    <div className="text-xs font-bold text-brand-ink">Cards & Bank</div>
+                    <div className="text-[10px] text-brand-muted mt-0.5">Paystack • Instant</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("CRYPTO")}
+                    className={`p-3 rounded-xl border text-left transition-all relative ${
+                      paymentMethod === "CRYPTO"
+                        ? "bg-gradient-to-br from-amber-50/90 to-amber-100/40 border-amber-500 shadow-xs ring-1 ring-amber-500"
+                        : "bg-white border-gray-200 hover:border-gray-300 text-gray-600"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <Coins className={`w-4 h-4 ${paymentMethod === "CRYPTO" ? "text-amber-600" : "text-gray-400"}`} />
+                      {paymentMethod === "CRYPTO" && (
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                      )}
+                    </div>
+                    <div className="text-xs font-bold text-brand-ink flex items-center gap-1">
+                      <span>Crypto</span>
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-amber-200 text-amber-900 font-extrabold">300+</span>
+                    </div>
+                    <div className="text-[10px] text-amber-800/80 font-medium mt-0.5">USDT, BTC, SOL</div>
+                  </button>
+                </div>
+
+                {paymentMethod === "CRYPTO" && (
+                  <div className="mt-2.5 p-2.5 rounded-lg bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-900 flex items-center gap-2">
+                    <Zap className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>Powered by NOWPayments. Auto-confirms on-chain with instant library access.</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {checkoutError && (
               <div className="mt-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs">
@@ -534,21 +550,31 @@ export default function CartPage() {
               onClick={handleCheckout}
               disabled={isCheckingOut}
               className={`w-full mt-5 py-3.5 px-6 rounded-xl font-semibold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-50 ${
-                paymentMethod === "CRYPTO"
+                total <= 0.001
+                  ? "bg-emerald-700 hover:bg-emerald-800 text-white shadow-emerald-900/10"
+                  : paymentMethod === "CRYPTO"
                   ? "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white shadow-amber-900/10"
                   : "bg-brand-ink hover:bg-brand-900 text-white"
               }`}
             >
-              {paymentMethod === "CRYPTO" ? (
+              {total <= 0.001 ? (
+                <Sparkles className="w-4 h-4 text-emerald-200" />
+              ) : paymentMethod === "CRYPTO" ? (
                 <Coins className="w-4 h-4 text-amber-200" />
               ) : (
                 <Lock className="w-4 h-4 text-brand-300" />
               )}
               <span>
                 {isCheckingOut
-                  ? paymentMethod === "CRYPTO"
+                  ? total <= 0.001
+                    ? "Unlocking Free Book in Library..."
+                    : paymentMethod === "CRYPTO"
                     ? "Connecting to NOWPayments..."
                     : "Connecting to Secure Gateway..."
+                  : total <= 0.001
+                  ? isGift
+                    ? "Send Free Gift Instantly"
+                    : "Claim Free Book • Instant Access"
                   : isGift
                   ? paymentMethod === "CRYPTO"
                     ? "Pay Gift with Crypto (NOWPayments)"
