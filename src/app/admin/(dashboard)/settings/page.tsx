@@ -28,7 +28,7 @@ export default async function AdminSettingsPage() {
   const appUrl =
     dbSettings.NEXT_PUBLIC_APP_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
-    "https://noverailepublishing-tsukifi.vercel.app";
+    "https://noverailepublishing.com";
 
   const paystackWebhookUrl = `${appUrl}/api/checkout/paystack-webhook`;
   const nowpaymentsWebhookUrl = `${appUrl}/api/checkout/nowpayments-webhook`;

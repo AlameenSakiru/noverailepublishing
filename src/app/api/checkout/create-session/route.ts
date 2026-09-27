@@ -373,7 +373,7 @@ export async function POST(req: Request) {
     const appBaseUrl =
       (detectedOrigin && !detectedOrigin.includes("localhost"))
         ? detectedOrigin
-        : (process.env.NEXT_PUBLIC_APP_URL || "https://noverailepublishing-tsukifi.vercel.app");
+        : (process.env.NEXT_PUBLIC_APP_URL || "https://noverailepublishing.com");
 
     // Determine target payment provider
     const nowpaymentsCreds = await getResolvedNowPaymentsCredentials();

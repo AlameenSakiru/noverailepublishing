@@ -61,7 +61,7 @@ export async function GET() {
     const appUrl =
       dbSettings.NEXT_PUBLIC_APP_URL ||
       process.env.NEXT_PUBLIC_APP_URL ||
-      "https://noverailepublishing-tsukifi.vercel.app";
+      "https://noverailepublishing.com";
     const paystackWebhookUrl = `${appUrl}/api/checkout/paystack-webhook`;
     const stripeWebhookUrl = `${appUrl}/api/checkout/webhook`;
 

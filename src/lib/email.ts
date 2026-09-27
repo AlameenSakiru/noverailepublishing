@@ -330,7 +330,7 @@ export async function sendGiftDeliveryEmail(opts: GiftDeliveryEmailOptions) {
   const appUrl =
     (await getSettingValue("NEXT_PUBLIC_APP_URL", "")) ||
     process.env.NEXT_PUBLIC_APP_URL ||
-    "https://noverailepublishing-tsukifi.vercel.app";
+    "https://noverailepublishing.com";
   const libraryUrl = `${appUrl}/my-library`;
   const subject = `🎁 ${senderName} sent you a book gift on Noveraile Publishing: "${bookTitle}"`;
 
@@ -560,7 +560,7 @@ export async function sendOrderConfirmationEmail(opts: OrderConfirmationEmailOpt
   const appUrl =
     (await getSettingValue("NEXT_PUBLIC_APP_URL", "")) ||
     process.env.NEXT_PUBLIC_APP_URL ||
-    "https://noverailepublishing-tsukifi.vercel.app";
+    "https://noverailepublishing.com";
   const libraryUrl = `${appUrl}/my-library`;
 
   const isFree = totalAmount <= 0.001;
@@ -910,7 +910,7 @@ export async function sendBroadcastEmail(opts: BroadcastEmailOptions) {
   const appUrl =
     (await getSettingValue("NEXT_PUBLIC_APP_URL", "")) ||
     process.env.NEXT_PUBLIC_APP_URL ||
-    "https://noverailepublishing-tsukifi.vercel.app";
+    "https://noverailepublishing.com";
   const defaultCtaUrl = ctaUrl?.startsWith("http")
     ? ctaUrl
     : `${appUrl}${ctaUrl ? (ctaUrl.startsWith("/") ? ctaUrl : `/${ctaUrl}`) : ""}`;

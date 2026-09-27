@@ -26,7 +26,7 @@ async function main() {
     ["NOWPAYMENTS_API_KEY", "J3QQ9RV-R1P48DN-N4GPDTX-TEYTJVK"],
     ["NOWPAYMENTS_IPN_SECRET", "MpmWpV2v86ECJONO0KbM5mEsNZfeAMab"],
     ["NOWPAYMENTS_SANDBOX", "false"],
-    ["NEXT_PUBLIC_APP_URL", "https://noverailepublishing-tsukifi.vercel.app"],
+    ["NEXT_PUBLIC_APP_URL", "https://noverailepublishing.com"],
     ["NEXT_PUBLIC_SITE_NAME", "Noveraile Publishing"],
     ["NEXT_PUBLIC_SITE_DOMAIN", "noverailepublishing.com"],
     ["NEXT_PUBLIC_DEFAULT_CURRENCY", "USD"],

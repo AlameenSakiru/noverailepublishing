@@ -4,7 +4,7 @@
 export const siteConfig = {
   name: process.env.NEXT_PUBLIC_SITE_NAME || "Noveraile Publishing",
   domain: process.env.NEXT_PUBLIC_SITE_DOMAIN || "noverailepublishing.com",
-  url: process.env.NEXT_PUBLIC_APP_URL || "https://noverailepublishing-tsukifi.vercel.app",
+  url: process.env.NEXT_PUBLIC_APP_URL || "https://noverailepublishing.com",
   tagline: process.env.NEXT_PUBLIC_SITE_TAGLINE || "Books built for where you're going next.",
   subTagline: "Discover professionally developed digital books across exam preparation, fiction, travel, self-development, business and more. Purchase once and read securely from your personal Noveraile library.",
   examPrepTagline: "Prepare. Practice. Pass.",
