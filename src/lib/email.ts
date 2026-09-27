@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 import path from "path";
 import fs from "fs";
 import prisma from "./prisma";
@@ -40,6 +40,9 @@ function getEnvSetting(key: string, defaultValue: string = ""): string {
   return defaultValue;
 }
 
+let cachedTransporter: Transporter | null = null;
+let cachedHash: string = "";
+
 export async function getResolvedTransporter() {
   let smtpUser = "";
   let smtpPass = "";
@@ -62,21 +65,28 @@ export async function getResolvedTransporter() {
   }
 
   const isSecure = smtpPort === 465;
+  const currentHash = `${smtpHost}:${smtpPort}:${smtpUser}:${smtpPass}`;
 
-  const transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: isSecure,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-    tls: {
-      rejectUnauthorized: true,
-    },
-  });
+  if (!cachedTransporter || cachedHash !== currentHash) {
+    cachedTransporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: isSecure,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+      tls: {
+        rejectUnauthorized: true,
+      },
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 100,
+    });
+    cachedHash = currentHash;
+  }
 
-  return { transporter, fromAddress, smtpUser };
+  return { transporter: cachedTransporter, fromAddress, smtpUser };
 }
 
 export async function sendEmail({
@@ -445,25 +455,29 @@ export async function sendWelcomeEmail(toEmail: string, recipientName: string) {
  */
 export async function triggerWelcomeEmailOnce(userId: string, email: string, name: string) {
   try {
+    const cleanEmail = email.toLowerCase().trim();
     const existingLog = await prisma.auditLog.findFirst({
       where: {
-        userId,
         action: "WELCOME_EMAIL_SENT",
+        OR: [
+          ...(userId ? [{ userId }] : []),
+          { details: { contains: cleanEmail } },
+        ],
       },
     });
 
     if (existingLog) return { success: true, alreadySent: true };
 
-    const result = await sendWelcomeEmail(email, name);
+    const result = await sendWelcomeEmail(cleanEmail, name);
 
     if (result.success) {
       await prisma.auditLog.create({
         data: {
-          userId,
+          userId: userId || "SYSTEM",
           action: "WELCOME_EMAIL_SENT",
           entityType: "User",
-          entityId: userId,
-          details: JSON.stringify({ email, sentAt: new Date().toISOString() }),
+          entityId: userId || cleanEmail,
+          details: JSON.stringify({ email: cleanEmail, sentAt: new Date().toISOString() }),
         },
       });
     }

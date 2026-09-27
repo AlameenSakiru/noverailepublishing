@@ -99,10 +99,10 @@ export async function POST(req: Request) {
     // Dispatch official welcome email if not already sent
     try {
       const { triggerWelcomeEmailOnce } = await import("@/lib/email");
-      triggerWelcomeEmailOnce(updatedUser.id, cleanEmail, updatedUser.name).catch((err) =>
-        console.error("Welcome email async dispatch at verification error:", err)
-      );
-    } catch {}
+      await triggerWelcomeEmailOnce(updatedUser.id, cleanEmail, updatedUser.name);
+    } catch (welcomeErr) {
+      console.error("Welcome email dispatch at verification error:", welcomeErr);
+    }
 
     const sessionPayload = {
       userId: updatedUser.id,
