@@ -787,16 +787,16 @@ export function ReaderClient({
       className={`fixed inset-0 z-50 flex flex-col h-screen w-screen overflow-hidden ${themeClasses[theme]} select-none transition-colors duration-200`}
     >
       {/* Top Header Chrome / Toolbar */}
-      <header className="h-14 border-b border-inherit px-3 sm:px-5 flex items-center justify-between shrink-0 bg-inherit/90 backdrop-blur-md z-30">
+      <header className="h-14 border-b border-inherit px-2 sm:px-4 flex items-center justify-between shrink-0 bg-inherit/90 backdrop-blur-md z-30 gap-1.5 overflow-x-auto no-scrollbar">
         {/* Left Section: Back to Library & TOC & Notes */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <Link
             href="/my-library"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-xs font-semibold transition-colors"
+            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-xs font-semibold transition-colors"
             title="Return to My Library"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden md:inline">Library</span>
+            <span className="hidden sm:inline">Library</span>
           </Link>
 
           <span className="text-gray-300 dark:text-gray-700">|</span>
@@ -804,7 +804,7 @@ export function ReaderClient({
           {/* Table of Contents Drawer Toggle */}
           <button
             onClick={() => setTocOpen(!tocOpen)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               tocOpen
                 ? "bg-amber-500/20 text-amber-800 dark:text-amber-300 font-semibold"
                 : "hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
@@ -818,7 +818,7 @@ export function ReaderClient({
           {/* Study Scratchpad / Notepad Drawer Toggle */}
           <button
             onClick={() => setNotesOpen(!notesOpen)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors relative ${
+            className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors relative ${
               notesOpen
                 ? "bg-amber-500 text-gray-950 font-bold shadow-xs"
                 : "hover:bg-black/5 dark:hover:bg-white/5 text-amber-700 dark:text-amber-400 font-semibold"
@@ -826,15 +826,15 @@ export function ReaderClient({
             title="Open Exam Prep Study Notepad (N)"
           >
             <Edit3 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Study Notes</span>
+            <span className="hidden sm:inline">Notes</span>
             {studyNotes.trim().length > 0 && !notesOpen && (
               <span className="w-2 h-2 rounded-full bg-amber-500 absolute -top-0.5 -right-0.5 ring-2 ring-white dark:ring-gray-900" />
             )}
           </button>
         </div>
 
-        {/* Center: Publication Title & Module Label */}
-        <div className="text-center px-2 max-w-[200px] sm:max-w-xs md:max-w-md truncate">
+        {/* Center: Publication Title (Hidden on smaller screens so all buttons remain visible) */}
+        <div className="hidden xl:block text-center px-2 max-w-xs md:max-w-md truncate shrink">
           <h2 className="font-serif text-xs sm:text-sm font-bold truncate">
             {book.title}
           </h2>
@@ -843,11 +843,11 @@ export function ReaderClient({
           </p>
         </div>
 
-        {/* Right Section: Zoom, Layout, Bookmark, Themes, Fullscreen */}
-        <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
+        {/* Right Section: Zoom, Layout, Bookmark, Sound, Themes, Fullscreen */}
+        <div className="flex items-center gap-1 sm:gap-1.5 text-xs shrink-0">
           {/* Zoom Controls (Available on all screens) */}
           {viewMode === "pdf" && (
-            <div className="flex items-center gap-0.5 sm:gap-1 bg-black/5 dark:bg-white/5 rounded-lg p-0.5">
+            <div className="flex items-center gap-0.5 bg-black/5 dark:bg-white/5 rounded-lg p-0.5">
               <button
                 onClick={() => setZoomLevel((z) => Math.max(50, z - 15))}
                 className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 opacity-70 hover:opacity-100"
@@ -866,9 +866,9 @@ export function ReaderClient({
             </div>
           )}
 
-          {/* Layout Mode Selector: Single Page | Continuous Scroll | Two-Page Spread */}
+          {/* Layout Mode Selector: Single Page | Continuous Scroll */}
           {viewMode === "pdf" && (
-            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 rounded-xl p-1 border border-black/5 dark:border-white/5">
+            <div className="flex items-center gap-0.5 bg-black/5 dark:bg-white/5 rounded-lg p-0.5 border border-black/5 dark:border-white/5">
               <button
                 onClick={() => {
                   setLayoutMode("single");
@@ -876,7 +876,7 @@ export function ReaderClient({
                     localStorage.setItem("noveraile_reader_layout", "single");
                   } catch {}
                 }}
-                className={`px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                className={`px-1.5 sm:px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1 transition-all ${
                   layoutMode === "single"
                     ? "bg-amber-500 text-gray-950 font-bold shadow-xs"
                     : "opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5"
@@ -884,7 +884,7 @@ export function ReaderClient({
                 title="Single Page Book View"
               >
                 <Square className="w-3.5 h-3.5" />
-                <span className="hidden xl:inline text-[11px]">Page</span>
+                <span className="hidden md:inline text-[11px]">Page</span>
               </button>
 
               <button
@@ -894,7 +894,7 @@ export function ReaderClient({
                     localStorage.setItem("noveraile_reader_layout", "scroll");
                   } catch {}
                 }}
-                className={`px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                className={`px-1.5 sm:px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1 transition-all ${
                   layoutMode === "scroll"
                     ? "bg-amber-500 text-gray-950 font-bold shadow-xs"
                     : "opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5"
@@ -902,7 +902,7 @@ export function ReaderClient({
                 title="Continuous Vertical Scroll"
               >
                 <Rows className="w-3.5 h-3.5" />
-                <span className="hidden xl:inline text-[11px]">Scroll</span>
+                <span className="hidden md:inline text-[11px]">Scroll</span>
               </button>
 
               <button
@@ -912,7 +912,7 @@ export function ReaderClient({
                     localStorage.setItem("noveraile_reader_layout", "spread");
                   } catch {}
                 }}
-                className={`hidden lg:inline-flex px-2 py-1 rounded-lg text-xs font-semibold items-center gap-1.5 transition-all ${
+                className={`hidden lg:inline-flex px-2 py-1 rounded-md text-xs font-semibold items-center gap-1 transition-all ${
                   layoutMode === "spread"
                     ? "bg-amber-500 text-gray-950 font-bold shadow-xs"
                     : "opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5"
@@ -961,8 +961,8 @@ export function ReaderClient({
             {flipSound ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
 
-          {/* Theme Toggles */}
-          <div className="hidden sm:flex items-center gap-0.5 bg-black/5 dark:bg-white/5 rounded-lg p-0.5">
+          {/* Theme Toggles (Light / Sepia / Dark) - Visible on Mobile & Desktop */}
+          <div className="flex items-center gap-0.5 bg-black/5 dark:bg-white/5 rounded-lg p-0.5">
             <button
               onClick={() => setTheme("light")}
               className={`p-1 rounded-md ${theme === "light" ? "bg-white text-gray-900 shadow-xs" : "opacity-60"}`}
@@ -973,7 +973,7 @@ export function ReaderClient({
             <button
               onClick={() => setTheme("sepia")}
               className={`p-1 rounded-md ${theme === "sepia" ? "bg-[#e5dacf] text-stone-900 shadow-xs" : "opacity-60"}`}
-              title="Warm Sepia (Reduces eye fatigue for exam prep)"
+              title="Warm Sepia"
             >
               <Coffee className="w-3.5 h-3.5" />
             </button>
@@ -1216,26 +1216,26 @@ export function ReaderClient({
               ) : (
                 /* PDF Canvas Container: Handles single page or two-page spread with 3D Page Flip */
                 <div className="relative w-full flex items-center justify-center py-2 book-stage-perspective">
-                  {/* Floating Left Page Turn Arrow (Tablet & Desktop) */}
+                  {/* Floating Left Page Turn Arrow (Mobile & Desktop) */}
                   <button
                     onClick={handlePrevPage}
                     disabled={currentPage <= 1}
                     aria-label="Previous Page (Flip Left)"
-                    className="hidden sm:flex absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
+                    className="flex absolute left-1 sm:left-2 md:left-4 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
                     title="Previous Page (Flip Left • Arrow Left)"
                   >
-                    <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:-translate-x-0.5" />
+                    <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 transition-transform group-hover:-translate-x-0.5" />
                   </button>
 
-                  {/* Floating Right Page Turn Arrow (Tablet & Desktop) */}
+                  {/* Floating Right Page Turn Arrow (Mobile & Desktop) */}
                   <button
                     onClick={handleNextPage}
                     disabled={currentPage >= totalPages}
                     aria-label="Next Page (Flip Right)"
-                    className="hidden sm:flex absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
+                    className="flex absolute right-1 sm:right-2 md:right-4 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
                     title="Next Page (Flip Right • Arrow Right)"
                   >
-                    <ChevronRight className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:translate-x-0.5" />
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 transition-transform group-hover:translate-x-0.5" />
                   </button>
 
                   {/* Pages Spread Container */}
@@ -1310,26 +1310,26 @@ export function ReaderClient({
           ) : (
             /* =================== FORMATTED ADAPTIVE TEXT RENDERER =================== */
             <div className="relative max-w-3xl w-full min-h-[75vh] flex flex-col justify-between py-6 book-stage-perspective">
-              {/* Floating Left Page Turn Arrow (Tablet & Desktop) */}
+              {/* Floating Left Page Turn Arrow (Mobile & Desktop) */}
               <button
                 onClick={handlePrevPage}
                 disabled={currentPage <= 1}
                 aria-label="Previous Page (Flip Left)"
-                className="hidden sm:flex absolute -left-6 md:-left-12 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
+                className="flex absolute left-1 sm:-left-6 md:-left-12 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
                 title="Previous Page (Flip Left • Arrow Left)"
               >
-                <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:-translate-x-0.5" />
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 transition-transform group-hover:-translate-x-0.5" />
               </button>
 
-              {/* Floating Right Page Turn Arrow (Tablet & Desktop) */}
+              {/* Floating Right Page Turn Arrow (Mobile & Desktop) */}
               <button
                 onClick={handleNextPage}
                 disabled={currentPage >= totalPages}
                 aria-label="Next Page (Flip Right)"
-                className="hidden sm:flex absolute -right-6 md:-right-12 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
+                className="flex absolute right-1 sm:-right-6 md:-right-12 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
                 title="Next Page (Flip Right • Arrow Right)"
               >
-                <ChevronRight className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               {/* Top-Right Dog-Ear Corner Curl for quick page turn */}
@@ -1495,19 +1495,19 @@ export function ReaderClient({
       </div>
 
       {/* Bottom Reader Control Bar */}
-      <footer className="h-14 border-t border-inherit px-3 sm:px-6 flex items-center justify-between shrink-0 bg-inherit/90 backdrop-blur-md z-30 text-xs">
+      <footer className="h-14 border-t border-inherit px-2 sm:px-6 flex items-center justify-between shrink-0 bg-inherit/90 backdrop-blur-md z-30 text-xs gap-2">
         {/* Previous Page Button */}
         <button
           onClick={handlePrevPage}
           disabled={currentPage <= 1}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 font-semibold disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 font-semibold disabled:opacity-30 disabled:cursor-not-allowed transition-all shrink-0"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span className="hidden sm:inline">Previous</span>
+          <span>Prev</span>
         </button>
 
         {/* Center: Scrubber Slider & Direct Page Jump Input */}
-        <div className="flex items-center gap-3 max-w-sm sm:max-w-md w-full justify-center px-2">
+        <div className="flex items-center gap-2 max-w-sm sm:max-w-md w-full justify-center px-1">
           {/* Interactive Range Scrubber */}
           <input
             type="range"
@@ -1515,19 +1515,19 @@ export function ReaderClient({
             max={totalPages}
             value={currentPage}
             onChange={(e) => goToPage(parseInt(e.target.value, 10))}
-            className="w-24 sm:w-48 md:w-64 h-1.5 bg-black/10 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+            className="flex-1 max-w-[130px] sm:max-w-[240px] h-1.5 bg-black/10 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
             title="Drag to Scrub Pages"
           />
 
           {/* Jump-to-Page Input */}
-          <form onSubmit={handleJumpSubmit} className="flex items-center gap-1">
+          <form onSubmit={handleJumpSubmit} className="flex items-center gap-1 shrink-0">
             <span className="text-[10px] font-mono opacity-60">Pg</span>
             <input
               type="text"
               value={pageJumpInput}
               onChange={(e) => setPageJumpInput(e.target.value)}
               onBlur={() => setPageJumpInput(currentPage.toString())}
-              className="w-11 px-1.5 py-1 text-center font-mono text-xs rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-10 px-1 py-0.5 text-center font-mono text-xs rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-1 focus:ring-amber-500"
             />
             <span className="text-[10px] font-mono opacity-60">/ {totalPages}</span>
           </form>
@@ -1537,9 +1537,9 @@ export function ReaderClient({
         <button
           onClick={handleNextPage}
           disabled={currentPage >= totalPages}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold disabled:opacity-30 disabled:cursor-not-allowed shadow-xs transition-all"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold disabled:opacity-30 disabled:cursor-not-allowed shadow-xs transition-all shrink-0"
         >
-          <span className="hidden sm:inline">Next</span>
+          <span>Next</span>
           <ChevronRight className="w-4 h-4" />
         </button>
       </footer>
