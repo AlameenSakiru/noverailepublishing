@@ -49,6 +49,14 @@ export function SuccessClient({
   const [isCancelling, setIsCancelling] = useState(false);
   const [pollCount, setPollCount] = useState(0);
 
+  // 12-Minute Expiration Window (720 seconds)
+  const EXPIRATION_TOTAL_SECONDS = 12 * 60;
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(() => {
+    const created = new Date(initialOrder?.createdAt || Date.now()).getTime();
+    const elapsedSeconds = Math.floor((Date.now() - created) / 1000);
+    return Math.max(0, EXPIRATION_TOTAL_SECONDS - elapsedSeconds);
+  });
+
   const isGift = Boolean(order.isGift && order.recipientEmail);
   const isCrypto =
     provider === "nowpayments" ||
@@ -64,6 +72,30 @@ export function SuccessClient({
       }
     }
   }, [paymentStatus, itemCount, clearCart]);
+
+  // 12-Minute Countdown Timer with Automatic Cancellation
+  useEffect(() => {
+    if (paymentStatus !== "PENDING") return;
+
+    const timer = setInterval(() => {
+      setRemainingSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          // Automatically trigger server-side cancellation on expiration
+          fetch("/api/checkout/cancel-order", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderNumber: order.orderNumber }),
+          }).catch(() => {});
+          setPaymentStatus("CANCELLED");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [paymentStatus, order.orderNumber]);
 
   // Attempt to claim user session if order is confirmed paid
   useEffect(() => {
@@ -101,6 +133,9 @@ export function SuccessClient({
         const data = await res.json();
         if (res.ok && data.success && data.order) {
           setOrder((prev: any) => ({ ...prev, ...data.order }));
+          if (typeof data.order.expiresInSeconds === "number") {
+            setRemainingSeconds(data.order.expiresInSeconds);
+          }
           if (data.order.paymentStatus !== "PENDING") {
             setPaymentStatus(data.order.paymentStatus);
           }
@@ -111,6 +146,15 @@ export function SuccessClient({
 
     return () => clearInterval(interval);
   }, [paymentStatus, order.orderNumber]);
+
+  // Format MM:SS for countdown
+  const formatCountdown = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const progressPercent = Math.min(100, Math.max(0, (remainingSeconds / EXPIRATION_TOTAL_SECONDS) * 100));
 
   // Manual status check trigger
   const handleManualStatusCheck = async () => {
@@ -218,8 +262,8 @@ export function SuccessClient({
             : "We are confirming your payment with the processing gateway. Your titles will unlock immediately once confirmed."}
         </p>
 
-        {/* Real-time Status Card */}
-        <div className="mt-7 max-w-md mx-auto p-5 rounded-2xl bg-amber-50/80 border border-amber-200 text-left space-y-3">
+        {/* Real-time Status Card with 12-Minute Expiration Countdown */}
+        <div className="mt-7 max-w-md mx-auto p-5 rounded-2xl bg-amber-50/90 border border-amber-200 text-left space-y-3.5 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-amber-950 flex items-center gap-1.5">
               <Coins className="w-4 h-4 text-amber-600" />
@@ -228,6 +272,29 @@ export function SuccessClient({
             <span className="text-[11px] font-semibold text-amber-800 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
               Live Polling
+            </span>
+          </div>
+
+          {/* 12-Minute Countdown Timer & Progress */}
+          <div className="p-3 rounded-xl bg-amber-100/60 border border-amber-200/90 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-amber-950 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
+                <span>Auto-Cancels In:</span>
+              </span>
+              <span className="font-mono font-bold text-xs text-amber-950 bg-amber-200/80 px-2.5 py-0.5 rounded-md border border-amber-300">
+                {formatCountdown(remainingSeconds)}
+              </span>
+            </div>
+
+            <div className="w-full h-1.5 bg-amber-200/80 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 to-amber-600 transition-all duration-1000 ease-linear rounded-full"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-amber-800/80 block leading-tight">
+              Order automatically cancels if unconfirmed after 12 minutes to protect crypto rates.
             </span>
           </div>
 

@@ -254,8 +254,9 @@ export async function POST(req: Request) {
       if (order.paymentStatus === "PENDING") {
         await prisma.order.update({
           where: { id: order.id },
-          data: { paymentStatus: "FAILED" },
+          data: { paymentStatus: "CANCELLED" },
         });
+        console.log(`⏱️ NOWPayments order ${order.orderNumber} automatically marked as CANCELLED (${payment_status}).`);
       }
     }
 
