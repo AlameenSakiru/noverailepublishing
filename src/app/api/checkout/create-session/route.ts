@@ -7,7 +7,7 @@ import { isPaystackConfigured, initializePaystackTransaction, getResolvedPaystac
 import { isNowPaymentsConfigured, createNowPaymentsInvoice, getResolvedNowPaymentsCredentials } from "@/lib/nowpayments";
 import { siteConfig } from "@/lib/config";
 import { checkRateLimit, getClientIp } from "@/lib/security";
-import { sendGiftDeliveryEmail } from "@/lib/email";
+import { sendGiftDeliveryEmail, sendOrderConfirmationEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -315,6 +315,30 @@ export async function POST(req: Request) {
           }).catch((err) => console.error("Free gift email dispatch error:", err));
         }
       }
+
+      // Dispatch Order Confirmation Email to the customer
+      sendOrderConfirmationEmail({
+        customerEmail: cleanEmail,
+        customerName: cleanSenderName || cleanEmail.split("@")[0],
+        orderNumber: order.orderNumber,
+        orderDate: order.createdAt,
+        items: order.items.map((i) => ({
+          title: i.book?.title || i.bookTitle || "Digital Publication",
+          author: i.book?.author?.name || undefined,
+          price: i.price,
+          coverImage: i.book?.coverImage || undefined,
+          slug: i.book?.slug || undefined,
+        })),
+        subtotal: order.subtotal,
+        discountAmount: order.discountAmount,
+        totalAmount: order.totalAmount,
+        currency: defaultCurrency,
+        paymentProvider: "FREE_CLAIM",
+        isGift: cleanIsGift,
+        recipientName: cleanRecipientName || undefined,
+        recipientEmail: cleanRecipientEmail || undefined,
+        giftMessage: cleanGiftMessage || undefined,
+      }).catch((err) => console.error("Free order confirmation email error:", err));
 
       const response = NextResponse.json({
         checkoutUrl: `/checkout/success?orderNumber=${order.orderNumber}&provider=free`,
@@ -740,6 +764,30 @@ export async function POST(req: Request) {
         }
       })
     );
+
+    // Dispatch Order Confirmation Email to the customer
+    sendOrderConfirmationEmail({
+      customerEmail: cleanEmail,
+      customerName: user.name || cleanSenderName || cleanEmail.split("@")[0],
+      orderNumber: order.orderNumber,
+      orderDate: order.createdAt,
+      items: dbBooks.map((b) => ({
+        title: b.title,
+        author: b.author?.name || undefined,
+        price: b.salePrice != null && b.salePrice > 0 ? b.salePrice : b.price,
+        coverImage: b.coverImage || undefined,
+        slug: b.slug,
+      })),
+      subtotal,
+      discountAmount,
+      totalAmount,
+      currency: defaultCurrency,
+      paymentProvider: "SANDBOX",
+      isGift: cleanIsGift,
+      recipientName: cleanRecipientName || undefined,
+      recipientEmail: cleanRecipientEmail || undefined,
+      giftMessage: cleanGiftMessage || undefined,
+    }).catch((err) => console.error("Sandbox order confirmation email error:", err));
 
     const response = NextResponse.json({
       checkoutUrl: `/checkout/success?orderNumber=${order.orderNumber}`,

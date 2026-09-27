@@ -191,6 +191,31 @@ export async function POST(req: Request) {
               }).catch((err) => console.error("Claim session gift email error:", err));
             }
           }
+
+          // Dispatch Order Confirmation Email to the customer
+          const { sendOrderConfirmationEmail } = await import("@/lib/email");
+          sendOrderConfirmationEmail({
+            customerEmail: order.customerEmail,
+            customerName: user.name || order.customerEmail.split("@")[0],
+            orderNumber: order.orderNumber,
+            orderDate: order.createdAt,
+            items: order.items.map((i) => ({
+              title: i.book?.title || i.bookTitle || "Digital Book",
+              author: i.book?.author?.name || undefined,
+              price: i.price,
+              coverImage: i.book?.coverImage || undefined,
+              slug: i.book?.slug || undefined,
+            })),
+            subtotal: order.subtotal,
+            discountAmount: order.discountAmount,
+            totalAmount: order.totalAmount,
+            currency: order.currency,
+            paymentProvider: "PAYSTACK",
+            isGift,
+            recipientName: order.recipientName || undefined,
+            recipientEmail: order.recipientEmail || undefined,
+            giftMessage: order.giftMessage || undefined,
+          }).catch((err) => console.error("Claim session order confirmation email error:", err));
         }
       }
     }

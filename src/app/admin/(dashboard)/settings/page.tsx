@@ -97,11 +97,11 @@ export default async function AdminSettingsPage() {
         process.env.ALLOW_SANDBOX_CHECKOUT === "true" || (!paystackCreds.isConfigured && !stripeSecretKey.trim() && !nowpaymentsCreds.isConfigured),
     },
     email: {
-      smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
-      smtpPort: Number(process.env.SMTP_PORT) || 465,
-      smtpUser: process.env.SMTP_USER || "noverailepublishing@gmail.com",
-      emailFrom: process.env.EMAIL_FROM || "Noveraile Publishing <noverailepublishing@gmail.com>",
-      isSmtpConfigured: Boolean(process.env.SMTP_PASS),
+      smtpHost: dbSettings.SMTP_HOST || process.env.SMTP_HOST || "smtp.gmail.com",
+      smtpPort: Number(dbSettings.SMTP_PORT || process.env.SMTP_PORT) || 465,
+      smtpUser: dbSettings.SMTP_USER || process.env.SMTP_USER || "noverailepublishing@gmail.com",
+      emailFrom: dbSettings.EMAIL_FROM || process.env.EMAIL_FROM || "Noveraile Publishing <noverailepublishing@gmail.com>",
+      isSmtpConfigured: Boolean(dbSettings.SMTP_PASS || process.env.SMTP_PASS),
       twoFactorAuthEnabled: true,
     },
     stats: {

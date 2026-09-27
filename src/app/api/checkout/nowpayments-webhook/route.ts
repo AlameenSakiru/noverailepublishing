@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { verifyNowPaymentsIpnSignature } from "@/lib/nowpayments";
-import { sendGiftDeliveryEmail } from "@/lib/email";
+import { sendGiftDeliveryEmail, sendOrderConfirmationEmail } from "@/lib/email";
 import { hashPassword } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -221,6 +221,32 @@ export async function POST(req: Request) {
             }
           })
         );
+
+        // Dispatch Order Confirmation Email to the customer
+        sendOrderConfirmationEmail({
+          customerEmail: order.customerEmail,
+          customerName: order.user?.name || order.customerEmail.split("@")[0],
+          orderNumber: order.orderNumber,
+          orderDate: order.createdAt,
+          items: order.items.map((i) => ({
+            title: i.book?.title || i.bookTitle || "Digital Book",
+            author: i.book?.author?.name || undefined,
+            price: i.price,
+            coverImage: i.book?.coverImage || undefined,
+            slug: i.book?.slug || undefined,
+          })),
+          subtotal: order.subtotal,
+          discountAmount: order.discountAmount,
+          totalAmount: order.totalAmount,
+          currency: order.currency,
+          paymentProvider: "NOWPAYMENTS",
+          cryptoCurrency: cryptoCurrencyName,
+          cryptoAmount: cryptoAmountNum,
+          isGift: order.isGift,
+          recipientName: order.recipientName || undefined,
+          recipientEmail: order.recipientEmail || undefined,
+          giftMessage: order.giftMessage || undefined,
+        }).catch((err) => console.error("NOWPayments order confirmation email error:", err));
       }
 
       console.log(`✅ NOWPayments order ${order.orderNumber} successfully fulfilled & entitlements granted.`);

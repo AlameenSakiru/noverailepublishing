@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import path from "path";
 import fs from "fs";
+import { getSettingValue } from "./settings";
 
 export interface SendEmailOptions {
   to: string;
@@ -33,21 +34,38 @@ function getEnvSetting(key: string, defaultValue: string = ""): string {
       }
     }
   } catch (e) {
-    console.warn(`Could not read fallback ${key} from .env:`, e);
+    // Read fallback silent
   }
   return defaultValue;
 }
 
-function getTransporter() {
-  const smtpUser = getEnvSetting("SMTP_USER", "noverailepublishing@gmail.com");
-  const smtpPass = getEnvSetting("SMTP_PASS", "mgmjwrldkpfnyagg").replace(/\s+/g, "");
-  const smtpHost = getEnvSetting("SMTP_HOST", "smtp.gmail.com");
-  const smtpPort = Number(getEnvSetting("SMTP_PORT", "465")) || 465;
+export async function getResolvedTransporter() {
+  let smtpUser = "";
+  let smtpPass = "";
+  let smtpHost = "";
+  let smtpPort = 465;
+  let fromAddress = "";
+
+  try {
+    smtpUser = await getSettingValue("SMTP_USER", getEnvSetting("SMTP_USER", "noverailepublishing@gmail.com"));
+    smtpPass = (await getSettingValue("SMTP_PASS", getEnvSetting("SMTP_PASS", "mgmjwrldkpfnyagg"))).replace(/\s+/g, "");
+    smtpHost = await getSettingValue("SMTP_HOST", getEnvSetting("SMTP_HOST", "smtp.gmail.com"));
+    smtpPort = Number(await getSettingValue("SMTP_PORT", getEnvSetting("SMTP_PORT", "465"))) || 465;
+    fromAddress = await getSettingValue("EMAIL_FROM", getEnvSetting("EMAIL_FROM", `"Noveraile Publishing" <${smtpUser}>`));
+  } catch {
+    smtpUser = getEnvSetting("SMTP_USER", "noverailepublishing@gmail.com");
+    smtpPass = getEnvSetting("SMTP_PASS", "mgmjwrldkpfnyagg").replace(/\s+/g, "");
+    smtpHost = getEnvSetting("SMTP_HOST", "smtp.gmail.com");
+    smtpPort = Number(getEnvSetting("SMTP_PORT", "465")) || 465;
+    fromAddress = getEnvSetting("EMAIL_FROM", `"Noveraile Publishing" <${smtpUser}>`);
+  }
+
+  const isSecure = smtpPort === 465;
 
   const transporter = nodemailer.createTransport({
     host: smtpHost,
     port: smtpPort,
-    secure: true,
+    secure: isSecure,
     auth: {
       user: smtpUser,
       pass: smtpPass,
@@ -56,9 +74,6 @@ function getTransporter() {
       rejectUnauthorized: true,
     },
   });
-
-  const fromAddress =
-    getEnvSetting("EMAIL_FROM", `"Noveraile Publishing" <${smtpUser}>`);
 
   return { transporter, fromAddress, smtpUser };
 }
@@ -71,7 +86,7 @@ export async function sendEmail({
   attachments,
 }: SendEmailOptions): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
-    const { transporter, fromAddress, smtpUser } = getTransporter();
+    const { transporter, fromAddress, smtpUser } = await getResolvedTransporter();
 
     const info = await transporter.sendMail({
       from: fromAddress,
@@ -82,7 +97,7 @@ export async function sendEmail({
       text: text || html.replace(/<[^>]*>?/gm, "").trim(),
       attachments,
       headers: {
-        "X-Mailer": "Noveraile Security Mailer",
+        "X-Mailer": "Noveraile Platform Mailer",
         "X-Priority": "1 (Highest)",
         "Importance": "high",
         "List-Unsubscribe": `<mailto:${smtpUser}?subject=unsubscribe>`,
@@ -312,7 +327,10 @@ export async function sendGiftDeliveryEmail(opts: GiftDeliveryEmailOptions) {
     bookCoverUrl,
   } = opts;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://noverailepublishing.com";
+  const appUrl =
+    (await getSettingValue("NEXT_PUBLIC_APP_URL", "")) ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://noverailepublishing-tsukifi.vercel.app";
   const libraryUrl = `${appUrl}/my-library`;
   const subject = `🎁 ${senderName} sent you a book gift on Noveraile Publishing: "${bookTitle}"`;
 
@@ -492,14 +510,374 @@ export async function sendGiftDeliveryEmail(opts: GiftDeliveryEmailOptions) {
   });
 }
 
+export interface OrderItemSummary {
+  title: string;
+  author?: string;
+  price: number;
+  coverImage?: string;
+  slug?: string;
+}
 
+export interface OrderConfirmationEmailOptions {
+  customerEmail: string;
+  customerName?: string;
+  orderNumber: string;
+  orderDate?: Date | string;
+  items: OrderItemSummary[];
+  subtotal: number;
+  discountAmount?: number;
+  totalAmount: number;
+  currency?: string;
+  paymentProvider?: string; // "NOWPAYMENTS" | "PAYSTACK" | "STRIPE" | "FREE_CLAIM" | "SANDBOX"
+  cryptoCurrency?: string;
+  cryptoAmount?: number;
+  isGift?: boolean;
+  recipientName?: string;
+  recipientEmail?: string;
+  giftMessage?: string;
+}
+
+export async function sendOrderConfirmationEmail(opts: OrderConfirmationEmailOptions) {
+  const {
+    customerEmail,
+    customerName,
+    orderNumber,
+    orderDate = new Date(),
+    items = [],
+    subtotal = 0,
+    discountAmount = 0,
+    totalAmount = 0,
+    currency = "USD",
+    paymentProvider = "ONLINE",
+    cryptoCurrency,
+    cryptoAmount,
+    isGift = false,
+    recipientName,
+    recipientEmail,
+    giftMessage,
+  } = opts;
+
+  const appUrl =
+    (await getSettingValue("NEXT_PUBLIC_APP_URL", "")) ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://noverailepublishing-tsukifi.vercel.app";
+  const libraryUrl = `${appUrl}/my-library`;
+
+  const isFree = totalAmount <= 0.001;
+  const greetingName = customerName || customerEmail.split("@")[0];
+  const formattedDate =
+    typeof orderDate === "string"
+      ? orderDate
+      : new Intl.DateTimeFormat("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }).format(orderDate);
+
+  // Determine provider label
+  let paymentMethodLabel = "Credit / Debit Card";
+  if (isFree) {
+    paymentMethodLabel = "Complimentary Free Claim ($0.00)";
+  } else if (paymentProvider === "NOWPAYMENTS" || paymentProvider === "CRYPTO") {
+    paymentMethodLabel = cryptoCurrency
+      ? `Cryptocurrency (${cryptoCurrency.toUpperCase()}${cryptoAmount ? ` - ${cryptoAmount}` : ""})`
+      : "Cryptocurrency (NOWPayments)";
+  } else if (paymentProvider === "PAYSTACK") {
+    paymentMethodLabel = "Paystack Secure Payment";
+  } else if (paymentProvider === "STRIPE") {
+    paymentMethodLabel = "Stripe Secure Card";
+  }
+
+  const subject = isFree
+    ? `🎉 Your Free Books Are Ready! (Order #${orderNumber})`
+    : isGift
+    ? `🎁 Order Confirmed: Your Book Gift is on its way! (#${orderNumber})`
+    : `📖 Order Confirmed: Your Noveraile Library is Ready! (#${orderNumber})`;
+
+  const emailAttachments: Array<{
+    filename: string;
+    path?: string;
+    content?: Buffer | string;
+    cid?: string;
+    contentType?: string;
+  }> = [];
+
+  // Generate HTML for book items
+  const itemsHtml = items
+    .map((item, idx) => {
+      let coverSrc = "";
+      if (item.coverImage) {
+        const cleanCover = item.coverImage.replace(/^\//, "");
+        const localFilePath = path.join(process.cwd(), "public", cleanCover);
+
+        if (fs.existsSync(localFilePath)) {
+          const ext = path.extname(localFilePath).toLowerCase().slice(1) || "jpeg";
+          const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "png" ? "image/png" : "image/webp";
+          const cidName = `book_cover_${idx}_${Date.now()}@noveraile`;
+
+          emailAttachments.push({
+            filename: path.basename(localFilePath),
+            path: localFilePath,
+            cid: cidName,
+            contentType: mimeType,
+          });
+
+          coverSrc = `cid:${cidName}`;
+        } else if (item.coverImage.startsWith("http")) {
+          coverSrc = item.coverImage;
+        } else {
+          coverSrc = `${appUrl}/${cleanCover}`;
+        }
+      }
+
+      const itemPriceText = item.price <= 0 ? "FREE" : `$${item.price.toFixed(2)} ${currency}`;
+      const itemReadUrl = item.slug ? `${appUrl}/reader/${item.slug}` : libraryUrl;
+
+      return `
+        <tr>
+          <td style="padding: 16px 0; border-bottom: 1px solid #f1f5f9;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+              <tr>
+                ${
+                  coverSrc
+                    ? `<td width="70" valign="top" style="padding-right: 16px;">
+                        <img src="${coverSrc}" alt="${item.title}" width="65" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.06); display: block; max-width: 65px;" />
+                      </td>`
+                    : ""
+                }
+                <td valign="middle">
+                  <div style="font-family: Georgia, serif; font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
+                    ${item.title}
+                  </div>
+                  ${
+                    item.author
+                      ? `<div style="font-size: 13px; color: #64748b; margin-bottom: 6px; font-style: italic;">By ${item.author}</div>`
+                      : ""
+                  }
+                  <a href="${itemReadUrl}" target="_blank" style="display: inline-block; font-size: 12px; font-weight: 700; color: #b45309; text-decoration: none;">
+                    Read in Web Reader &rarr;
+                  </a>
+                </td>
+                <td width="90" align="right" valign="middle" style="font-size: 14px; font-weight: 800; color: #0f172a;">
+                  ${itemPriceText}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 15px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+          
+          <!-- Top Gold Accent Line -->
+          <tr>
+            <td style="height: 4px; background: linear-gradient(90deg, #b45309 0%, #f59e0b 50%, #b45309 100%);"></td>
+          </tr>
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="padding: 36px 36px 24px 36px; border-bottom: 1px solid #f1f5f9; background: #ffffff;">
+              <div style="font-family: Georgia, serif; font-size: 22px; font-weight: 800; letter-spacing: 0.15em; color: #0f172a;">
+                NOVERAILE
+              </div>
+              <div style="font-size: 9px; letter-spacing: 0.35em; color: #64748b; text-transform: uppercase; margin-top: 2px;">
+                PUBLISHING
+              </div>
+            </td>
+          </tr>
+
+          <!-- Content Body -->
+          <tr>
+            <td style="padding: 36px 36px 28px 36px;">
+              <!-- Status Badge -->
+              <div style="margin-bottom: 16px;">
+                <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; color: #166534; background: #dcfce7; border: 1px solid #bbf7d0; padding: 5px 14px; border-radius: 20px; display: inline-block;">
+                  ✓ ${isFree ? "Free Claim Confirmed" : "Order Confirmed & Paid"}
+                </span>
+              </div>
+
+              <h1 style="font-family: Georgia, serif; font-size: 24px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0; line-height: 1.3;">
+                ${isGift ? "Your gift order is on its way!" : "Your digital library has been unlocked!"}
+              </h1>
+
+              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
+                Dear <strong>${greetingName}</strong>,<br><br>
+                ${
+                  isGift
+                    ? `Thank you for your generous gift order! We have dispatched a separate digital delivery email to <strong>${recipientName || recipientEmail}</strong> (${recipientEmail}) with immediate access to read their new books.`
+                    : `Thank you for choosing Noveraile Publishing. Your publications are permanently unlocked in your personal cloud library and ready to read across any desktop, tablet, or mobile device.`
+                }
+              </p>
+
+              <!-- Order Summary Meta Card -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 20px 0 28px 0; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
+                <tr>
+                  <td width="50%" valign="top" style="padding-bottom: 8px;">
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94a3b8; display: block; letter-spacing: 0.05em;">Order Number</span>
+                    <span style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 800; color: #0f172a;">${orderNumber}</span>
+                  </td>
+                  <td width="50%" valign="top" style="padding-bottom: 8px;" align="right">
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94a3b8; display: block; letter-spacing: 0.05em;">Order Date</span>
+                    <span style="font-size: 13px; font-weight: 700; color: #0f172a;">${formattedDate}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td width="50%" valign="top" style="padding-top: 8px; border-top: 1px dashed #e2e8f0;">
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94a3b8; display: block; letter-spacing: 0.05em;">Payment Method</span>
+                    <span style="font-size: 13px; font-weight: 700; color: #0f172a;">${paymentMethodLabel}</span>
+                  </td>
+                  <td width="50%" valign="top" style="padding-top: 8px; border-top: 1px dashed #e2e8f0;" align="right">
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94a3b8; display: block; letter-spacing: 0.05em;">Account</span>
+                    <span style="font-size: 13px; font-weight: 700; color: #0f172a;">${customerEmail}</span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Gift Card Info (if gift) -->
+              ${
+                isGift && recipientEmail
+                  ? `
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 28px 0;">
+                <tr>
+                  <td style="background-color: #fdfaf6; border: 2px dashed #f59e0b; border-radius: 16px; padding: 18px 20px;">
+                    <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #b45309; display: block; margin-bottom: 4px;">
+                      🎁 Gift Details
+                    </span>
+                    <div style="font-size: 13px; color: #334155; line-height: 1.5;">
+                      Sent To: <strong>${recipientName || recipientEmail}</strong> (${recipientEmail})<br>
+                      ${giftMessage ? `Note: <em>&ldquo;${giftMessage}&rdquo;</em>` : ""}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+              `
+                  : ""
+              }
+
+              <!-- Items Table -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 20px 0;">
+                <thead>
+                  <tr>
+                    <th align="left" style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
+                      Purchased Publication(s)
+                    </th>
+                    <th align="right" style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
+                      Price
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${itemsHtml}
+                </tbody>
+              </table>
+
+              <!-- Totals Breakdown Table -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 16px 0 28px 0;">
+                <tr>
+                  <td style="padding: 6px 0; font-size: 13px; color: #64748b;">Subtotal:</td>
+                  <td align="right" style="padding: 6px 0; font-size: 13px; font-weight: 700; color: #0f172a;">
+                    ${subtotal <= 0 ? "FREE" : `$${subtotal.toFixed(2)} ${currency}`}
+                  </td>
+                </tr>
+                ${
+                  discountAmount > 0
+                    ? `
+                <tr>
+                  <td style="padding: 6px 0; font-size: 13px; color: #16a34a;">Voucher Discount:</td>
+                  <td align="right" style="padding: 6px 0; font-size: 13px; font-weight: 700; color: #16a34a;">
+                    -$${discountAmount.toFixed(2)} ${currency}
+                  </td>
+                </tr>
+                `
+                    : ""
+                }
+                <tr>
+                  <td style="padding: 12px 0 0 0; font-size: 16px; font-weight: 800; color: #0f172a; border-top: 2px solid #e2e8f0;">
+                    Total Paid:
+                  </td>
+                  <td align="right" style="padding: 12px 0 0 0; font-size: 18px; font-weight: 800; color: #0f172a; border-top: 2px solid #e2e8f0;">
+                    ${totalAmount <= 0 ? "FREE ($0.00)" : `$${totalAmount.toFixed(2)} ${currency}`}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Main CTA Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 32px 0 20px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${libraryUrl}" target="_blank" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 16px 40px; border-radius: 12px; box-shadow: 0 6px 20px rgba(15,23,42,0.2); letter-spacing: 0.02em;">
+                      Open My Cloud Library &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="font-size: 12px; line-height: 1.6; color: #94a3b8; text-align: center; margin: 12px 0 0 0;">
+                You can access your books anytime by logging into <strong>${appUrl}</strong> with <strong>${customerEmail}</strong>.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 36px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.6;">
+              Noveraile Publishing Platform • Official Order Receipt<br>
+              Need help with your order? Reach us at <a href="mailto:noverailepublishing@gmail.com" style="color: #64748b; text-decoration: underline;">noverailepublishing@gmail.com</a>.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+ </body>
+</html>
+  `.trim();
+
+  const plainTextItems = items.map((i) => `- ${i.title} (${i.price <= 0 ? "FREE" : `$${i.price}`})`).join("\n");
+  const plainText = `
+NOVERAILE PUBLISHING - ORDER CONFIRMATION
+Order Number: ${orderNumber}
+Date: ${formattedDate}
+Total: ${totalAmount <= 0 ? "FREE ($0.00)" : `$${totalAmount.toFixed(2)} ${currency}`}
+
+Purchased Books:
+${plainTextItems}
+
+Access your cloud library now:
+${libraryUrl}
+
+Support: noverailepublishing@gmail.com
+  `.trim();
+
+  return sendEmail({
+    to: customerEmail,
+    subject,
+    html,
+    text: plainText,
+    attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
+  });
+}
 
 export interface BroadcastEmailOptions {
   toEmail: string;
   recipientName?: string;
   subject: string;
   headline: string;
-  content: string; // Markdown or plain text paragraphs
+  content: string;
   campaignType?: "BOOK_RELEASE" | "PROMOTION" | "SEASONAL" | "ANNOUNCEMENT";
   ctaText?: string;
   ctaUrl?: string;
@@ -529,7 +907,10 @@ export async function sendBroadcastEmail(opts: BroadcastEmailOptions) {
     couponDiscount,
   } = opts;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://noverailepublishing.com";
+  const appUrl =
+    (await getSettingValue("NEXT_PUBLIC_APP_URL", "")) ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://noverailepublishing-tsukifi.vercel.app";
   const defaultCtaUrl = ctaUrl?.startsWith("http")
     ? ctaUrl
     : `${appUrl}${ctaUrl ? (ctaUrl.startsWith("/") ? ctaUrl : `/${ctaUrl}`) : ""}`;
@@ -545,7 +926,6 @@ export async function sendBroadcastEmail(opts: BroadcastEmailOptions) {
 
   let coverImageSrc = "";
 
-  // Handle Book Cover Embedding via CID (Works 100% in Gmail/Apple/Outlook without needing public proxy)
   if (bookCoverUrl) {
     const cleanCover = bookCoverUrl.replace(/^\//, "");
     const localFilePath = path.join(process.cwd(), "public", cleanCover);
@@ -570,7 +950,6 @@ export async function sendBroadcastEmail(opts: BroadcastEmailOptions) {
     }
   }
 
-  // Determine Kicker Tag
   const kickerMap: Record<string, string> = {
     BOOK_RELEASE: "✨ New Publication Release",
     PROMOTION: "🎁 Exclusive Reader Invitation",
@@ -594,7 +973,6 @@ export async function sendBroadcastEmail(opts: BroadcastEmailOptions) {
     )
     .join("");
 
-  // Luxury Book Card HTML
   let bookHtml = "";
   if (bookTitle) {
     bookHtml = `
@@ -641,7 +1019,6 @@ export async function sendBroadcastEmail(opts: BroadcastEmailOptions) {
     `;
   }
 
-  // Luxury Voucher Card HTML
   let couponHtml = "";
   if (couponCode) {
     couponHtml = `
@@ -676,7 +1053,6 @@ export async function sendBroadcastEmail(opts: BroadcastEmailOptions) {
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 40px 15px;">
     <tr>
       <td align="center">
-        <!-- Main Email Container -->
         <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
           
           <!-- Top Gold Accent Bar -->

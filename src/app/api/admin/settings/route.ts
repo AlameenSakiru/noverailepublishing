@@ -151,11 +151,11 @@ export async function GET() {
             process.env.ALLOW_SANDBOX_CHECKOUT === "true" || (!paystackCreds.isConfigured && !stripeSecretKey.trim() && !nowpaymentsCreds.isConfigured),
         },
         email: {
-          smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
-          smtpPort: Number(process.env.SMTP_PORT) || 465,
-          smtpUser: process.env.SMTP_USER || "noverailepublishing@gmail.com",
-          emailFrom: process.env.EMAIL_FROM || "Noveraile Publishing <noverailepublishing@gmail.com>",
-          isSmtpConfigured: Boolean(process.env.SMTP_PASS),
+          smtpHost: dbSettings.SMTP_HOST || process.env.SMTP_HOST || "smtp.gmail.com",
+          smtpPort: Number(dbSettings.SMTP_PORT || process.env.SMTP_PORT) || 465,
+          smtpUser: dbSettings.SMTP_USER || process.env.SMTP_USER || "noverailepublishing@gmail.com",
+          emailFrom: dbSettings.EMAIL_FROM || process.env.EMAIL_FROM || "Noveraile Publishing <noverailepublishing@gmail.com>",
+          isSmtpConfigured: Boolean(dbSettings.SMTP_PASS || process.env.SMTP_PASS),
           twoFactorAuthEnabled: true,
         },
         stats: {
@@ -272,6 +272,11 @@ export async function POST(req: Request) {
         stripePublishableKey,
         stripeSecretKey,
         stripeWebhookSecret,
+        smtpHost,
+        smtpPort,
+        smtpUser,
+        smtpPass,
+        emailFrom,
       } = body;
 
       const updates: Record<string, string> = {};
@@ -306,6 +311,13 @@ export async function POST(req: Request) {
       if (stripePublishableKey !== undefined) updates.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = stripePublishableKey.trim();
       if (stripeSecretKey !== undefined && stripeSecretKey.trim() !== "") updates.STRIPE_SECRET_KEY = stripeSecretKey.trim();
       if (stripeWebhookSecret !== undefined && stripeWebhookSecret.trim() !== "") updates.STRIPE_WEBHOOK_SECRET = stripeWebhookSecret.trim();
+
+      // SMTP Email configuration
+      if (smtpHost !== undefined && smtpHost.trim() !== "") updates.SMTP_HOST = smtpHost.trim();
+      if (smtpPort !== undefined && String(smtpPort).trim() !== "") updates.SMTP_PORT = String(smtpPort).trim();
+      if (smtpUser !== undefined && smtpUser.trim() !== "") updates.SMTP_USER = smtpUser.trim();
+      if (smtpPass !== undefined && smtpPass.trim() !== "") updates.SMTP_PASS = smtpPass.trim();
+      if (emailFrom !== undefined && emailFrom.trim() !== "") updates.EMAIL_FROM = emailFrom.trim();
 
       // Persist to Neon PostgreSQL Database
       await savePlatformSettings(updates);

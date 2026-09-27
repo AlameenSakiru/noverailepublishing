@@ -144,6 +144,28 @@ export async function POST(req: Request) {
                 }).catch((err) => console.error("Stripe webhook gift email error:", err));
               }
             }
+
+            // Dispatch Order Confirmation Email to the customer
+            const { sendOrderConfirmationEmail } = await import("@/lib/email");
+            sendOrderConfirmationEmail({
+              customerEmail: order.customerEmail,
+              customerName: order.customerEmail.split("@")[0],
+              orderNumber: order.orderNumber,
+              orderDate: order.createdAt,
+              items: order.items.map((i) => ({
+                title: i.bookTitle || "Digital Book",
+                price: i.price,
+              })),
+              subtotal: order.subtotal,
+              discountAmount: order.discountAmount,
+              totalAmount: order.totalAmount,
+              currency: order.currency,
+              paymentProvider: "STRIPE",
+              isGift,
+              recipientName: order.recipientName || undefined,
+              recipientEmail: order.recipientEmail || undefined,
+              giftMessage: order.giftMessage || undefined,
+            }).catch((err) => console.error("Stripe order confirmation email error:", err));
           }
         }
       } catch (e) {
