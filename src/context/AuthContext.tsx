@@ -13,6 +13,8 @@ export interface UserProfile {
 
 interface AuthContextType {
   user: UserProfile | null;
+  ownedBookIds: string[];
+  isBookOwned: (bookId: string) => boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{
     success: boolean;
@@ -36,8 +38,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [ownedBookIds, setOwnedBookIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
+  const isBookOwned = (bookId: string) => {
+    if (!bookId) return false;
+    return ownedBookIds.includes(bookId);
+  };
 
   const fetchCurrentUser = async () => {
     try {
@@ -45,11 +53,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
+        setOwnedBookIds(Array.isArray(data.ownedBookIds) ? data.ownedBookIds : []);
       } else {
         setUser(null);
+        setOwnedBookIds([]);
       }
     } catch {
       setUser(null);
+      setOwnedBookIds([]);
     } finally {
       setIsLoading(false);
     }
@@ -141,6 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
       setUser(null);
+      setOwnedBookIds([]);
       router.push("/");
       router.refresh();
     } catch (e) {
@@ -152,6 +164,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        ownedBookIds,
+        isBookOwned,
         isLoading,
         login,
         loginWithGoogle,

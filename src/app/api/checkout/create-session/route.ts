@@ -103,6 +103,58 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "One or more books in cart are no longer available." }, { status: 400 });
     }
 
+    // Prevent duplicate purchases if user already owns any of the books (unless purchasing as a gift)
+    if (!cleanIsGift) {
+      const [existingEntitlements, existingPaidOrders] = await Promise.all([
+        prisma.entitlement.findMany({
+          where: {
+            bookId: { in: bookIds },
+            status: "ACTIVE",
+            OR: [
+              ...(currentUser ? [{ userId: currentUser.userId }] : []),
+              { user: { email: cleanEmail } },
+            ],
+          },
+          include: {
+            book: { select: { title: true } },
+          },
+        }),
+        prisma.orderItem.findMany({
+          where: {
+            bookId: { in: bookIds },
+            order: {
+              paymentStatus: "PAID",
+              isGift: false,
+              OR: [
+                ...(currentUser ? [{ userId: currentUser.userId }] : []),
+                { customerEmail: cleanEmail },
+              ],
+            },
+          },
+          include: {
+            book: { select: { title: true } },
+          },
+        }),
+      ]);
+
+      const ownedBookTitles = Array.from(
+        new Set([
+          ...existingEntitlements.map((e) => e.book.title),
+          ...existingPaidOrders.map((o) => o.book.title),
+        ])
+      );
+
+      if (ownedBookTitles.length > 0) {
+        const titleList = ownedBookTitles.map((t) => `"${t}"`).join(", ");
+        return NextResponse.json(
+          {
+            error: `You already own ${titleList} in your library! To prevent duplicate charges, please remove it from your cart or check "Send as a Gift" to send it to someone else.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Calculate subtotal from DB verified prices
     let subtotal = 0;
     const checkoutItems: CheckoutItem[] = [];

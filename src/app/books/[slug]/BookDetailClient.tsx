@@ -33,6 +33,7 @@ import {
   Gift,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { PreviewModal } from "@/components/PreviewModal";
 import { AmazonBookDescription } from "@/components/AmazonBookDescription";
 
@@ -86,7 +87,10 @@ export function BookDetailClient({
   const [reviewsList, setReviewsList] = useState<ReviewItem[]>(book.reviews || []);
 
   const { addItem, isInCart, setGiftDetails } = useCart();
+  const { isBookOwned } = useAuth();
   const router = useRouter();
+
+  const isUserOwned = isOwned || isBookOwned(book.id);
 
   const inCart = isInCart(book.id);
   const activePrice = book.salePrice != null && book.salePrice > 0 ? book.salePrice : book.price;
@@ -157,7 +161,7 @@ export function BookDetailClient({
   }));
 
   const handleAddToCart = () => {
-    if (!inCart && !isOwned) {
+    if (!inCart && !isUserOwned) {
       addItem({
         bookId: book.id,
         slug: book.slug,
@@ -172,6 +176,10 @@ export function BookDetailClient({
   };
 
   const handleBuyNow = () => {
+    if (isUserOwned) {
+      router.push(`/reader/${book.slug}`);
+      return;
+    }
     handleAddToCart();
     router.push("/cart");
   };
@@ -492,14 +500,14 @@ export function BookDetailClient({
 
             {/* Primary Action Buttons */}
             <div className="space-y-3 mt-6">
-              {isOwned ? (
+              {isUserOwned ? (
                 <div className="space-y-2.5">
                   <Link
                     href={`/reader/${book.slug}`}
                     className="w-full flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm shadow-md transition-all active:scale-[0.99]"
                   >
                     <BookOpen className="w-5 h-5" />
-                    <span>Open & Continue Reading in Cloud Reader</span>
+                    <span>In Your Library • Continue Reading</span>
                   </Link>
 
                   <button

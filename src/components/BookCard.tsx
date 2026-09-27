@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ShoppingBag, Check, Star, BookOpen } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 
 export interface BookCardProps {
   id: string;
@@ -36,6 +37,8 @@ export function BookCard({
   reviewCount = 0,
 }: BookCardProps) {
   const { addItem, isInCart } = useCart();
+  const { isBookOwned } = useAuth();
+  const isUserOwned = isOwned || isBookOwned(id);
   const inCart = isInCart(id);
 
   const activePrice = salePrice != null && salePrice > 0 ? salePrice : price;
@@ -44,7 +47,7 @@ export function BookCard({
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isOwned || inCart) return;
+    if (isUserOwned || inCart) return;
 
     addItem({
       bookId: id,
@@ -184,13 +187,13 @@ export function BookCard({
             )}
           </div>
 
-          {isOwned ? (
+          {isUserOwned ? (
             <Link
               href={`/reader/${slug}`}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-semibold hover:bg-emerald-100 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-semibold hover:bg-emerald-100 transition-colors shadow-2xs"
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span>Read</span>
+              <span>In Library</span>
             </Link>
           ) : (
             <button

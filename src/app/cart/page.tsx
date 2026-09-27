@@ -18,6 +18,7 @@ import {
   CreditCard,
   Coins,
   Zap,
+  AlertCircle,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -46,7 +47,10 @@ export default function CartPage() {
     setRecipientEmail,
     setGiftMessage,
   } = useCart();
-  const { user } = useAuth();
+  const { user, isBookOwned } = useAuth();
+
+  const ownedItems = !isGift ? items.filter((i) => isBookOwned(i.bookId)) : [];
+  const hasOwnedItems = ownedItems.length > 0;
 
   const [couponCodeInput, setCouponCodeInput] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
@@ -69,6 +73,13 @@ export default function CartPage() {
 
     if (!emailToUse || !emailToUse.includes("@")) {
       setCheckoutError("Please provide your valid email address for the purchase receipt.");
+      return;
+    }
+
+    if (hasOwnedItems) {
+      setCheckoutError(
+        `You already own ${ownedItems.map((i) => `"${i.title}"`).join(", ")} in your library! To prevent accidental double charges, please remove it or toggle "Send this purchase as a Gift" below.`
+      );
       return;
     }
 
@@ -183,6 +194,20 @@ export default function CartPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Left Column: Cart Items List & Gift Form */}
         <div className="lg:col-span-8 space-y-6">
+          {hasOwnedItems && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex items-start gap-3 shadow-xs">
+              <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold block text-sm text-amber-900">
+                  You already own {ownedItems.length === 1 ? "a book" : `${ownedItems.length} books`} in your cart!
+                </span>
+                <p className="mt-1 text-amber-800/90 leading-relaxed font-light">
+                  To prevent accidental double charges, books already in your library cannot be bought for yourself again. Please remove them using the trash icon, or toggle <strong>&quot;Send this purchase as a Gift&quot;</strong> below to purchase them for a friend or student.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-2xl border border-brand-border overflow-hidden shadow-xs divide-y divide-gray-100">
             {items.map((item) => {
               const activePrice = item.salePrice != null && item.salePrice > 0 ? item.salePrice : item.price;
@@ -205,9 +230,25 @@ export default function CartPage() {
                       {item.title}
                     </Link>
                     <p className="text-xs text-brand-muted mt-0.5">By {item.author}</p>
-                    <span className="inline-block mt-2 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 text-[10px] font-semibold">
-                      Digital Book • Instant Cloud Delivery
-                    </span>
+                    
+                    {!isGift && isBookOwned(item.bookId) ? (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-300">
+                          <CheckCircle2 className="w-3 h-3 text-amber-700" />
+                          Already In Your Library
+                        </span>
+                        <Link
+                          href={`/reader/${item.slug}`}
+                          className="text-[11px] font-semibold text-emerald-700 hover:underline"
+                        >
+                          Read Now &rarr;
+                        </Link>
+                      </div>
+                    ) : (
+                      <span className="inline-block mt-2 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 text-[10px] font-semibold">
+                        Digital Book • Instant Cloud Delivery
+                      </span>
+                    )}
                   </div>
 
                   <div className="text-right flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-4">
@@ -548,16 +589,20 @@ export default function CartPage() {
             {/* Main Checkout CTA */}
             <button
               onClick={handleCheckout}
-              disabled={isCheckingOut}
+              disabled={isCheckingOut || hasOwnedItems}
               className={`w-full mt-5 py-3.5 px-6 rounded-xl font-semibold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-50 ${
-                total <= 0.001
+                hasOwnedItems
+                  ? "bg-gray-400 text-white cursor-not-allowed"
+                  : total <= 0.001
                   ? "bg-emerald-700 hover:bg-emerald-800 text-white shadow-emerald-900/10"
                   : paymentMethod === "CRYPTO"
                   ? "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white shadow-amber-900/10"
                   : "bg-brand-ink hover:bg-brand-900 text-white"
               }`}
             >
-              {total <= 0.001 ? (
+              {hasOwnedItems ? (
+                <AlertCircle className="w-4 h-4 text-amber-200" />
+              ) : total <= 0.001 ? (
                 <Sparkles className="w-4 h-4 text-emerald-200" />
               ) : paymentMethod === "CRYPTO" ? (
                 <Coins className="w-4 h-4 text-amber-200" />
@@ -565,7 +610,9 @@ export default function CartPage() {
                 <Lock className="w-4 h-4 text-brand-300" />
               )}
               <span>
-                {isCheckingOut
+                {hasOwnedItems
+                  ? "Remove Owned Books to Checkout"
+                  : isCheckingOut
                   ? total <= 0.001
                     ? "Unlocking Free Book in Library..."
                     : paymentMethod === "CRYPTO"
