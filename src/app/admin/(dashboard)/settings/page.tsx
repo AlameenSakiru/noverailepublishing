@@ -1,5 +1,7 @@
 import React from "react";
+import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { siteConfig } from "@/lib/config";
 import { isStripeConfigured } from "@/lib/stripe";
 import { getResolvedPaystackCredentials } from "@/lib/paystack";
@@ -15,7 +17,13 @@ export const metadata = {
 };
 
 export default async function AdminSettingsPage() {
+  const currentUser = await getCurrentUser();
+  if (!currentUser || currentUser.role !== "ADMIN") {
+    redirect("/admin/books");
+  }
+
   const dbSettings = await getAllPlatformSettings();
+
 
   const appUrl =
     dbSettings.NEXT_PUBLIC_APP_URL ||

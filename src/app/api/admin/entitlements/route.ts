@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireSuperAdmin } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireSuperAdmin();
+
     const { action, userEmail, bookId, reason } = await req.json();
 
     if (!userEmail || !bookId || !action) {

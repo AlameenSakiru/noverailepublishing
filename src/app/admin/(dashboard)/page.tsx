@@ -1,5 +1,7 @@
 import React from "react";
+import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { AdminOverviewClient, ChartDataPoint, BookDataset } from "./AdminOverviewClient";
 
 export const dynamic = "force-dynamic";
@@ -135,7 +137,13 @@ function buildGranularDatasets(
 }
 
 export default async function AdminDashboardPage() {
+  const currentUser = await getCurrentUser();
+  if (currentUser?.role === "EDITOR") {
+    redirect("/admin/books");
+  }
+
   const [
+
     totalOrdersCount,
     paidOrders,
     publishedBooks,

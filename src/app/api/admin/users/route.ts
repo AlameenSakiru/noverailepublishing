@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireSuperAdmin } from "@/lib/auth";
 
 export async function GET(req: Request) {
   try {
-    await requireAdmin();
+    await requireSuperAdmin();
 
     const url = new URL(req.url);
     const search = url.searchParams.get("search")?.trim().toLowerCase() || "";
@@ -54,7 +54,7 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireSuperAdmin();
     const body = await req.json();
     const { userId, action, role } = body;
 
@@ -176,7 +176,8 @@ export async function PATCH(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireSuperAdmin();
+
     const url = new URL(req.url);
     const userId = url.searchParams.get("userId");
 

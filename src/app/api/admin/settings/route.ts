@@ -51,9 +51,10 @@ function updateEnvFile(updates: Record<string, string>) {
 export async function GET() {
   try {
     const session = await getCurrentUser();
-    if (!session || (session.role !== "ADMIN" && session.role !== "EDITOR")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session || session.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized. Admin privileges required." }, { status: 403 });
     }
+
 
     const dbSettings = await getAllPlatformSettings();
 

@@ -8,9 +8,10 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const session = await getCurrentUser();
-    if (!session || (session.role !== "ADMIN" && session.role !== "EDITOR")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session || session.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized. Admin privileges required." }, { status: 403 });
     }
+
 
     // Customer counts
     const [totalCustomers, verifiedCustomers] = await Promise.all([

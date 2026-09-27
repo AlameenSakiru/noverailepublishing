@@ -1,5 +1,7 @@
 import React from "react";
+import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { OrdersClient, TitlePerformanceItem } from "./OrdersClient";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +12,13 @@ export const metadata = {
 };
 
 export default async function AdminOrdersPage() {
+  const currentUser = await getCurrentUser();
+  if (!currentUser || currentUser.role !== "ADMIN") {
+    redirect("/admin/books");
+  }
+
   const [orders, publishedBooks] = await Promise.all([
+
     prisma.order.findMany({
       orderBy: { createdAt: "desc" },
       include: {

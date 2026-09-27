@@ -56,7 +56,7 @@ export default async function AdminDashboardLayout({
                 </span>
               </div>
               <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono uppercase font-bold border border-amber-500/30">
-                {currentUser.role}
+                {currentUser.role === "EDITOR" ? "BOOK PUBLISHER" : "EXECUTIVE ADMIN"}
               </span>
             </div>
 
@@ -73,7 +73,7 @@ export default async function AdminDashboardLayout({
         {/* Tier 2: Pinned Navigation Tabs Sub-Bar (Edge-to-Edge with Backdrop Blur) */}
         <div className="bg-white/95 backdrop-blur-md border-b border-gray-200">
           <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-2.5">
-            <AdminNavTabs />
+            <AdminNavTabs role={currentUser.role} />
           </div>
         </div>
       </div>

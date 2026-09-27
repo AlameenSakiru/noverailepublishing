@@ -1,5 +1,7 @@
 import React from "react";
+import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { BroadcastsClient } from "./BroadcastsClient";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +12,13 @@ export const metadata = {
 };
 
 export default async function AdminBroadcastsPage() {
+  const currentUser = await getCurrentUser();
+  if (!currentUser || currentUser.role !== "ADMIN") {
+    redirect("/admin/books");
+  }
+
   const [totalCustomers, verifiedCustomers] = await Promise.all([
+
     prisma.user.count({ where: { role: "CUSTOMER" } }),
     prisma.user.count({ where: { role: "CUSTOMER", isEmailVerified: true } }),
   ]);

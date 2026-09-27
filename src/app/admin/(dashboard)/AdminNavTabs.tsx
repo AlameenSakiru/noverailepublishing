@@ -14,19 +14,22 @@ import {
   Megaphone,
 } from "lucide-react";
 
-export function AdminNavTabs() {
+export function AdminNavTabs({ role = "ADMIN" }: { role?: string }) {
   const pathname = usePathname();
 
-  const tabs = [
-    { label: "Overview", href: "/admin", icon: LayoutDashboard },
-    { label: "Books", href: "/admin/books", icon: BookOpen },
-    { label: "Orders & Royalties", href: "/admin/orders", icon: ShoppingBag },
-    { label: "Categories", href: "/admin/categories", icon: FolderTree },
-    { label: "Customer Access", href: "/admin/customers", icon: Users },
-    { label: "Discounts", href: "/admin/coupons", icon: Tag },
-    { label: "Broadcasts", href: "/admin/broadcasts", icon: Megaphone },
-    { label: "Settings", href: "/admin/settings", icon: Sliders },
+  const allTabs = [
+    { label: "Overview", href: "/admin", icon: LayoutDashboard, editorAllowed: false },
+    { label: "Books & Publishing", href: "/admin/books", icon: BookOpen, editorAllowed: true },
+    { label: "Orders & Royalties", href: "/admin/orders", icon: ShoppingBag, editorAllowed: false },
+    { label: "Categories", href: "/admin/categories", icon: FolderTree, editorAllowed: true },
+    { label: "Customer Access", href: "/admin/customers", icon: Users, editorAllowed: false },
+    { label: "Discounts", href: "/admin/coupons", icon: Tag, editorAllowed: false },
+    { label: "Broadcasts", href: "/admin/broadcasts", icon: Megaphone, editorAllowed: false },
+    { label: "Settings", href: "/admin/settings", icon: Sliders, editorAllowed: false },
   ];
+
+  const tabs = role === "EDITOR" ? allTabs.filter((t) => t.editorAllowed) : allTabs;
+
 
   return (
     <nav className="flex flex-wrap items-center gap-2">

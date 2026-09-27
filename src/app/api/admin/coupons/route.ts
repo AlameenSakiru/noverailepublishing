@@ -4,9 +4,10 @@ import { getCurrentUser } from "@/lib/auth";
 
 export async function GET() {
   const user = await getCurrentUser();
-  if (!user || (user.role !== "ADMIN" && user.role !== "EDITOR")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user || user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
+
 
   const coupons = await prisma.coupon.findMany({
     orderBy: { createdAt: "desc" },

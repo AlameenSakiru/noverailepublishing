@@ -168,3 +168,12 @@ export async function requireAdmin(): Promise<SessionPayload> {
   }
   return user;
 }
+
+export async function requireSuperAdmin(): Promise<SessionPayload> {
+  const user = await requireAuth();
+  if (user.role !== "ADMIN") {
+    throw new Error("FORBIDDEN");
+  }
+  return user;
+}
+

@@ -1,5 +1,7 @@
 import React from "react";
+import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { CouponsClient } from "./CouponsClient";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +12,13 @@ export const metadata = {
 };
 
 export default async function AdminCouponsPage() {
+  const currentUser = await getCurrentUser();
+  if (!currentUser || currentUser.role !== "ADMIN") {
+    redirect("/admin/books");
+  }
+
   const coupons = await prisma.coupon.findMany({
+
     orderBy: { createdAt: "desc" },
     include: {
       _count: { select: { uses: true } },
