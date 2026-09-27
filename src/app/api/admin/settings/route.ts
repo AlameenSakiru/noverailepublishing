@@ -18,6 +18,7 @@ import {
   getResolvedNowPaymentsCredentials,
   checkNowPaymentsHealth,
 } from "@/lib/nowpayments";
+import { getResolvedGoogleCredentials } from "@/lib/googleAuth";
 import { getAllPlatformSettings, savePlatformSettings } from "@/lib/settings";
 import fs from "fs";
 import path from "path";
@@ -64,6 +65,10 @@ export async function GET() {
       "https://noverailepublishing.com";
     const paystackWebhookUrl = `${appUrl}/api/checkout/paystack-webhook`;
     const stripeWebhookUrl = `${appUrl}/api/checkout/webhook`;
+
+    // Google OAuth credentials
+    const googleCreds = await getResolvedGoogleCredentials();
+    const googleRedirectUri = `${appUrl}/api/auth/google/callback`;
 
     // Paystack credentials
     const paystackCreds = await getResolvedPaystackCredentials();
@@ -158,6 +163,13 @@ export async function GET() {
           emailFrom: dbSettings.EMAIL_FROM || process.env.EMAIL_FROM || "Noveraile Publishing <noverailepublishing@gmail.com>",
           isSmtpConfigured: Boolean(dbSettings.SMTP_PASS || process.env.SMTP_PASS),
           twoFactorAuthEnabled: true,
+        },
+        google: {
+          isConfigured: googleCreds.isConfigured,
+          clientId: googleCreds.clientId,
+          clientSecretMasked: googleCreds.secretKeyMasked,
+          redirectUri: googleRedirectUri,
+          authorizedOrigin: appUrl,
         },
         stats: {
           userCount,
@@ -267,6 +279,8 @@ export async function POST(req: Request) {
         currency,
         paystackPublicKey,
         paystackSecretKey,
+        googleClientId,
+        googleClientSecret,
         nowpaymentsApiKey,
         nowpaymentsIpnSecret,
         nowpaymentsSandbox,
@@ -286,6 +300,15 @@ export async function POST(req: Request) {
       if (siteTagline) updates.NEXT_PUBLIC_SITE_TAGLINE = siteTagline.trim();
       if (contactEmail) updates.NEXT_PUBLIC_CONTACT_EMAIL = contactEmail.trim().toLowerCase();
       if (currency) updates.NEXT_PUBLIC_DEFAULT_CURRENCY = currency.trim().toUpperCase();
+
+      // Google OAuth configuration
+      if (googleClientId !== undefined) {
+        updates.GOOGLE_CLIENT_ID = googleClientId.trim();
+        updates.NEXT_PUBLIC_GOOGLE_CLIENT_ID = googleClientId.trim();
+      }
+      if (googleClientSecret !== undefined && googleClientSecret.trim() !== "") {
+        updates.GOOGLE_CLIENT_SECRET = googleClientSecret.trim();
+      }
 
       // Paystack configuration
       if (paystackPublicKey !== undefined) {

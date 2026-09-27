@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getResolvedGoogleCredentials, getGoogleOAuthRedirectUri } from "@/lib/googleAuth";
+import { getSettingValue } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -7,19 +9,20 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const redirectParam = url.searchParams.get("redirect") || "/my-library";
 
-    const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || url.host;
-    const protocol = req.headers.get("x-forwarded-proto") || (url.protocol.replace(":", "") || "https");
-    const baseUrl = `${protocol}://${host}`;
-    const redirectUri = `${baseUrl}/api/auth/google/callback`;
+    const configuredAppUrl = await getSettingValue("NEXT_PUBLIC_APP_URL");
+    const redirectUri = getGoogleOAuthRedirectUri(req, configuredAppUrl);
 
-    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    const { clientId, isConfigured } = await getResolvedGoogleCredentials();
 
     if (!clientId) {
-      // If Google Client ID is not configured yet, redirect to a guided setup notice
+      const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || url.host;
+      const protocol = req.headers.get("x-forwarded-proto") || (url.protocol.replace(":", "") || "https");
+      const baseUrl = `${protocol}://${host}`;
+
       const setupNoticeUrl = new URL(`${baseUrl}/login`);
       setupNoticeUrl.searchParams.set(
         "error",
-        "Google OAuth credentials (GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET) are not configured in Vercel environment variables yet. Please sign in with email or configure Google Cloud Console."
+        "Google OAuth credentials (GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET) are not configured yet. Please configure them in the Admin Settings panel or sign in with your email."
       );
       return NextResponse.redirect(setupNoticeUrl.toString());
     }

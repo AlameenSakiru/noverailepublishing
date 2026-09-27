@@ -83,6 +83,13 @@ interface SettingsData {
     isSmtpConfigured: boolean;
     twoFactorAuthEnabled: boolean;
   };
+  google?: {
+    isConfigured: boolean;
+    clientId: string;
+    clientSecretMasked: string;
+    redirectUri: string;
+    authorizedOrigin: string;
+  };
   stats: {
     userCount: number;
     bookCount: number;
@@ -142,6 +149,13 @@ export function SettingsClient({
   const [stripePublishableKey, setStripePublishableKey] = useState(settings.payment.publishableKey);
   const [stripeSecretKey, setStripeSecretKey] = useState("");
   const [stripeWebhookSecret, setStripeWebhookSecret] = useState("");
+
+  // Google OAuth
+  const [googleClientId, setGoogleClientId] = useState(settings.google?.clientId || "");
+  const [googleClientSecret, setGoogleClientSecret] = useState("");
+  const [copiedGoogleRedirect, setCopiedGoogleRedirect] = useState(false);
+  const [copiedGoogleOrigin, setCopiedGoogleOrigin] = useState(false);
+  const [showGoogleSecret, setShowGoogleSecret] = useState(false);
 
   // Action states
   const [copiedPaystackWebhook, setCopiedPaystackWebhook] = useState(false);
@@ -268,6 +282,8 @@ export function SettingsClient({
           currency,
           paystackPublicKey: paystackPublicKey || undefined,
           paystackSecretKey: paystackSecretKey.trim() || undefined,
+          googleClientId: googleClientId.trim() || undefined,
+          googleClientSecret: googleClientSecret.trim() || undefined,
           nowpaymentsApiKey: nowpaymentsApiKey.trim() || undefined,
           nowpaymentsIpnSecret: nowpaymentsIpnSecret.trim() || undefined,
           nowpaymentsSandbox,
@@ -281,6 +297,7 @@ export function SettingsClient({
       if (res.ok && data.success) {
         setActionAlert({ success: true, message: data.message || "Settings updated successfully!" });
         setPaystackSecretKey("");
+        setGoogleClientSecret("");
         setNowpaymentsApiKey("");
         setNowpaymentsIpnSecret("");
         setStripeSecretKey("");
@@ -1349,6 +1366,175 @@ export function SettingsClient({
                 </button>
               </div>
             </form>
+          </div>
+
+          {/* Google OAuth 2.0 Reader Sign-In & Single Sign-On (SSO) Card */}
+          <div className="bg-white rounded-2xl border border-gray-200/90 p-6 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-200/60 text-blue-700 flex items-center justify-center">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-gray-950 flex items-center gap-2">
+                    <span>Google OAuth 2.0 Reader Sign-In</span>
+                    <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-bold uppercase tracking-wider">
+                      Single Sign-On (SSO)
+                    </span>
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Powers 1-click &quot;Continue with Google&quot; on reader login and registration.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
+                    settings.google?.isConfigured
+                      ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                      : "bg-amber-50 text-amber-800 border border-amber-200"
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      settings.google?.isConfigured ? "bg-emerald-500" : "bg-amber-500"
+                    }`}
+                  />
+                  {settings.google?.isConfigured ? "Google Sign-In Active" : "Setup Required"}
+                </span>
+              </div>
+            </div>
+
+            {/* Google Cloud Console Endpoints Box */}
+            <div className="space-y-3">
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                Google Cloud Console Configuration URLs
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bg-gray-50/90 border border-gray-200/80 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-gray-600">Authorized JavaScript Origin</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(settings.google?.authorizedOrigin || settings.site.url);
+                        setCopiedGoogleOrigin(true);
+                        setTimeout(() => setCopiedGoogleOrigin(false), 2000);
+                      }}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+                    >
+                      {copiedGoogleOrigin ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedGoogleOrigin ? "Copied" : "Copy"}</span>
+                    </button>
+                  </div>
+                  <div className="font-mono text-xs text-gray-900 bg-white px-3 py-2 rounded-xl border border-gray-200 truncate select-all">
+                    {settings.google?.authorizedOrigin || settings.site.url}
+                  </div>
+                  <p className="text-[10px] text-gray-400">Add this under &quot;Authorized JavaScript origins&quot; in Google Console.</p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-gray-50/90 border border-gray-200/80 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-gray-600">Authorized Redirect URI</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(settings.google?.redirectUri || `${settings.site.url}/api/auth/google/callback`);
+                        setCopiedGoogleRedirect(true);
+                        setTimeout(() => setCopiedGoogleRedirect(false), 2000);
+                      }}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+                    >
+                      {copiedGoogleRedirect ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedGoogleRedirect ? "Copied" : "Copy"}</span>
+                    </button>
+                  </div>
+                  <div className="font-mono text-xs text-gray-900 bg-white px-3 py-2 rounded-xl border border-gray-200 truncate select-all">
+                    {settings.google?.redirectUri || `${settings.site.url}/api/auth/google/callback`}
+                  </div>
+                  <p className="text-[10px] text-gray-400">Add this under &quot;Authorized redirect URIs&quot; in Google Console.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Inputs Form */}
+            <div className="space-y-4 pt-2 border-t border-gray-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Google OAuth Client ID
+                  </label>
+                  <input
+                    type="text"
+                    value={googleClientId}
+                    onChange={(e) => setGoogleClientId(e.target.value)}
+                    placeholder="xxxxxxxxxxxx-xxxxxxxxxxxxxxxx.apps.googleusercontent.com"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-mono text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">Obtained from Google Cloud Console &gt; APIs &amp; Services &gt; Credentials.</p>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-gray-700">
+                      Google OAuth Client Secret
+                    </label>
+                    {settings.google?.clientSecretMasked && (
+                      <span className="text-[11px] text-emerald-600 font-mono font-medium">
+                        Current: {settings.google.clientSecretMasked}
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showGoogleSecret ? "text" : "password"}
+                      value={googleClientSecret}
+                      onChange={(e) => setGoogleClientSecret(e.target.value)}
+                      placeholder={settings.google?.clientSecretMasked ? "Leave blank to keep existing secret" : "GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxx"}
+                      className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-gray-200 text-xs font-mono text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowGoogleSecret(!showGoogleSecret)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 cursor-pointer"
+                    >
+                      {showGoogleSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-1">Stored securely and never exposed to the client browser.</p>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={handleSaveSettings}
+                  disabled={saving}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Save className={`w-3.5 h-3.5 ${saving ? "animate-spin" : ""}`} />
+                  <span>{saving ? "Saving..." : "Save Google OAuth Keys"}</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Security & Database Health */}
