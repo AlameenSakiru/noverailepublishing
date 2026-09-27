@@ -96,6 +96,14 @@ export async function POST(req: Request) {
       });
     } catch {}
 
+    // Dispatch official welcome email if not already sent
+    try {
+      const { triggerWelcomeEmailOnce } = await import("@/lib/email");
+      triggerWelcomeEmailOnce(updatedUser.id, cleanEmail, updatedUser.name).catch((err) =>
+        console.error("Welcome email async dispatch at verification error:", err)
+      );
+    } catch {}
+
     const sessionPayload = {
       userId: updatedUser.id,
       email: updatedUser.email,

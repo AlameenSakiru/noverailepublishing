@@ -89,6 +89,14 @@ export async function GET(req: Request) {
           role: "CUSTOMER",
         },
       });
+
+      // Dispatch official welcome email to new Google OAuth reader
+      try {
+        const { triggerWelcomeEmailOnce } = await import("@/lib/email");
+        triggerWelcomeEmailOnce(user.id, user.email, user.name).catch((err) =>
+          console.error("Welcome email async dispatch on Google signup error:", err)
+        );
+      } catch {}
     } else {
       if (!user.avatarUrl && avatarUrl) {
         await prisma.user.update({

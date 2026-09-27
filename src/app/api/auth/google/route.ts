@@ -67,6 +67,14 @@ export async function POST(req: Request) {
           role: "CUSTOMER",
         },
       });
+
+      // Dispatch official welcome email to new Google OAuth reader
+      try {
+        const { triggerWelcomeEmailOnce } = await import("@/lib/email");
+        triggerWelcomeEmailOnce(user.id, user.email, user.name).catch((err) =>
+          console.error("Welcome email async dispatch on direct Google signup error:", err)
+        );
+      } catch {}
     } else {
       // If user exists and doesn't have an avatar or verified status, update it
       if (!user.avatarUrl && avatarUrl) {

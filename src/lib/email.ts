@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import path from "path";
 import fs from "fs";
+import prisma from "./prisma";
 import { getSettingValue } from "./settings";
 
 export interface SendEmailOptions {
@@ -300,6 +301,178 @@ export async function sendPasswordResetEmail(
     html,
     text: `Your Noveraile Publishing password reset code is: ${code}. It expires in 15 minutes.`,
   });
+}
+
+export async function sendWelcomeEmail(toEmail: string, recipientName: string) {
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://www.noverailepublishing.com").replace(/\/$/, "");
+  const subject = `Welcome to Noveraile Publishing — Your Personal Cloud Library is Ready`;
+  const name = recipientName ? recipientName.trim() : "Reader";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Noveraile Publishing</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #fbfaf8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #fbfaf8; padding: 40px 15px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 24px; border: 1px solid #e7e2d9; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.04);">
+          <!-- Top Accent Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #1c1917 0%, #292524 50%, #44403c 100%); padding: 36px 32px; text-align: center;">
+              <div style="font-family: Georgia, serif; font-size: 24px; font-weight: 700; letter-spacing: 0.18em; color: #ffffff;">
+                NOVERAILE
+              </div>
+              <div style="font-size: 10px; letter-spacing: 0.35em; color: #d6d3d1; text-transform: uppercase; margin-top: 4px;">
+                PUBLISHING
+              </div>
+              <div style="margin-top: 14px; display: inline-block; padding: 4px 14px; border-radius: 9999px; background-color: rgba(245,158,11,0.18); border: 1px solid rgba(245,158,11,0.4); color: #fbbf24; font-size: 11px; font-weight: 600; letter-spacing: 0.05em;">
+                Official Reader Account Activated
+              </div>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 36px 32px 28px 32px;">
+              <h1 style="font-family: Georgia, serif; font-size: 24px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0; line-height: 1.3;">
+                Welcome, ${name}
+              </h1>
+              <p style="font-size: 15px; line-height: 1.65; color: #475569; margin: 0 0 24px 0;">
+                Thank you for creating your account with <strong>Noveraile Publishing</strong>. Your personal digital library is now active, connecting you directly to professionally curated publications across healthcare licensure, professional certifications, and literary works.
+              </p>
+
+              <!-- Feature Pillars Grid -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 28px;">
+                <tr>
+                  <td style="padding: 16px 18px; background-color: #fdfbf7; border: 1px solid #f1ece4; border-radius: 16px;">
+                    <div style="font-family: Georgia, serif; font-size: 15px; font-weight: 700; color: #78350f; margin-bottom: 4px;">
+                      📖 Protected Cloud Reader
+                    </div>
+                    <div style="font-size: 13px; line-height: 1.5; color: #57534e;">
+                      Enjoy our seamless reading experience with realistic 3D page flip animation, warm sepia, midnight dark mode, and customizable typography.
+                    </div>
+                  </td>
+                </tr>
+                <tr><td style="height: 12px;"></td></tr>
+                <tr>
+                  <td style="padding: 16px 18px; background-color: #fdfbf7; border: 1px solid #f1ece4; border-radius: 16px;">
+                    <div style="font-family: Georgia, serif; font-size: 15px; font-weight: 700; color: #78350f; margin-bottom: 4px;">
+                      ✍️ Dedicated Study Scratchpad
+                    </div>
+                    <div style="font-size: 13px; line-height: 1.5; color: #57534e;">
+                      Jot down revision formulas, diagnostic notes, and mnemonics while reading. Your notes save automatically per publication.
+                    </div>
+                  </td>
+                </tr>
+                <tr><td style="height: 12px;"></td></tr>
+                <tr>
+                  <td style="padding: 16px 18px; background-color: #fdfbf7; border: 1px solid #f1ece4; border-radius: 16px;">
+                    <div style="font-family: Georgia, serif; font-size: 15px; font-weight: 700; color: #78350f; margin-bottom: 4px;">
+                      🔄 Seamless Cross-Device Sync
+                    </div>
+                    <div style="font-size: 13px; line-height: 1.5; color: #57534e;">
+                      Start on your desktop, pick up on your tablet, or review key takeaways on your phone. Your progress and bookmarks sync effortlessly.
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Primary Action Buttons -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 28px 0 20px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${appUrl}/books" target="_blank" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 14px rgba(15,23,42,0.18); letter-spacing: 0.02em; margin-right: 10px; margin-bottom: 10px;">
+                      Explore Books &nbsp;&rarr;
+                    </a>
+                    <a href="${appUrl}/my-library" target="_blank" style="display: inline-block; background-color: #f59e0b; color: #0c0a09; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius: 12px; box-shadow: 0 4px 14px rgba(245,158,11,0.25); letter-spacing: 0.02em; margin-bottom: 10px;">
+                      Go to My Library
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Reader Satisfaction Pledge -->
+              <div style="background-color: #f8fafc; border-left: 3px solid #f59e0b; border-radius: 8px; padding: 14px 16px; margin-top: 24px;">
+                <div style="font-size: 12px; font-weight: 700; color: #0f172a; margin-bottom: 3px;">
+                  The Noveraile Publishing Standard
+                </div>
+                <div style="font-size: 12px; line-height: 1.5; color: #64748b;">
+                  Every title is developed with strict factual verification, clinical rigor, and direct candidate blueprint alignment. You have lifetime access to your library.
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 32px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.7;">
+              <div style="font-weight: 700; color: #475569; margin-bottom: 4px; font-size: 12px;">
+                Noveraile Publishing Platform
+              </div>
+              <div>
+                Have questions or need assistance? Reach out to our editorial desk anytime at <a href="mailto:noverailepublishing@gmail.com" style="color: #64748b; text-decoration: underline;">noverailepublishing@gmail.com</a>.
+              </div>
+              <div style="margin-top: 8px;">
+                <a href="${appUrl}" style="color: #64748b; text-decoration: underline; margin: 0 6px;">Home</a> •
+                <a href="${appUrl}/books" style="color: #64748b; text-decoration: underline; margin: 0 6px;">Catalog</a> •
+                <a href="${appUrl}/my-library" style="color: #64748b; text-decoration: underline; margin: 0 6px;">My Library</a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+ </body>
+</html>
+  `.trim();
+
+  return sendEmail({
+    to: toEmail,
+    subject,
+    html,
+    text: `Welcome to Noveraile Publishing, ${name}!\n\nYour personal cloud reading account is now active. Explore our complete publication catalog at: ${appUrl}/books or access your personal library at: ${appUrl}/my-library.\n\nNeed assistance? Contact us at: noverailepublishing@gmail.com\n\nNoveraile Publishing Platform`,
+  });
+}
+
+/**
+ * Triggers the official Welcome Email for a user, with idempotent deduplication via AuditLog.
+ */
+export async function triggerWelcomeEmailOnce(userId: string, email: string, name: string) {
+  try {
+    const existingLog = await prisma.auditLog.findFirst({
+      where: {
+        userId,
+        action: "WELCOME_EMAIL_SENT",
+      },
+    });
+
+    if (existingLog) return { success: true, alreadySent: true };
+
+    const result = await sendWelcomeEmail(email, name);
+
+    if (result.success) {
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          action: "WELCOME_EMAIL_SENT",
+          entityType: "User",
+          entityId: userId,
+          details: JSON.stringify({ email, sentAt: new Date().toISOString() }),
+        },
+      });
+    }
+
+    return result;
+  } catch (err: any) {
+    console.error("triggerWelcomeEmailOnce error:", err);
+    return { success: false, error: err?.message };
+  }
 }
 
 export interface GiftDeliveryEmailOptions {

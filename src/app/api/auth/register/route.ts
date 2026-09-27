@@ -111,13 +111,16 @@ export async function POST(req: Request) {
       },
     });
 
-    // Dispatch verification email
+    // Dispatch verification email and official welcome email
     let emailResult: { success: boolean; error?: string } = { success: false };
     try {
-      const { sendVerificationEmail } = await import("@/lib/email");
+      const { sendVerificationEmail, triggerWelcomeEmailOnce } = await import("@/lib/email");
       emailResult = await sendVerificationEmail(cleanEmail, targetUser.name, verificationCode);
+      triggerWelcomeEmailOnce(targetUser.id, cleanEmail, targetUser.name).catch((err) =>
+        console.error("Welcome email async dispatch error:", err)
+      );
     } catch (codeErr: any) {
-      console.error("Failed to send verification email:", codeErr);
+      console.error("Failed to send registration emails:", codeErr);
       emailResult = { success: false, error: codeErr?.message };
     }
 
