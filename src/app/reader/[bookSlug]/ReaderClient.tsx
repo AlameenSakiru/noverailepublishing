@@ -1216,26 +1216,26 @@ export function ReaderClient({
               ) : (
                 /* PDF Canvas Container: Handles single page or two-page spread with 3D Page Flip */
                 <div className="relative w-full flex items-center justify-center py-2 book-stage-perspective">
-                  {/* Floating Left Page Turn Arrow */}
+                  {/* Floating Left Page Turn Arrow (Tablet & Desktop) */}
                   <button
                     onClick={handlePrevPage}
                     disabled={currentPage <= 1}
                     aria-label="Previous Page (Flip Left)"
-                    className="absolute -left-1 sm:left-2 md:left-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 flex items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
+                    className="hidden sm:flex absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
                     title="Previous Page (Flip Left • Arrow Left)"
                   >
-                    <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:-translate-x-0.5" />
+                    <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:-translate-x-0.5" />
                   </button>
 
-                  {/* Floating Right Page Turn Arrow */}
+                  {/* Floating Right Page Turn Arrow (Tablet & Desktop) */}
                   <button
                     onClick={handleNextPage}
                     disabled={currentPage >= totalPages}
                     aria-label="Next Page (Flip Right)"
-                    className="absolute -right-1 sm:right-2 md:right-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 flex items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
+                    className="hidden sm:flex absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
                     title="Next Page (Flip Right • Arrow Right)"
                   >
-                    <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:translate-x-0.5" />
+                    <ChevronRight className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:translate-x-0.5" />
                   </button>
 
                   {/* Pages Spread Container */}
@@ -1310,26 +1310,26 @@ export function ReaderClient({
           ) : (
             /* =================== FORMATTED ADAPTIVE TEXT RENDERER =================== */
             <div className="relative max-w-3xl w-full min-h-[75vh] flex flex-col justify-between py-6 book-stage-perspective">
-              {/* Floating Left Page Turn Arrow */}
+              {/* Floating Left Page Turn Arrow (Tablet & Desktop) */}
               <button
                 onClick={handlePrevPage}
                 disabled={currentPage <= 1}
                 aria-label="Previous Page (Flip Left)"
-                className="absolute -left-2 sm:-left-6 md:-left-12 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 flex items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
+                className="hidden sm:flex absolute -left-6 md:-left-12 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
                 title="Previous Page (Flip Left • Arrow Left)"
               >
-                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:-translate-x-0.5" />
+                <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:-translate-x-0.5" />
               </button>
 
-              {/* Floating Right Page Turn Arrow */}
+              {/* Floating Right Page Turn Arrow (Tablet & Desktop) */}
               <button
                 onClick={handleNextPage}
                 disabled={currentPage >= totalPages}
                 aria-label="Next Page (Flip Right)"
-                className="absolute -right-2 sm:-right-6 md:-right-12 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 flex items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
+                className="hidden sm:flex absolute -right-6 md:-right-12 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
                 title="Next Page (Flip Right • Arrow Right)"
               >
-                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               {/* Top-Right Dog-Ear Corner Curl for quick page turn */}
