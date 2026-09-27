@@ -601,9 +601,16 @@ export function CustomerEntitlementsClient({
                           key={ent.id}
                           className="flex items-center justify-between text-xs py-1"
                         >
-                          <span className="font-medium text-brand-slate truncate max-w-md">
-                            {ent.book?.title || "Book License"}
-                          </span>
+                          <div className="flex items-center gap-2 truncate max-w-md">
+                            <span className="font-medium text-brand-slate truncate">
+                              {ent.book?.title || "Book License"}
+                            </span>
+                            {ent.isGift && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
+                                🎁 Gift from {ent.giftSenderName || ent.giftSenderEmail || "Sender"}
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-3">
                             <span className="text-[10px] text-emerald-600 font-semibold uppercase">
                               {ent.status}

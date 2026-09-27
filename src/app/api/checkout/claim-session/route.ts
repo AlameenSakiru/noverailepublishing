@@ -32,7 +32,11 @@ export async function POST(req: Request) {
         user: true,
         items: {
           include: {
-            book: true,
+            book: {
+              include: {
+                author: true,
+              },
+            },
           },
         },
       },
@@ -84,7 +88,11 @@ export async function POST(req: Request) {
               user: true,
               items: {
                 include: {
-                  book: true,
+                  book: {
+                    include: {
+                      author: true,
+                    },
+                  },
                 },
               },
             },
@@ -106,34 +114,82 @@ export async function POST(req: Request) {
             },
           });
 
-          // Concurrently grant digital entitlements and reading progress
+          // Concurrently grant digital entitlements and reading progress (Gift vs Self)
+          const isGift = Boolean(order.isGift && order.recipientEmail);
+          let entitlementUserId = user.id;
+
+          if (isGift && order.recipientEmail) {
+            const recipientClean = order.recipientEmail.toLowerCase().trim();
+            let recipientUser = await prisma.user.findUnique({ where: { email: recipientClean } });
+            if (!recipientUser) {
+              const randomPass = Math.random().toString(36).slice(-10) + "A1!";
+              const passwordHash = await hashPassword(randomPass);
+              recipientUser = await prisma.user.create({
+                data: {
+                  email: recipientClean,
+                  name: order.recipientName || recipientClean.split("@")[0],
+                  passwordHash,
+                  role: "CUSTOMER",
+                  isEmailVerified: true,
+                },
+              });
+            }
+            entitlementUserId = recipientUser.id;
+          }
+
           for (const item of order.items) {
             await prisma.entitlement.upsert({
               where: {
-                userId_bookId: { userId: user.id, bookId: item.bookId },
+                userId_bookId: { userId: entitlementUserId, bookId: item.bookId },
               },
-              update: { status: "ACTIVE", orderId: order.id },
+              update: {
+                status: "ACTIVE",
+                orderId: order.id,
+                isGift,
+                giftSenderName: isGift ? order.user?.name || order.customerEmail : null,
+                giftSenderEmail: isGift ? order.customerEmail : null,
+                giftMessage: isGift ? order.giftMessage : null,
+              },
               create: {
-                userId: user.id,
+                userId: entitlementUserId,
                 bookId: item.bookId,
                 orderId: order.id,
                 status: "ACTIVE",
+                isGift,
+                giftSenderName: isGift ? order.user?.name || order.customerEmail : null,
+                giftSenderEmail: isGift ? order.customerEmail : null,
+                giftMessage: isGift ? order.giftMessage : null,
               },
             }).catch(() => {});
 
             await prisma.readingProgress.upsert({
               where: {
-                userId_bookId: { userId: user.id, bookId: item.bookId },
+                userId_bookId: { userId: entitlementUserId, bookId: item.bookId },
               },
               update: {},
               create: {
-                userId: user.id,
+                userId: entitlementUserId,
                 bookId: item.bookId,
                 currentPage: 1,
                 totalPages: item.book?.pageCount > 0 ? item.book.pageCount : 1,
                 progressPercent: 0,
               },
             }).catch(() => {});
+
+            // Dispatch gift delivery email if not sent
+            if (isGift && order.recipientEmail) {
+              const { sendGiftDeliveryEmail } = await import("@/lib/email");
+              sendGiftDeliveryEmail({
+                recipientEmail: order.recipientEmail,
+                recipientName: order.recipientName || order.recipientEmail.split("@")[0],
+                senderName: order.user?.name || order.customerEmail.split("@")[0],
+                senderEmail: order.customerEmail,
+                giftMessage: order.giftMessage || undefined,
+                bookTitle: item.book?.title || item.bookTitle || "Your Gift Book",
+                bookAuthor: item.book?.author?.name || undefined,
+                bookCoverUrl: item.book?.coverImage || undefined,
+              }).catch((err) => console.error("Claim session gift email error:", err));
+            }
           }
         }
       }

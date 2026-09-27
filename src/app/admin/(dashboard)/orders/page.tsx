@@ -70,6 +70,10 @@ export default async function AdminOrdersPage() {
     totalAmount: o.totalAmount,
     paymentStatus: o.paymentStatus,
     currency: o.currency,
+    isGift: o.isGift,
+    recipientName: o.recipientName,
+    recipientEmail: o.recipientEmail,
+    giftMessage: o.giftMessage,
     createdAt: o.createdAt.toISOString(),
     items: o.items.map((i) => ({
       id: i.id,

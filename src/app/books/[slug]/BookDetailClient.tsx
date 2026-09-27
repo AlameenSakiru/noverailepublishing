@@ -30,6 +30,7 @@ import {
   GraduationCap,
   MessageSquare,
   ChevronRight,
+  Gift,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { PreviewModal } from "@/components/PreviewModal";
@@ -83,7 +84,7 @@ export function BookDetailClient({
   // Local reviews list so new reviews appear instantly
   const [reviewsList, setReviewsList] = useState<ReviewItem[]>(book.reviews || []);
 
-  const { addItem, isInCart } = useCart();
+  const { addItem, isInCart, setGiftDetails } = useCart();
   const router = useRouter();
 
   const inCart = isInCart(book.id);
@@ -171,6 +172,21 @@ export function BookDetailClient({
 
   const handleBuyNow = () => {
     handleAddToCart();
+    router.push("/cart");
+  };
+
+  const handleBuyAsGift = () => {
+    addItem({
+      bookId: book.id,
+      slug: book.slug,
+      title: book.title,
+      subtitle: book.subtitle,
+      author: book.author.name,
+      coverImage: book.coverImage,
+      price: book.price,
+      salePrice: book.salePrice,
+    });
+    setGiftDetails({ isGift: true });
     router.push("/cart");
   };
 
@@ -463,44 +479,64 @@ export function BookDetailClient({
             </p>
 
             {/* Primary Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+            <div className="space-y-3 mt-6">
               {isOwned ? (
-                <Link
-                  href={`/reader/${book.slug}`}
-                  className="w-full flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm shadow-md transition-all active:scale-[0.99]"
-                >
-                  <BookOpen className="w-5 h-5" />
-                  <span>Open & Continue Reading in Cloud Reader</span>
-                </Link>
-              ) : (
-                <>
-                  <button
-                    onClick={handleBuyNow}
-                    className="flex-1 px-8 py-4 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+                <div className="space-y-2.5">
+                  <Link
+                    href={`/reader/${book.slug}`}
+                    className="w-full flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm shadow-md transition-all active:scale-[0.99]"
                   >
-                    <span>Buy Now • Instant Cloud Access</span>
-                  </button>
+                    <BookOpen className="w-5 h-5" />
+                    <span>Open & Continue Reading in Cloud Reader</span>
+                  </Link>
 
                   <button
-                    onClick={handleAddToCart}
-                    disabled={inCart}
-                    className={`px-6 py-4 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-2 ${
-                      inCart
-                        ? "bg-emerald-50 text-emerald-800 border-emerald-300 cursor-default"
-                        : "bg-white text-brand-ink border-brand-border hover:bg-brand-100"
-                    }`}
+                    onClick={handleBuyAsGift}
+                    className="w-full py-3 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
                   >
-                    {inCart ? (
-                      <>
-                        <Check className="w-4 h-4 text-emerald-600" />
-                        <span>In Your Cart</span>
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingBag className="w-4 h-4" />
-                        <span>Add to Cart</span>
-                      </>
-                    )}
+                    <Gift className="w-4 h-4 text-amber-700" />
+                    <span>Send this book as a Gift to a Friend</span>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={handleBuyNow}
+                      className="flex-1 px-8 py-4 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+                    >
+                      <span>Buy Now • Instant Cloud Access</span>
+                    </button>
+
+                    <button
+                      onClick={handleAddToCart}
+                      disabled={inCart}
+                      className={`px-6 py-4 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-2 ${
+                        inCart
+                          ? "bg-emerald-50 text-emerald-800 border-emerald-300 cursor-default"
+                          : "bg-white text-brand-ink border-brand-border hover:bg-brand-100"
+                      }`}
+                    >
+                      {inCart ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-600" />
+                          <span>In Your Cart</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingBag className="w-4 h-4" />
+                          <span>Add to Cart</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={handleBuyAsGift}
+                    className="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 hover:from-amber-600 hover:to-amber-700 text-white font-semibold text-xs shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+                  >
+                    <Gift className="w-4 h-4" />
+                    <span>Buy as a Gift for Someone Else</span>
                   </button>
                 </>
               )}

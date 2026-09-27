@@ -6,6 +6,7 @@ import { isStripeConfigured, createCheckoutSession, CheckoutItem } from "@/lib/s
 import { isPaystackConfigured, initializePaystackTransaction } from "@/lib/paystack";
 import { siteConfig } from "@/lib/config";
 import { checkRateLimit, getClientIp } from "@/lib/security";
+import { sendGiftDeliveryEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Malformed checkout payload." }, { status: 400 });
     }
 
-    const { items, couponCode, email: guestEmail, preferredGateway } = body || {};
+    const {
+      items,
+      couponCode,
+      email: guestEmail,
+      preferredGateway,
+      isGift,
+      recipientName,
+      recipientEmail,
+      giftMessage,
+      senderName,
+    } = body || {};
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Cart is empty." }, { status: 400 });
@@ -50,6 +61,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
     }
 
+    // Process Gift Fields
+    const cleanIsGift = Boolean(isGift);
+    let cleanRecipientEmail: string | null = null;
+    let cleanRecipientName: string | null = null;
+    let cleanGiftMessage: string | null = null;
+    let cleanSenderName: string = senderName
+      ? String(senderName).trim().slice(0, 100)
+      : currentUser?.name || cleanEmail.split("@")[0];
+
+    if (cleanIsGift) {
+      if (!recipientEmail || typeof recipientEmail !== "string") {
+        return NextResponse.json({ error: "Recipient email is required for gift orders." }, { status: 400 });
+      }
+      cleanRecipientEmail = recipientEmail.toLowerCase().trim().slice(0, 254);
+      if (!EMAIL_REGEX.test(cleanRecipientEmail)) {
+        return NextResponse.json({ error: "Please enter a valid recipient email address." }, { status: 400 });
+      }
+      cleanRecipientName = recipientName
+        ? String(recipientName).trim().slice(0, 100)
+        : cleanRecipientEmail.split("@")[0];
+      cleanGiftMessage = giftMessage ? String(giftMessage).trim().slice(0, 500) : null;
+    }
+
     // Fetch verified book records from DB to ensure prices cannot be tampered with
     const bookIds = items
       .map((i: any) => (i && typeof i.bookId === "string" ? i.bookId.trim() : ""))
@@ -61,6 +95,7 @@ export async function POST(req: Request) {
 
     const dbBooks = await prisma.book.findMany({
       where: { id: { in: bookIds } },
+      include: { author: true },
     });
 
     if (dbBooks.length !== bookIds.length) {
@@ -114,7 +149,6 @@ export async function POST(req: Request) {
     const defaultCurrency = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || siteConfig.defaultCurrency || "USD";
 
     // Determine target payment provider
-    // If Paystack is configured, use Paystack (or if preferredGateway is PAYSTACK)
     const usePaystack = isPaystackConfigured && (!preferredGateway || preferredGateway === "PAYSTACK");
     const useStripe = !usePaystack && isStripeConfigured && (!preferredGateway || preferredGateway === "STRIPE");
 
@@ -134,7 +168,7 @@ export async function POST(req: Request) {
         }
       }
 
-      // Create PENDING order in DB
+      // Create PENDING order in DB with gift metadata
       const order = await prisma.order.create({
         data: {
           orderNumber,
@@ -145,6 +179,10 @@ export async function POST(req: Request) {
           discountAmount,
           currency: defaultCurrency,
           paymentStatus: "PENDING",
+          isGift: cleanIsGift,
+          recipientName: cleanRecipientName,
+          recipientEmail: cleanRecipientEmail,
+          giftMessage: cleanGiftMessage,
           items: {
             create: checkoutItems.map((item) => ({
               bookId: item.bookId,
@@ -169,6 +207,11 @@ export async function POST(req: Request) {
           customerEmail: cleanEmail,
           itemsCount: checkoutItems.length,
           itemTitles: checkoutItems.map((i) => i.title).join(", "),
+          isGift: cleanIsGift ? "true" : "false",
+          recipientName: cleanRecipientName || "",
+          recipientEmail: cleanRecipientEmail || "",
+          giftMessage: cleanGiftMessage || "",
+          senderName: cleanSenderName || "",
         },
       });
 
@@ -216,6 +259,10 @@ export async function POST(req: Request) {
           discountAmount,
           currency: defaultCurrency,
           paymentStatus: "PENDING",
+          isGift: cleanIsGift,
+          recipientName: cleanRecipientName,
+          recipientEmail: cleanRecipientEmail,
+          giftMessage: cleanGiftMessage,
           items: {
             create: checkoutItems.map((item) => ({
               bookId: item.bookId,
@@ -258,7 +305,6 @@ export async function POST(req: Request) {
     if (!user) {
       const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
       if (existingUser) {
-        // Strict Guard: Never allow administrative accounts to be referenced via unauthenticated guest checkout
         if (existingUser.role === "ADMIN" || existingUser.role === "EDITOR") {
           return NextResponse.json(
             { error: "Administrative accounts cannot check out as guest. Please sign in first." },
@@ -267,7 +313,6 @@ export async function POST(req: Request) {
         }
         user = existingUser;
       } else {
-        // Create new customer account with cryptographically random password
         const fastHash = await hashPassword(crypto.randomBytes(16).toString("hex") + "N1!");
         user = await prisma.user.create({
           data: {
@@ -296,6 +341,10 @@ export async function POST(req: Request) {
         discountAmount,
         currency: defaultCurrency,
         paymentStatus: "PAID",
+        isGift: cleanIsGift,
+        recipientName: cleanRecipientName,
+        recipientEmail: cleanRecipientEmail,
+        giftMessage: cleanGiftMessage,
         payment: {
           create: {
             provider: "SANDBOX",
@@ -315,30 +364,79 @@ export async function POST(req: Request) {
       },
     });
 
+    // Determine entitlement recipient (either gift recipient or buyer)
+    let entitlementUserId = user.id;
+    if (cleanIsGift && cleanRecipientEmail) {
+      let recipientUser = await prisma.user.findUnique({ where: { email: cleanRecipientEmail } });
+      if (!recipientUser) {
+        const fastHash = await hashPassword(crypto.randomBytes(16).toString("hex") + "N1!");
+        recipientUser = await prisma.user.create({
+          data: {
+            email: cleanRecipientEmail,
+            name: cleanRecipientName || cleanRecipientEmail.split("@")[0],
+            passwordHash: fastHash,
+            role: "CUSTOMER",
+            isEmailVerified: true,
+          },
+        });
+      }
+      entitlementUserId = recipientUser.id;
+    }
+
     // Concurrently create digital entitlements and reading progress records
     await Promise.all(
       dbBooks.map(async (book) => {
         await prisma.entitlement.upsert({
           where: {
-            userId_bookId: { userId: user!.id, bookId: book.id },
+            userId_bookId: { userId: entitlementUserId, bookId: book.id },
           },
-          update: { status: "ACTIVE", orderId: order.id },
-          create: { userId: user!.id, bookId: book.id, orderId: order.id, status: "ACTIVE" },
+          update: {
+            status: "ACTIVE",
+            orderId: order.id,
+            isGift: cleanIsGift,
+            giftSenderName: cleanIsGift ? cleanSenderName : null,
+            giftSenderEmail: cleanIsGift ? cleanEmail : null,
+            giftMessage: cleanIsGift ? cleanGiftMessage : null,
+          },
+          create: {
+            userId: entitlementUserId,
+            bookId: book.id,
+            orderId: order.id,
+            status: "ACTIVE",
+            isGift: cleanIsGift,
+            giftSenderName: cleanIsGift ? cleanSenderName : null,
+            giftSenderEmail: cleanIsGift ? cleanEmail : null,
+            giftMessage: cleanIsGift ? cleanGiftMessage : null,
+          },
         }).catch(() => {});
 
         await prisma.readingProgress.upsert({
           where: {
-            userId_bookId: { userId: user!.id, bookId: book.id },
+            userId_bookId: { userId: entitlementUserId, bookId: book.id },
           },
           update: {},
           create: {
-            userId: user!.id,
+            userId: entitlementUserId,
             bookId: book.id,
             currentPage: 1,
             totalPages: book.pageCount > 0 ? book.pageCount : 1,
             progressPercent: 0,
           },
         }).catch(() => {});
+
+        // If Gift order, dispatch branded gift delivery announcement email
+        if (cleanIsGift && cleanRecipientEmail) {
+          sendGiftDeliveryEmail({
+            recipientEmail: cleanRecipientEmail,
+            recipientName: cleanRecipientName || cleanRecipientEmail.split("@")[0],
+            senderName: cleanSenderName,
+            senderEmail: cleanEmail,
+            giftMessage: cleanGiftMessage || undefined,
+            bookTitle: book.title,
+            bookAuthor: book.author?.name || undefined,
+            bookCoverUrl: book.coverImage || undefined,
+          }).catch((err) => console.error("Gift email delivery error:", err));
+        }
       })
     );
 
@@ -348,7 +446,6 @@ export async function POST(req: Request) {
       orderNumber: order.orderNumber,
     });
 
-    // Issue session cookie ONLY if the user was already authenticated OR if they newly created their account in this request
     if (currentUser || isNewlyCreatedUser) {
       await setSessionCookie(
         {

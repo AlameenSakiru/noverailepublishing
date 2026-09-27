@@ -3,7 +3,19 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Trash2, ArrowRight, ShieldCheck, Tag, Lock, ArrowLeft, ShoppingBag } from "lucide-react";
+import {
+  Trash2,
+  ArrowRight,
+  ShieldCheck,
+  Tag,
+  Lock,
+  ArrowLeft,
+  ShoppingBag,
+  Gift,
+  Heart,
+  Sparkles,
+  CheckCircle2,
+} from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 
@@ -19,11 +31,20 @@ export default function CartPage() {
     couponError,
     applyCoupon,
     removeCoupon,
+    isGift,
+    recipientName,
+    recipientEmail,
+    giftMessage,
+    setIsGift,
+    setRecipientName,
+    setRecipientEmail,
+    setGiftMessage,
   } = useCart();
   const { user } = useAuth();
 
   const [couponCodeInput, setCouponCodeInput] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
+  const [buyerEmail, setBuyerEmail] = useState("");
+  const [buyerName, setBuyerName] = useState(user?.name || "");
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
@@ -38,11 +59,26 @@ export default function CartPage() {
 
   const handleCheckout = async () => {
     setCheckoutError(null);
-    const emailToUse = user?.email || guestEmail.trim();
+    const emailToUse = user?.email || buyerEmail.trim();
 
     if (!emailToUse || !emailToUse.includes("@")) {
-      setCheckoutError("Please provide a valid email address for digital library delivery.");
+      setCheckoutError("Please provide your valid email address for the purchase receipt.");
       return;
+    }
+
+    if (isGift) {
+      if (!recipientEmail.trim() || !recipientEmail.includes("@")) {
+        setCheckoutError("Please provide a valid email address for the gift recipient.");
+        return;
+      }
+      if (!recipientName.trim()) {
+        setCheckoutError("Please enter the recipient's name.");
+        return;
+      }
+      if (recipientEmail.trim().toLowerCase() === emailToUse.toLowerCase()) {
+        setCheckoutError("The recipient email cannot be the same as your sender email. Enter the person's email who is receiving the gift.");
+        return;
+      }
     }
 
     setIsCheckingOut(true);
@@ -55,6 +91,11 @@ export default function CartPage() {
           items,
           couponCode: coupon?.code || null,
           email: emailToUse,
+          isGift,
+          recipientName: isGift ? recipientName.trim() : null,
+          recipientEmail: isGift ? recipientEmail.trim() : null,
+          giftMessage: isGift ? giftMessage.trim() : null,
+          senderName: buyerName.trim() || user?.name || emailToUse.split("@")[0],
         }),
       });
 
@@ -68,7 +109,7 @@ export default function CartPage() {
       // Clear cart locally upon successful checkout placement
       clearCart();
 
-      // Redirect to checkout URL (Stripe or instant success)
+      // Redirect to checkout URL (Stripe, Paystack, or instant success)
       window.location.href = data.checkoutUrl;
     } catch {
       setCheckoutError("Network error initiating checkout.");
@@ -113,13 +154,15 @@ export default function CartPage() {
           Shopping Cart ({items.length} {items.length === 1 ? "Book" : "Books"})
         </h1>
         <p className="text-xs text-brand-muted mt-1">
-          Purchased titles are instantly delivered to your personal Noveraile digital library.
+          {isGift
+            ? "🎁 Gift purchase mode active: Titles will be directly delivered to the recipient's cloud library."
+            : "Purchased titles are instantly delivered to your personal Noveraile digital library."}
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* Cart Items List */}
-        <div className="lg:col-span-8 space-y-4">
+        {/* Left Column: Cart Items List & Gift Form */}
+        <div className="lg:col-span-8 space-y-6">
           <div className="bg-white rounded-2xl border border-brand-border overflow-hidden shadow-xs divide-y divide-gray-100">
             {items.map((item) => {
               const activePrice = item.salePrice != null && item.salePrice > 0 ? item.salePrice : item.price;
@@ -143,7 +186,7 @@ export default function CartPage() {
                     </Link>
                     <p className="text-xs text-brand-muted mt-0.5">By {item.author}</p>
                     <span className="inline-block mt-2 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 text-[10px] font-semibold">
-                      Digital Book • Instant Online Access
+                      Digital Book • Instant Cloud Delivery
                     </span>
                   </div>
 
@@ -172,6 +215,117 @@ export default function CartPage() {
             })}
           </div>
 
+          {/* 🎁 Gift Purchase Toggle & Customization Box */}
+          <div className={`rounded-2xl border transition-all duration-300 p-6 ${
+            isGift
+              ? "bg-gradient-to-br from-amber-50/70 via-white to-orange-50/40 border-amber-300 shadow-sm"
+              : "bg-white border-brand-border shadow-xs"
+          }`}>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                  isGift ? "bg-amber-500 text-white shadow-sm" : "bg-brand-100 text-brand-700"
+                }`}>
+                  <Gift className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-base font-bold text-brand-ink flex items-center gap-2">
+                    <span>Send this purchase as a Gift</span>
+                    {isGift && (
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                        Gift Mode Active
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-brand-slate mt-0.5 font-light leading-relaxed">
+                    Surprise a friend, colleague, or student. We will email them with immediate reading access and your personalized gift card note.
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle Switch */}
+              <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+                <input
+                  type="checkbox"
+                  checked={isGift}
+                  onChange={(e) => setIsGift(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+              </label>
+            </div>
+
+            {/* Expanded Gift Input Details */}
+            {isGift && (
+              <div className="mt-6 pt-5 border-t border-amber-200/70 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-brand-ink mb-1.5">
+                      Recipient&apos;s Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={recipientName}
+                      onChange={(e) => setRecipientName(e.target.value)}
+                      placeholder="e.g. Alex Johnson"
+                      required
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300/80 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-brand-ink mb-1.5">
+                      Recipient&apos;s Email Address <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={recipientEmail}
+                      onChange={(e) => setRecipientEmail(e.target.value)}
+                      placeholder="alex.johnson@example.com"
+                      required
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300/80 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400"
+                    />
+                    <p className="text-[10px] text-amber-800/80 mt-1">
+                      The gift notification and cloud reading access will be sent directly to this address.
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-brand-ink">
+                      Personal Gift Note / Message (Optional)
+                    </label>
+                    <span className="text-[10px] text-brand-muted">
+                      {giftMessage.length}/400 characters
+                    </span>
+                  </div>
+                  <textarea
+                    value={giftMessage}
+                    onChange={(e) => setGiftMessage(e.target.value.slice(0, 400))}
+                    rows={3}
+                    placeholder="e.g. Happy Birthday Alex! Wishing you great success on your upcoming exams. Enjoy this reading edition!"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300/80 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400 leading-relaxed font-sans resize-none"
+                  />
+                </div>
+
+                {/* Sender Name Customization */}
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1.5">
+                    From (Your Name shown on the gift card)
+                  </label>
+                  <input
+                    type="text"
+                    value={buyerName}
+                    onChange={(e) => setBuyerName(e.target.value)}
+                    placeholder="Your Name (e.g. Sarah Miller)"
+                    className="w-full sm:w-1/2 px-3.5 py-2.5 rounded-xl border border-amber-300/80 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-between items-center pt-2">
             <Link
               href="/books"
@@ -190,29 +344,32 @@ export default function CartPage() {
           </div>
         </div>
 
-        {/* Order Summary & Checkout Card */}
+        {/* Right Column: Order Summary & Checkout Card */}
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-white rounded-2xl border border-brand-border p-6 shadow-xs">
             <h2 className="font-serif text-xl font-bold text-brand-ink mb-4 pb-3 border-b border-gray-100">
               Order Summary
             </h2>
 
-            {/* Email input if not signed in */}
+            {/* Buyer Email input if not signed in */}
             {!user && (
               <div className="mb-5 pb-5 border-b border-gray-100">
                 <label className="block text-xs font-semibold text-brand-ink mb-1">
-                  Recipient Account Email <span className="text-red-500">*</span>
+                  {isGift ? "Your Email (Buyer / Sender)" : "Your Account Email"}{" "}
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
-                  value={guestEmail}
-                  onChange={(e) => setGuestEmail(e.target.value)}
+                  value={buyerEmail}
+                  onChange={(e) => setBuyerEmail(e.target.value)}
                   placeholder="your.email@example.com"
                   required
                   className="w-full px-3.5 py-2.5 rounded-lg border border-brand-border text-xs focus:outline-none focus:ring-2 focus:ring-brand-ink"
                 />
                 <p className="text-[11px] text-brand-muted mt-1">
-                  Your digital book will be instantly linked to this email address.
+                  {isGift
+                    ? "Your purchase confirmation receipt will be sent here."
+                    : "Your digital book will be instantly linked to this email address."}
                 </p>
               </div>
             )}
@@ -239,6 +396,16 @@ export default function CartPage() {
                       ×
                     </button>
                   </div>
+                </div>
+              )}
+
+              {isGift && (
+                <div className="flex justify-between text-amber-800 bg-amber-50 px-2.5 py-1.5 rounded-lg text-xs">
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <Gift className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Gift Delivery Service</span>
+                  </div>
+                  <span className="font-semibold text-amber-900">FREE</span>
                 </div>
               )}
 
@@ -293,7 +460,13 @@ export default function CartPage() {
               className="w-full mt-6 py-3.5 px-6 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-50"
             >
               <Lock className="w-4 h-4 text-brand-300" />
-              <span>{isCheckingOut ? "Connecting to Secure Gateway..." : "Proceed to Secure Checkout"}</span>
+              <span>
+                {isCheckingOut
+                  ? "Connecting to Secure Gateway..."
+                  : isGift
+                  ? "Complete Gift Purchase"
+                  : "Proceed to Secure Checkout"}
+              </span>
             </button>
 
             {/* Payment Method Badges & Security */}
@@ -318,4 +491,5 @@ export default function CartPage() {
     </div>
   );
 }
+
 

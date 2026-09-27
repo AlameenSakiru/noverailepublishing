@@ -54,22 +54,56 @@ export async function POST(req: Request) {
             },
           });
 
-          // Create entitlements if userId is linked
-          if (order.userId) {
+          // Create entitlements (Gift vs Self Purchase)
+          const isGift = Boolean(order.isGift && order.recipientEmail);
+          let entitlementUserId = order.userId;
+
+          if (isGift && order.recipientEmail) {
+            const recipientClean = order.recipientEmail.toLowerCase().trim();
+            let recipientUser = await prisma.user.findUnique({ where: { email: recipientClean } });
+            if (!recipientUser) {
+              const { hashPassword } = await import("@/lib/auth");
+              const randomPass = Math.random().toString(36).slice(-10) + "A1!";
+              const passwordHash = await hashPassword(randomPass);
+              recipientUser = await prisma.user.create({
+                data: {
+                  email: recipientClean,
+                  name: order.recipientName || recipientClean.split("@")[0],
+                  passwordHash,
+                  role: "CUSTOMER",
+                  isEmailVerified: true,
+                },
+              });
+            }
+            entitlementUserId = recipientUser.id;
+          }
+
+          if (entitlementUserId) {
             for (const item of order.items) {
               await prisma.entitlement.upsert({
                 where: {
                   userId_bookId: {
-                    userId: order.userId,
+                    userId: entitlementUserId,
                     bookId: item.bookId,
                   },
                 },
-                update: { status: "ACTIVE" },
+                update: {
+                  status: "ACTIVE",
+                  orderId: order.id,
+                  isGift,
+                  giftSenderName: isGift ? order.customerEmail.split("@")[0] : null,
+                  giftSenderEmail: isGift ? order.customerEmail : null,
+                  giftMessage: isGift ? order.giftMessage : null,
+                },
                 create: {
-                  userId: order.userId,
+                  userId: entitlementUserId,
                   bookId: item.bookId,
                   orderId: order.id,
                   status: "ACTIVE",
+                  isGift,
+                  giftSenderName: isGift ? order.customerEmail.split("@")[0] : null,
+                  giftSenderEmail: isGift ? order.customerEmail : null,
+                  giftMessage: isGift ? order.giftMessage : null,
                 },
               });
 
@@ -77,19 +111,38 @@ export async function POST(req: Request) {
               await prisma.readingProgress.upsert({
                 where: {
                   userId_bookId: {
-                    userId: order.userId,
+                    userId: entitlementUserId,
                     bookId: item.bookId,
                   },
                 },
                 update: {},
                 create: {
-                  userId: order.userId,
+                  userId: entitlementUserId,
                   bookId: item.bookId,
                   currentPage: 1,
                   totalPages: 1,
                   progressPercent: 0,
                 },
               });
+
+              // Dispatch gift delivery email
+              if (isGift && order.recipientEmail) {
+                const { sendGiftDeliveryEmail } = await import("@/lib/email");
+                const book = await prisma.book.findUnique({
+                  where: { id: item.bookId },
+                  include: { author: true },
+                });
+                sendGiftDeliveryEmail({
+                  recipientEmail: order.recipientEmail,
+                  recipientName: order.recipientName || order.recipientEmail.split("@")[0],
+                  senderName: order.customerEmail.split("@")[0],
+                  senderEmail: order.customerEmail,
+                  giftMessage: order.giftMessage || undefined,
+                  bookTitle: book?.title || item.bookTitle || "Your Gift Publication",
+                  bookAuthor: book?.author?.name || undefined,
+                  bookCoverUrl: book?.coverImage || undefined,
+                }).catch((err) => console.error("Stripe webhook gift email error:", err));
+              }
             }
           }
         }

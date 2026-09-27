@@ -18,6 +18,7 @@ import {
   TrendingUp,
   Sliders,
   Calculator,
+  Gift,
 } from "lucide-react";
 
 export interface TitlePerformanceItem {
@@ -54,6 +55,10 @@ interface Order {
   totalAmount: number;
   paymentStatus: string;
   currency: string;
+  isGift?: boolean;
+  recipientName?: string | null;
+  recipientEmail?: string | null;
+  giftMessage?: string | null;
   createdAt: string;
   items: OrderItem[];
   payment: Payment | null;
@@ -534,10 +539,24 @@ export function OrdersClient({
                         <React.Fragment key={order.id}>
                           <tr className="hover:bg-gray-50/60 transition-colors">
                             <td className="p-4 font-mono font-bold text-brand-ink">
-                              {order.orderNumber}
+                              <div className="flex items-center gap-1.5">
+                                <span>{order.orderNumber}</span>
+                                {order.isGift && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                    GIFT
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="p-4 text-gray-700 font-medium">
-                              {order.customerEmail}
+                              <div>
+                                <span>{order.customerEmail}</span>
+                                {order.isGift && order.recipientEmail && (
+                                  <span className="text-[11px] text-amber-800 font-normal block mt-0.5">
+                                    Recipient: {order.recipientName || order.recipientEmail} ({order.recipientEmail})
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="p-4 text-gray-500">
                               <span className="inline-flex items-center gap-1 font-semibold text-brand-ink">
@@ -606,6 +625,24 @@ export function OrdersClient({
                                       <span>Processed Digitally</span>
                                     </div>
                                   </div>
+
+                                  {/* Gift Details Row */}
+                                  {order.isGift && (
+                                    <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1">
+                                      <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                                        <Gift className="w-3.5 h-3.5 text-amber-700" />
+                                        <span>Gift Purchase Details</span>
+                                      </div>
+                                      <div>
+                                        <span className="font-semibold">Recipient:</span> {order.recipientName || "N/A"} ({order.recipientEmail})
+                                      </div>
+                                      {order.giftMessage && (
+                                        <div>
+                                          <span className="font-semibold">Gift Note:</span> &ldquo;{order.giftMessage}&rdquo;
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
 
                                   <div>
                                     <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">

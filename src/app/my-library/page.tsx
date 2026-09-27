@@ -16,6 +16,8 @@ import {
   PackageCheck,
   ShoppingBag,
   ExternalLink,
+  Gift,
+  Heart,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -171,7 +173,8 @@ export default async function MyLibraryPage({ searchParams }: MyLibraryPageProps
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {entitlements.map(({ book }) => {
+              {entitlements.map((entitlement) => {
+                const book = entitlement.book;
                 const progress = progressMap.get(book.id);
                 const currentPage = progress?.currentPage || 1;
                 const totalPages =
@@ -196,75 +199,94 @@ export default async function MyLibraryPage({ searchParams }: MyLibraryPageProps
 
                 return (
                   <div
-                    key={book.id}
+                    key={entitlement.id || book.id}
                     className="bg-white rounded-2xl border border-brand-border overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
                   >
-                    <div className="p-6 flex gap-5">
-                      {/* Book Cover Thumbnail with accurate 2:3 ratio */}
-                      <Link
-                        href={`/reader/${book.slug}`}
-                        className="relative w-24 sm:w-28 aspect-[2/3] rounded-md shadow-book group-hover:scale-105 transition-transform shrink-0 border border-black/10 overflow-hidden bg-slate-900 flex items-center justify-center text-white"
-                      >
-                        {isValidCover ? (
-                          <Image
-                            src={book.coverImage}
-                            alt={book.title}
-                            fill
-                            sizes="120px"
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="p-3 text-center flex flex-col items-center justify-center h-full w-full bg-gradient-to-br from-slate-900 via-slate-800 to-amber-950 text-white">
-                            <BookOpen className="w-5 h-5 text-amber-400 mb-2 opacity-80" />
-                            <span className="font-serif text-[10px] font-bold leading-tight line-clamp-3">
-                              {book.title}
+                    <div className="p-6 flex flex-col gap-4">
+                      {/* Gift Badge & Personal Note */}
+                      {entitlement.isGift && (
+                        <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-xs text-amber-900 flex items-start gap-2 shadow-2xs">
+                          <Gift className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <span className="font-bold text-[11px] text-amber-950 block">
+                              Gift from {entitlement.giftSenderName || entitlement.giftSenderEmail || "a friend"}
                             </span>
-                            <span className="text-[8px] text-amber-200/70 mt-1 block truncate max-w-full">
-                              {book.author?.name}
-                            </span>
+                            {entitlement.giftMessage && (
+                              <p className="font-serif italic text-amber-900 text-[11px] mt-0.5 leading-snug">
+                                &ldquo;{entitlement.giftMessage}&rdquo;
+                              </p>
+                            )}
                           </div>
-                        )}
-                        <div className="absolute top-0 bottom-0 left-0 w-2.5 bg-gradient-to-r from-black/25 via-white/10 to-transparent pointer-events-none" />
-                      </Link>
-
-                      {/* Book Metadata & Progress */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-brand-100 text-brand-800">
-                            {book.category.name}
-                          </span>
-                          {book.examMetadata && (
-                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900">
-                              {book.examMetadata.examAcronym}
-                            </span>
-                          )}
                         </div>
+                      )}
 
-                        <Link href={`/reader/${book.slug}`}>
-                          <h3 className="font-serif text-base sm:text-lg font-bold text-brand-ink leading-snug line-clamp-2 hover:text-brand-600 transition-colors">
-                            {book.title}
-                          </h3>
+                      <div className="flex gap-5">
+                        {/* Book Cover Thumbnail with accurate 2:3 ratio */}
+                        <Link
+                          href={`/reader/${book.slug}`}
+                          className="relative w-24 sm:w-28 aspect-[2/3] rounded-md shadow-book group-hover:scale-105 transition-transform shrink-0 border border-black/10 overflow-hidden bg-slate-900 flex items-center justify-center text-white"
+                        >
+                          {isValidCover ? (
+                            <Image
+                              src={book.coverImage}
+                              alt={book.title}
+                              fill
+                              sizes="120px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="p-3 text-center flex flex-col items-center justify-center h-full w-full bg-gradient-to-br from-slate-900 via-slate-800 to-amber-950 text-white">
+                              <BookOpen className="w-5 h-5 text-amber-400 mb-2 opacity-80" />
+                              <span className="font-serif text-[10px] font-bold leading-tight line-clamp-3">
+                                {book.title}
+                              </span>
+                              <span className="text-[8px] text-amber-200/70 mt-1 block truncate max-w-full">
+                                {book.author?.name}
+                              </span>
+                            </div>
+                          )}
+                          <div className="absolute top-0 bottom-0 left-0 w-2.5 bg-gradient-to-r from-black/25 via-white/10 to-transparent pointer-events-none" />
                         </Link>
 
-                        <p className="text-xs text-brand-muted mt-1 font-medium">
-                          By {book.author.name}
-                        </p>
-
-                        {/* Progress Bar & Percentage */}
-                        <div className="mt-4">
-                          <div className="flex items-center justify-between text-[11px] mb-1.5">
-                            <span className="font-semibold text-brand-slate">
-                              {hasStarted ? `${Math.round(percent)}% complete` : "Not started"}
+                        {/* Book Metadata & Progress */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-brand-100 text-brand-800">
+                              {book.category.name}
                             </span>
-                            <span className="text-brand-muted text-[10px]">
-                              {totalPages > 1 ? `${currentPage} of ${totalPages} Pages` : `Page ${currentPage}`}
-                            </span>
+                            {book.examMetadata && (
+                              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900">
+                                {book.examMetadata.examAcronym}
+                              </span>
+                            )}
                           </div>
-                          <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-brand-ink rounded-full transition-all duration-500"
-                              style={{ width: `${percent}%` }}
-                            />
+
+                          <Link href={`/reader/${book.slug}`}>
+                            <h3 className="font-serif text-base sm:text-lg font-bold text-brand-ink leading-snug line-clamp-2 hover:text-brand-600 transition-colors">
+                              {book.title}
+                            </h3>
+                          </Link>
+
+                          <p className="text-xs text-brand-muted mt-1 font-medium">
+                            By {book.author.name}
+                          </p>
+
+                          {/* Progress Bar & Percentage */}
+                          <div className="mt-4">
+                            <div className="flex items-center justify-between text-[11px] mb-1.5">
+                              <span className="font-semibold text-brand-slate">
+                                {hasStarted ? `${Math.round(percent)}% complete` : "Not started"}
+                              </span>
+                              <span className="text-brand-muted text-[10px]">
+                                {totalPages > 1 ? `${currentPage} of ${totalPages} Pages` : `Page ${currentPage}`}
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-brand-ink rounded-full transition-all duration-500"
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -362,12 +384,35 @@ export default async function MyLibraryPage({ searchParams }: MyLibraryPageProps
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {order.isGift && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+                            <Gift className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Gift Purchase</span>
+                          </span>
+                        )}
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           <span>{order.paymentStatus === "PAID" ? "Payment Completed" : order.paymentStatus}</span>
                         </span>
                       </div>
                     </div>
+
+                    {/* Gift Recipient Strip (if Gift Order) */}
+                    {order.isGift && order.recipientEmail && (
+                      <div className="px-6 py-3 bg-amber-50/50 border-b border-amber-200/60 text-xs text-amber-950 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Gift className="w-4 h-4 text-amber-700 shrink-0" />
+                          <span>
+                            Gift delivered to: <strong>{order.recipientName || order.recipientEmail}</strong> ({order.recipientEmail})
+                          </span>
+                        </div>
+                        {order.giftMessage && (
+                          <span className="font-serif italic text-amber-900/90 text-[11px]">
+                            &ldquo;{order.giftMessage}&rdquo;
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Order Line Items */}
                     <div className="p-6 divide-y divide-gray-100">
@@ -392,7 +437,7 @@ export default async function MyLibraryPage({ searchParams }: MyLibraryPageProps
                                 {item.book.title}
                               </Link>
                               <p className="text-xs text-brand-muted mt-0.5">
-                                Digital Edition • Instant Cloud Access
+                                {order.isGift ? "Gifted Digital Access" : "Digital Edition • Instant Cloud Access"}
                               </p>
                               <span className="text-xs font-semibold text-brand-slate block mt-1">
                                 ${item.price.toFixed(2)}
@@ -401,13 +446,19 @@ export default async function MyLibraryPage({ searchParams }: MyLibraryPageProps
                           </div>
 
                           <div>
-                            <Link
-                              href={`/reader/${item.book.slug}`}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-ink hover:bg-brand-900 text-white text-xs font-semibold shadow-xs transition-colors"
-                            >
-                              <BookOpen className="w-3.5 h-3.5 text-brand-300" />
-                              <span>Read Now</span>
-                            </Link>
+                            {!order.isGift ? (
+                              <Link
+                                href={`/reader/${item.book.slug}`}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-ink hover:bg-brand-900 text-white text-xs font-semibold shadow-xs transition-colors"
+                              >
+                                <BookOpen className="w-3.5 h-3.5 text-brand-300" />
+                                <span>Read Now</span>
+                              </Link>
+                            ) : (
+                              <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
+                                Delivered as Gift
+                              </span>
+                            )}
                           </div>
                         </div>
                       ))}

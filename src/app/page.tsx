@@ -20,34 +20,42 @@ import {
   Award,
 } from "lucide-react";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  // Concurrently fetch all published publications across all niches
-  const [allBooks, categories] = await Promise.all([
-    prisma.book.findMany({
-      where: { status: "PUBLISHED" },
-      include: {
-        author: true,
-        category: true,
-        imprint: true,
-        examMetadata: true,
-        reviews: {
-          select: { rating: true },
+  let allBooks: any[] = [];
+  let categories: any[] = [];
+
+  try {
+    const [fetchedBooks, fetchedCategories] = await Promise.all([
+      prisma.book.findMany({
+        where: { status: "PUBLISHED" },
+        include: {
+          author: true,
+          category: true,
+          imprint: true,
+          examMetadata: true,
+          reviews: {
+            select: { rating: true },
+          },
         },
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.category.findMany({
-      where: { parentId: null, isActive: true },
-      include: {
-        _count: {
-          select: { books: true },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.category.findMany({
+        where: { parentId: null, isActive: true },
+        include: {
+          _count: {
+            select: { books: true },
+          },
         },
-      },
-      orderBy: { sortOrder: "asc" },
-    }),
-  ]);
+        orderBy: { sortOrder: "asc" },
+      }),
+    ]);
+    allBooks = fetchedBooks;
+    categories = fetchedCategories;
+  } catch (err) {
+    console.error("Home page DB fetch error (fallback applied):", err);
+  }
 
   return (
     <div className="space-y-20 pb-20 font-sans">
@@ -266,7 +274,7 @@ export default async function HomePage() {
           {allBooks.map((book) => {
             const reviewCount = book.reviews?.length || 0;
             const avgRating = reviewCount > 0
-              ? book.reviews.reduce((acc, r) => acc + r.rating, 0) / reviewCount
+              ? (book.reviews as Array<{ rating: number }>).reduce((acc: number, r: { rating: number }) => acc + r.rating, 0) / reviewCount
               : null;
 
             return (
