@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getAutoImprintId } from "@/lib/imprintMapping";
+import { AmazonDescriptionEditor } from "@/components/AmazonDescriptionEditor";
 
 interface CreateBookModalProps {
   isOpen: boolean;
@@ -755,12 +756,17 @@ export function CreateBookModal({
 
               {/* Book Descriptions */}
               <div className="p-5 bg-white rounded-xl border border-gray-200 space-y-4 shadow-2xs">
-                <h3 className="font-bold text-gray-900 text-sm">
-                  3. Book Descriptions
-                </h3>
+                <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                  <h3 className="font-bold text-gray-900 text-sm">
+                    3. Book Descriptions (Amazon KDP Compatible)
+                  </h3>
+                  <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                    Supports Bullet Points & HTML
+                  </span>
+                </div>
 
                 <div>
-                  <label className="block font-semibold text-gray-700 mb-1">
+                  <label className="block font-semibold text-gray-700 mb-1 text-xs">
                     Short Summary (Shown on search cards and catalog previews)
                   </label>
                   <textarea
@@ -768,24 +774,20 @@ export function CreateBookModal({
                     value={formData.shortDescription}
                     onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
                     placeholder="Brief 1-2 sentence overview of the book..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs text-gray-900"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-ink"
                   />
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">
-                    Full Description (Shown on public book sales page) *
-                  </label>
-                  <textarea
-                    rows={5}
-                    required
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Provide a complete description of the chapters, who this book is for, and key takeaways..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs text-gray-900 leading-relaxed"
-                  />
-                </div>
+                <AmazonDescriptionEditor
+                  value={formData.description}
+                  onChange={(val) => setFormData({ ...formData, description: val })}
+                  label="Full Editorial Description (Sales Page Body)"
+                  required={true}
+                  rows={8}
+                  placeholder="Paste or write book description. You can paste bullets (•), headings (<h3>), bold text (<b>), numbered lists (1.), or click 'Amazon Template' above..."
+                />
               </div>
+
             </div>
           )}
 

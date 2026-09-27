@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { PreviewModal } from "@/components/PreviewModal";
+import { AmazonBookDescription } from "@/components/AmazonBookDescription";
 
 interface ReviewItem {
   id: string;
@@ -607,13 +608,28 @@ export function BookDetailClient({
       <div className="space-y-12">
         {/* Full Editorial Overview */}
         <div className="bg-white rounded-3xl border border-brand-border p-8 sm:p-10 shadow-xs">
-          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-brand-ink mb-6 pb-3 border-b border-brand-border">
-            Editorial Overview & Synopsis
-          </h2>
-          <div className="text-brand-slate text-base sm:text-lg leading-relaxed whitespace-pre-line font-light">
-            {book.description}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-6 border-b border-brand-border gap-2">
+            <div>
+              <span className="text-[11px] font-mono uppercase tracking-widest text-amber-700 font-bold block mb-1">
+                Publisher's Official Overview
+              </span>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-brand-ink">
+                Editorial Overview & Synopsis
+              </h2>
+            </div>
+            <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200/80 self-start sm:self-auto">
+              Amazon Edition Formatting
+            </span>
           </div>
+
+          <AmazonBookDescription
+            content={book.description}
+            defaultExpanded={false}
+            maxCollapsedHeight={320}
+            showExpandToggle={true}
+          />
         </div>
+
 
         {/* What's Inside / Key Takeaways */}
         {keyBenefits.length > 0 && (

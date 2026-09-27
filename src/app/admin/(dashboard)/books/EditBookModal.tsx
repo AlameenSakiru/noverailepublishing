@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getAutoImprintId } from "@/lib/imprintMapping";
+import { AmazonDescriptionEditor } from "@/components/AmazonDescriptionEditor";
 
 export interface BookToEdit {
   id: string;
@@ -1206,12 +1207,17 @@ export function EditBookModal({
 
               {/* SECTION 3: DESCRIPTIONS */}
               <div className="p-5 bg-white rounded-2xl border border-gray-200 space-y-4 shadow-2xs">
-                <h4 className="font-bold text-gray-900 text-sm">
-                  3. Book Descriptions
-                </h4>
+                <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                  <h4 className="font-bold text-gray-900 text-sm">
+                    3. Book Descriptions (Amazon KDP Compatible)
+                  </h4>
+                  <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                    Supports Bullet Points & HTML
+                  </span>
+                </div>
 
                 <div>
-                  <label className="block font-semibold text-gray-700 mb-1">
+                  <label className="block font-semibold text-gray-700 mb-1 text-xs">
                     Short Summary (Card Blurb & Search Excerpt) *
                   </label>
                   <textarea
@@ -1224,20 +1230,16 @@ export function EditBookModal({
                   />
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">
-                    Full Description (Sales Page Body) *
-                  </label>
-                  <textarea
-                    rows={6}
-                    required
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Detailed multi-paragraph breakdown of curriculum, chapters, and topics covered..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-ink leading-relaxed"
-                  />
-                </div>
+                <AmazonDescriptionEditor
+                  value={formData.description}
+                  onChange={(val) => setFormData({ ...formData, description: val })}
+                  label="Full Editorial Description (Sales Page Body)"
+                  required={true}
+                  rows={8}
+                  placeholder="Paste or write book description. You can paste bullets (•), headings (<h3>), bold text (<b>), numbered lists (1.), or click 'Amazon Template' above..."
+                />
               </div>
+
             </div>
           )}
 
