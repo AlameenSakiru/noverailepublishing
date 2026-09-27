@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { siteConfig } from "@/lib/config";
@@ -51,6 +52,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full scroll-smooth" suppressHydrationWarning>
       <body className="flex flex-col min-h-screen antialiased bg-[#fbfaf8] text-brand-ink selection:bg-brand-200 selection:text-brand-900" suppressHydrationWarning>
+        <GoogleAnalytics />
         <AuthProvider>
           <CartProvider>
             <Header />
