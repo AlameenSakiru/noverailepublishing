@@ -788,7 +788,7 @@ export function ReaderClient({
                     ? "bg-amber-500 text-gray-950 font-bold shadow-xs"
                     : "opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5"
                 }`}
-                title="Continuous Vertical Scroll (Amazon Kindle style)"
+                title="Continuous Vertical Scroll"
               >
                 <Rows className="w-3.5 h-3.5" />
                 <span className="hidden xl:inline text-[11px]">Scroll</span>

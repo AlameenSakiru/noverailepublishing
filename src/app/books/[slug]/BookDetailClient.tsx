@@ -625,9 +625,6 @@ export function BookDetailClient({
                 Editorial Overview & Synopsis
               </h2>
             </div>
-            <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200/80 self-start sm:self-auto">
-              Amazon Edition Formatting
-            </span>
           </div>
 
           <AmazonBookDescription
