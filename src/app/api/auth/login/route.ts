@@ -89,7 +89,32 @@ export async function POST(req: Request) {
       );
     }
 
-    // Require 6-digit security code verification for all accounts (Admin, Editor, Customer)
+    // Immediate sign-in for Publishing Editor accounts (bypasses email OTP)
+    if (user.role === "EDITOR") {
+      const sessionPayload = {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified,
+      };
+
+      const response = NextResponse.json(
+        {
+          success: true,
+          message: "Signed in successfully as Book Publishing Editor.",
+          requiresVerification: false,
+          user: sessionPayload,
+        },
+        { status: 200 }
+      );
+
+      await setSessionCookie(sessionPayload, response);
+
+      return response;
+    }
+
+    // Require 6-digit security code verification for Executive Admin and Customer accounts
     const code = Math.floor(100000 + crypto.randomInt(900000)).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
@@ -126,6 +151,7 @@ export async function POST(req: Request) {
       { status: 200 }
     );
   } catch (error: any) {
+
 
     console.error("Login error:", error);
 

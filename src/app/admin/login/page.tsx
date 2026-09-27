@@ -316,7 +316,7 @@ function AdminLoginForm() {
             className="w-full mt-2 py-3.5 px-6 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-gray-950 font-semibold text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-amber-500/10 cursor-pointer"
           >
             <Lock className="w-4 h-4" />
-            <span>{loading ? "Authenticating..." : "Sign In & Request Code"}</span>
+            <span>{loading ? "Authenticating..." : "Sign In to Console"}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
