@@ -147,6 +147,7 @@ export function SettingsClient({
   const [copiedPaystackWebhook, setCopiedPaystackWebhook] = useState(false);
   const [copiedStripeWebhook, setCopiedStripeWebhook] = useState(false);
   const [testingPaystack, setTestingPaystack] = useState(false);
+  const [testingNowPayments, setTestingNowPayments] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
   const [cleaningCodes, setCleaningCodes] = useState(false);
@@ -219,6 +220,34 @@ export function SettingsClient({
       setActionAlert({ success: false, message: "Network error during Paystack test." });
     } finally {
       setTestingPaystack(false);
+    }
+  };
+
+  const handleTestNowPayments = async () => {
+    setTestingNowPayments(true);
+    setActionAlert(null);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "TEST_NOWPAYMENTS" }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActionAlert({
+          success: true,
+          message: data.message || "NOWPayments API is connected and healthy!",
+        });
+      } else {
+        setActionAlert({
+          success: false,
+          message: data.error || "Failed to verify NOWPayments connection. Please check your API Key.",
+        });
+      }
+    } catch {
+      setActionAlert({ success: false, message: "Network error during NOWPayments test." });
+    } finally {
+      setTestingNowPayments(false);
     }
   };
 
@@ -674,6 +703,18 @@ export function SettingsClient({
               </div>
             </div>
 
+            {/* Paystack Card Quick Save Button */}
+            <div className="flex justify-end pt-1">
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{saving ? "Saving..." : "Save Paystack Credentials"}</span>
+              </button>
+            </div>
+
             {/* ========================================================================= */}
             {/* NOWPAYMENTS MULTI-COIN CRYPTO GATEWAY CONFIGURATION                       */}
             {/* ========================================================================= */}
@@ -702,15 +743,27 @@ export function SettingsClient({
                   </div>
                 </div>
 
-                <a
-                  href="https://account.nowpayments.io"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-semibold text-amber-700 hover:text-amber-800 hover:underline inline-flex items-center gap-1 shrink-0"
-                >
-                  <span>Open NOWPayments Dashboard</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleTestNowPayments}
+                    disabled={testingNowPayments}
+                    className="px-3 py-1.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${testingNowPayments ? "animate-spin" : ""}`} />
+                    <span>{testingNowPayments ? "Testing..." : "Test Connection"}</span>
+                  </button>
+
+                  <a
+                    href="https://account.nowpayments.io"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-amber-700 hover:text-amber-800 hover:underline inline-flex items-center gap-1 shrink-0"
+                  >
+                    <span>Dashboard</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -801,6 +854,18 @@ export function SettingsClient({
                   <strong>Setup Step:</strong> In your NOWPayments dashboard, go to{" "}
                   <em>Store Settings &gt; Instant Payment Notifications (IPN)</em>, paste this URL and click <strong>Generate IPN secret key</strong>.
                 </div>
+              </div>
+
+              {/* Dedicated NOWPayments Save Button */}
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shadow-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{saving ? "Saving..." : "Save NOWPayments Credentials"}</span>
+                </button>
               </div>
             </div>
 

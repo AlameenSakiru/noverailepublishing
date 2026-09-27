@@ -29,6 +29,38 @@ export const getNowPaymentsBaseUrl = (): string => {
     : "https://api.nowpayments.io/v1";
 };
 
+/**
+ * Checks connectivity and API key validity with NOWPayments.
+ */
+export async function checkNowPaymentsHealth(): Promise<{ success: boolean; message?: string; error?: string }> {
+  const apiKey = getNowPaymentsApiKey();
+  if (!apiKey) {
+    return { success: false, error: "NOWPayments API Key is not configured." };
+  }
+  const baseUrl = getNowPaymentsBaseUrl();
+  try {
+    const res = await fetch(`${baseUrl}/status`, {
+      headers: { "x-api-key": apiKey },
+    });
+    const data = await res.json();
+    if (res.ok && (data.message === "OK" || data.status === "OK" || data.status === true)) {
+      return {
+        success: true,
+        message: `NOWPayments API is healthy and connected (${getNowPaymentsMode()} Mode).`,
+      };
+    }
+    return {
+      success: false,
+      error: data.message || "NOWPayments API returned an unexpected response.",
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || "Failed to reach NOWPayments API servers.",
+    };
+  }
+}
+
 export interface CreateInvoiceOptions {
   priceAmount: number; // in USD or target fiat
   priceCurrency?: string; // default "usd"

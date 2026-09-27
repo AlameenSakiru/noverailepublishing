@@ -173,6 +173,19 @@ export async function POST(req: Request) {
       });
     }
 
+    // 2. NOWPayments Live Diagnostic Test Action
+    if (action === "TEST_NOWPAYMENTS") {
+      const { checkNowPaymentsHealth } = await import("@/lib/nowpayments");
+      const result = await checkNowPaymentsHealth();
+      if (!result.success) {
+        return NextResponse.json({ error: result.error || "Failed to verify NOWPayments connection." }, { status: 400 });
+      }
+      return NextResponse.json({
+        success: true,
+        message: result.message || "NOWPayments API is active and healthy!",
+      });
+    }
+
     // 2. Live SMTP Test Action
     if (action === "TEST_SMTP") {
       const { testEmail } = body;
