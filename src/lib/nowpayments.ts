@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { siteConfig } from "./config";
+import prisma from "./prisma";
 
 export const isNowPaymentsConfigured = Boolean(
   process.env.NOWPAYMENTS_API_KEY && process.env.NOWPAYMENTS_API_KEY.trim() !== ""
@@ -22,22 +22,54 @@ export const getNowPaymentsMode = (): "LIVE" | "SANDBOX" | "UNCONFIGURED" => {
   return "LIVE";
 };
 
-export const getNowPaymentsBaseUrl = (): string => {
-  const mode = getNowPaymentsMode();
-  return mode === "SANDBOX"
+export const getNowPaymentsBaseUrl = (mode?: "LIVE" | "SANDBOX" | "UNCONFIGURED"): string => {
+  const resolvedMode = mode || getNowPaymentsMode();
+  return resolvedMode === "SANDBOX"
     ? "https://api-sandbox.nowpayments.io/v1"
     : "https://api.nowpayments.io/v1";
 };
 
 /**
+ * Async getter that resolves from Neon PostgreSQL DB first, falling back to process.env.
+ */
+export async function getResolvedNowPaymentsCredentials() {
+  let apiKey = process.env.NOWPAYMENTS_API_KEY?.trim() || "";
+  let ipnSecret = process.env.NOWPAYMENTS_IPN_SECRET?.trim() || "";
+  let sandbox = process.env.NOWPAYMENTS_SANDBOX === "true";
+
+  try {
+    const settings = await prisma.platformSetting.findMany({
+      where: {
+        key: {
+          in: ["NOWPAYMENTS_API_KEY", "NOWPAYMENTS_IPN_SECRET", "NOWPAYMENTS_SANDBOX"],
+        },
+      },
+    });
+
+    for (const s of settings) {
+      if (s.key === "NOWPAYMENTS_API_KEY" && s.value) apiKey = s.value.trim();
+      if (s.key === "NOWPAYMENTS_IPN_SECRET" && s.value) ipnSecret = s.value.trim();
+      if (s.key === "NOWPAYMENTS_SANDBOX") sandbox = s.value === "true";
+    }
+  } catch {}
+
+  const isConfigured = Boolean(apiKey);
+  const mode: "LIVE" | "SANDBOX" | "UNCONFIGURED" = !apiKey ? "UNCONFIGURED" : (sandbox ? "SANDBOX" : "LIVE");
+  const baseUrl = mode === "SANDBOX" ? "https://api-sandbox.nowpayments.io/v1" : "https://api.nowpayments.io/v1";
+
+  return { apiKey, ipnSecret, sandbox, isConfigured, mode, baseUrl };
+}
+
+/**
  * Checks connectivity and API key validity with NOWPayments.
  */
-export async function checkNowPaymentsHealth(): Promise<{ success: boolean; message?: string; error?: string }> {
-  const apiKey = getNowPaymentsApiKey();
+export async function checkNowPaymentsHealth(customApiKey?: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  const creds = await getResolvedNowPaymentsCredentials();
+  const apiKey = customApiKey?.trim() || creds.apiKey;
   if (!apiKey) {
     return { success: false, error: "NOWPayments API Key is not configured." };
   }
-  const baseUrl = getNowPaymentsBaseUrl();
+  const baseUrl = creds.baseUrl;
   try {
     const res = await fetch(`${baseUrl}/status`, {
       headers: { "x-api-key": apiKey },
@@ -46,7 +78,7 @@ export async function checkNowPaymentsHealth(): Promise<{ success: boolean; mess
     if (res.ok && (data.message === "OK" || data.status === "OK" || data.status === true)) {
       return {
         success: true,
-        message: `NOWPayments API is healthy and connected (${getNowPaymentsMode()} Mode).`,
+        message: `NOWPayments API is healthy and connected (${creds.mode} Mode).`,
       };
     }
     return {
@@ -87,15 +119,13 @@ export interface CreateInvoiceResult {
 export async function createNowPaymentsInvoice(
   opts: CreateInvoiceOptions
 ): Promise<CreateInvoiceResult> {
-  const apiKey = getNowPaymentsApiKey();
-  if (!apiKey) {
+  const creds = await getResolvedNowPaymentsCredentials();
+  if (!creds.apiKey) {
     return {
       success: false,
-      error: "NOWPayments API key is not configured in environment variables.",
+      error: "NOWPayments API key is not configured.",
     };
   }
-
-  const baseUrl = getNowPaymentsBaseUrl();
 
   const payload: Record<string, any> = {
     price_amount: Number(opts.priceAmount.toFixed(2)),
@@ -112,10 +142,10 @@ export async function createNowPaymentsInvoice(
   }
 
   try {
-    const res = await fetch(`${baseUrl}/invoice`, {
+    const res = await fetch(`${creds.baseUrl}/invoice`, {
       method: "POST",
       headers: {
-        "x-api-key": apiKey,
+        "x-api-key": creds.apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -163,11 +193,12 @@ function sortObjectKeys(obj: any): any {
 /**
  * Verifies NOWPayments Instant Payment Notification (IPN) signature (HMAC-SHA512)
  */
-export function verifyNowPaymentsIpnSignature(
+export async function verifyNowPaymentsIpnSignature(
   rawPayload: any,
   receivedSignature: string | null
-): boolean {
-  const ipnSecret = getNowPaymentsIpnSecret();
+): Promise<boolean> {
+  const creds = await getResolvedNowPaymentsCredentials();
+  const ipnSecret = creds.ipnSecret;
 
   // If no secret key is set yet, log warning and allow for sandbox testing if explicitly permitted
   if (!ipnSecret) {

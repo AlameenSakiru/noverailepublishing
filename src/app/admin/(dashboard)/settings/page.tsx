@@ -2,17 +2,9 @@ import React from "react";
 import prisma from "@/lib/prisma";
 import { siteConfig } from "@/lib/config";
 import { isStripeConfigured } from "@/lib/stripe";
-import {
-  isPaystackConfigured,
-  getPaystackPublicKey,
-  getPaystackMode,
-} from "@/lib/paystack";
-import {
-  isNowPaymentsConfigured,
-  getNowPaymentsApiKey,
-  getNowPaymentsIpnSecret,
-  getNowPaymentsMode,
-} from "@/lib/nowpayments";
+import { getResolvedPaystackCredentials } from "@/lib/paystack";
+import { getResolvedNowPaymentsCredentials } from "@/lib/nowpayments";
+import { getAllPlatformSettings } from "@/lib/settings";
 import { SettingsClient } from "./SettingsClient";
 
 export const dynamic = "force-dynamic";
@@ -23,27 +15,38 @@ export const metadata = {
 };
 
 export default async function AdminSettingsPage() {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://noverailepublishing-tsukifi.vercel.app";
+  const dbSettings = await getAllPlatformSettings();
+
+  const appUrl =
+    dbSettings.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://noverailepublishing-tsukifi.vercel.app";
+
   const paystackWebhookUrl = `${appUrl}/api/checkout/paystack-webhook`;
   const nowpaymentsWebhookUrl = `${appUrl}/api/checkout/nowpayments-webhook`;
   const stripeWebhookUrl = `${appUrl}/api/checkout/webhook`;
 
-  // Paystack
-  const paystackPublicKey = getPaystackPublicKey();
-  const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || "";
-  const paystackMode = getPaystackMode();
+  // Paystack credentials
+  const paystackCreds = await getResolvedPaystackCredentials();
 
-  // NOWPayments
-  const nowpaymentsApiKey = getNowPaymentsApiKey();
-  const nowpaymentsIpnSecret = getNowPaymentsIpnSecret();
-  const nowpaymentsMode = getNowPaymentsMode();
+  // NOWPayments credentials
+  const nowpaymentsCreds = await getResolvedNowPaymentsCredentials();
 
-  // Stripe
-  const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
-  const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "";
-  const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
+  // Stripe credentials
+  const stripePublishableKey =
+    dbSettings.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+    "";
+  const stripeSecretKey =
+    dbSettings.STRIPE_SECRET_KEY ||
+    process.env.STRIPE_SECRET_KEY ||
+    "";
+  const stripeWebhookSecret =
+    dbSettings.STRIPE_WEBHOOK_SECRET ||
+    process.env.STRIPE_WEBHOOK_SECRET ||
+    "";
 
-  const stripeMode: "LIVE" | "TEST" | "SANDBOX" = isStripeConfigured
+  const stripeMode: "LIVE" | "TEST" | "SANDBOX" = Boolean(stripeSecretKey.trim())
     ? stripePublishableKey.startsWith("pk_live_")
       ? "LIVE"
       : "TEST"
@@ -61,26 +64,26 @@ export default async function AdminSettingsPage() {
 
   const initialSettings = {
     site: {
-      name: process.env.NEXT_PUBLIC_SITE_NAME || siteConfig.name,
+      name: dbSettings.NEXT_PUBLIC_SITE_NAME || process.env.NEXT_PUBLIC_SITE_NAME || siteConfig.name,
       url: appUrl,
-      tagline: process.env.NEXT_PUBLIC_SITE_TAGLINE || siteConfig.tagline,
-      contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "noverailepublishing@gmail.com",
-      currency: process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || siteConfig.defaultCurrency,
+      tagline: dbSettings.NEXT_PUBLIC_SITE_TAGLINE || process.env.NEXT_PUBLIC_SITE_TAGLINE || siteConfig.tagline,
+      contactEmail: dbSettings.NEXT_PUBLIC_CONTACT_EMAIL || process.env.NEXT_PUBLIC_CONTACT_EMAIL || "noverailepublishing@gmail.com",
+      currency: dbSettings.NEXT_PUBLIC_DEFAULT_CURRENCY || process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || siteConfig.defaultCurrency,
       storageDriver: process.env.STORAGE_DRIVER || "local",
       jwtSessionExpiryDays: Number(process.env.SESSION_EXPIRY_DAYS) || 30,
     },
     paystack: {
-      isConfigured: isPaystackConfigured,
-      mode: paystackMode,
-      publicKey: paystackPublicKey,
-      secretKeyMasked: paystackSecretKey ? `sk_...${paystackSecretKey.slice(-4)}` : "",
+      isConfigured: paystackCreds.isConfigured,
+      mode: paystackCreds.mode,
+      publicKey: paystackCreds.publicKey,
+      secretKeyMasked: paystackCreds.secretKey ? `sk_...${paystackCreds.secretKey.slice(-4)}` : "",
       webhookUrl: paystackWebhookUrl,
     },
     nowpayments: {
-      isConfigured: isNowPaymentsConfigured,
-      mode: nowpaymentsMode,
-      apiKeyMasked: nowpaymentsApiKey ? `np_...${nowpaymentsApiKey.slice(-4)}` : "",
-      ipnSecretMasked: nowpaymentsIpnSecret ? `ipn_...${nowpaymentsIpnSecret.slice(-4)}` : "",
+      isConfigured: nowpaymentsCreds.isConfigured,
+      mode: nowpaymentsCreds.mode,
+      apiKeyMasked: nowpaymentsCreds.apiKey ? `np_...${nowpaymentsCreds.apiKey.slice(-4)}` : "",
+      ipnSecretMasked: nowpaymentsCreds.ipnSecret ? `ipn_...${nowpaymentsCreds.ipnSecret.slice(-4)}` : "",
       webhookUrl: nowpaymentsWebhookUrl,
     },
     payment: {
@@ -91,7 +94,7 @@ export default async function AdminSettingsPage() {
       webhookSecretMasked: stripeWebhookSecret ? `whsec_...${stripeWebhookSecret.slice(-4)}` : "",
       webhookUrl: stripeWebhookUrl,
       allowSandboxCheckout:
-        process.env.ALLOW_SANDBOX_CHECKOUT === "true" || (!isPaystackConfigured && !stripeSecretKey.trim() && !isNowPaymentsConfigured),
+        process.env.ALLOW_SANDBOX_CHECKOUT === "true" || (!paystackCreds.isConfigured && !stripeSecretKey.trim() && !nowpaymentsCreds.isConfigured),
     },
     email: {
       smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",

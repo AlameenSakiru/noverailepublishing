@@ -1,3 +1,4 @@
+import prisma from "./prisma";
 import { siteConfig } from "./config";
 
 export const isPaystackConfigured = Boolean(
@@ -20,6 +21,46 @@ export const getPaystackMode = (): "LIVE" | "TEST" | "UNCONFIGURED" => {
   return "TEST";
 };
 
+/**
+ * Resolves Paystack credentials from Neon PostgreSQL DB first, falling back to process.env.
+ */
+export async function getResolvedPaystackCredentials() {
+  let publicKey =
+    process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY?.trim() ||
+    process.env.PAYSTACK_PUBLIC_KEY?.trim() ||
+    "";
+  let secretKey = process.env.PAYSTACK_SECRET_KEY?.trim() || "";
+
+  try {
+    const settings = await prisma.platformSetting.findMany({
+      where: {
+        key: {
+          in: ["PAYSTACK_PUBLIC_KEY", "NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY", "PAYSTACK_SECRET_KEY"],
+        },
+      },
+    });
+
+    for (const s of settings) {
+      if ((s.key === "PAYSTACK_PUBLIC_KEY" || s.key === "NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY") && s.value) {
+        publicKey = s.value.trim();
+      }
+      if (s.key === "PAYSTACK_SECRET_KEY" && s.value) {
+        secretKey = s.value.trim();
+      }
+    }
+  } catch {}
+
+  const isConfigured = Boolean(secretKey);
+  const mode: "LIVE" | "TEST" | "UNCONFIGURED" =
+    !secretKey && !publicKey
+      ? "UNCONFIGURED"
+      : publicKey.startsWith("pk_live_") || secretKey.startsWith("sk_live_")
+      ? "LIVE"
+      : "TEST";
+
+  return { publicKey, secretKey, isConfigured, mode };
+}
+
 export interface InitializePaystackOptions {
   email: string;
   amount: number; // in standard currency units (e.g., USD or NGN)
@@ -37,11 +78,12 @@ export async function initializePaystackTransaction(opts: InitializePaystackOpti
   reference?: string;
   error?: string;
 }> {
-  const secretKey = process.env.PAYSTACK_SECRET_KEY?.trim();
+  const creds = await getResolvedPaystackCredentials();
+  const secretKey = creds.secretKey;
   if (!secretKey) {
     return {
       success: false,
-      error: "Paystack secret key is not configured in .env (PAYSTACK_SECRET_KEY)",
+      error: "Paystack secret key is not configured.",
     };
   }
 
@@ -128,7 +170,8 @@ export async function verifyPaystackTransaction(reference: string): Promise<{
   metadata?: any;
   error?: string;
 }> {
-  const secretKey = process.env.PAYSTACK_SECRET_KEY?.trim();
+  const creds = await getResolvedPaystackCredentials();
+  const secretKey = creds.secretKey;
   if (!secretKey) {
     return { success: false, error: "Paystack secret key is not configured." };
   }
@@ -182,7 +225,8 @@ export async function testPaystackConnection(): Promise<{
   message?: string;
   error?: string;
 }> {
-  const secretKey = process.env.PAYSTACK_SECRET_KEY?.trim();
+  const creds = await getResolvedPaystackCredentials();
+  const secretKey = creds.secretKey;
   if (!secretKey) {
     return {
       success: false,
@@ -208,7 +252,7 @@ export async function testPaystackConnection(): Promise<{
       };
     }
 
-    const mode = secretKey.startsWith("sk_live_") ? "LIVE" : "TEST";
+    const mode = creds.mode === "LIVE" ? "LIVE" : "TEST";
 
     return {
       success: true,

@@ -3,8 +3,8 @@ import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, hashPassword, setSessionCookie } from "@/lib/auth";
 import { isStripeConfigured, createCheckoutSession, CheckoutItem } from "@/lib/stripe";
-import { isPaystackConfigured, initializePaystackTransaction } from "@/lib/paystack";
-import { isNowPaymentsConfigured, createNowPaymentsInvoice } from "@/lib/nowpayments";
+import { isPaystackConfigured, initializePaystackTransaction, getResolvedPaystackCredentials } from "@/lib/paystack";
+import { isNowPaymentsConfigured, createNowPaymentsInvoice, getResolvedNowPaymentsCredentials } from "@/lib/nowpayments";
 import { siteConfig } from "@/lib/config";
 import { checkRateLimit, getClientIp } from "@/lib/security";
 import { sendGiftDeliveryEmail } from "@/lib/email";
@@ -163,9 +163,11 @@ export async function POST(req: Request) {
         : (process.env.NEXT_PUBLIC_APP_URL || "https://noverailepublishing-tsukifi.vercel.app");
 
     // Determine target payment provider
+    const nowpaymentsCreds = await getResolvedNowPaymentsCredentials();
+    const paystackCreds = await getResolvedPaystackCredentials();
     const isCryptoRequested = preferredGateway === "NOWPAYMENTS" || preferredGateway === "CRYPTO";
 
-    if (isCryptoRequested && !isNowPaymentsConfigured) {
+    if (isCryptoRequested && !nowpaymentsCreds.isConfigured) {
       return NextResponse.json(
         {
           error:
@@ -175,8 +177,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const useNowPayments = isNowPaymentsConfigured && (isCryptoRequested || (!isPaystackConfigured && !isStripeConfigured));
-    const usePaystack = !isCryptoRequested && isPaystackConfigured && (!preferredGateway || preferredGateway === "PAYSTACK");
+    const useNowPayments = nowpaymentsCreds.isConfigured && (isCryptoRequested || (!paystackCreds.isConfigured && !isStripeConfigured));
+    const usePaystack = !isCryptoRequested && paystackCreds.isConfigured && (!preferredGateway || preferredGateway === "PAYSTACK");
     const useStripe = !isCryptoRequested && !usePaystack && isStripeConfigured && (!preferredGateway || preferredGateway === "STRIPE");
 
     // =========================================================================

@@ -7,6 +7,7 @@ import {
   isPaystackConfigured,
   getPaystackPublicKey,
   getPaystackMode,
+  getResolvedPaystackCredentials,
   testPaystackConnection,
 } from "@/lib/paystack";
 import {
@@ -14,30 +15,37 @@ import {
   getNowPaymentsApiKey,
   getNowPaymentsIpnSecret,
   getNowPaymentsMode,
+  getResolvedNowPaymentsCredentials,
+  checkNowPaymentsHealth,
 } from "@/lib/nowpayments";
+import { getAllPlatformSettings, savePlatformSettings } from "@/lib/settings";
 import fs from "fs";
 import path from "path";
 
 export const dynamic = "force-dynamic";
 
 function updateEnvFile(updates: Record<string, string>) {
-  const envPath = path.join(process.cwd(), ".env");
-  if (!fs.existsSync(envPath)) return;
+  try {
+    const envPath = path.join(process.cwd(), ".env");
+    if (!fs.existsSync(envPath)) return;
 
-  let content = fs.readFileSync(envPath, "utf-8");
+    let content = fs.readFileSync(envPath, "utf-8");
 
-  for (const [key, value] of Object.entries(updates)) {
-    process.env[key] = value;
-    const regex = new RegExp(`^${key}=.*$`, "m");
-    const sanitizedValue = value.replace(/"/g, '\\"');
-    if (regex.test(content)) {
-      content = content.replace(regex, `${key}="${sanitizedValue}"`);
-    } else {
-      content += `\n${key}="${sanitizedValue}"`;
+    for (const [key, value] of Object.entries(updates)) {
+      process.env[key] = value;
+      const regex = new RegExp(`^${key}=.*$`, "m");
+      const sanitizedValue = value.replace(/"/g, '\\"');
+      if (regex.test(content)) {
+        content = content.replace(regex, `${key}="${sanitizedValue}"`);
+      } else {
+        content += `\n${key}="${sanitizedValue}"`;
+      }
     }
-  }
 
-  fs.writeFileSync(envPath, content, "utf-8");
+    fs.writeFileSync(envPath, content, "utf-8");
+  } catch (err) {
+    // Non-fatal on read-only serverless runtimes
+  }
 }
 
 export async function GET() {
@@ -47,21 +55,36 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://noverailepublishing-tsukifi.vercel.app";
+    const dbSettings = await getAllPlatformSettings();
+
+    const appUrl =
+      dbSettings.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "https://noverailepublishing-tsukifi.vercel.app";
     const paystackWebhookUrl = `${appUrl}/api/checkout/paystack-webhook`;
     const stripeWebhookUrl = `${appUrl}/api/checkout/webhook`;
 
     // Paystack credentials
-    const paystackPublicKey = getPaystackPublicKey();
-    const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || "";
-    const paystackMode = getPaystackMode();
+    const paystackCreds = await getResolvedPaystackCredentials();
+
+    // NOWPayments credentials
+    const nowpaymentsCreds = await getResolvedNowPaymentsCredentials();
 
     // Stripe credentials
-    const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "";
-    const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
+    const stripePublishableKey =
+      dbSettings.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+      "";
+    const stripeSecretKey =
+      dbSettings.STRIPE_SECRET_KEY ||
+      process.env.STRIPE_SECRET_KEY ||
+      "";
+    const stripeWebhookSecret =
+      dbSettings.STRIPE_WEBHOOK_SECRET ||
+      process.env.STRIPE_WEBHOOK_SECRET ||
+      "";
 
-    const stripeMode = isStripeConfigured
+    const stripeMode = Boolean(stripeSecretKey.trim())
       ? stripePublishableKey.startsWith("pk_live_")
         ? "LIVE"
         : "TEST"
@@ -95,26 +118,26 @@ export async function GET() {
       },
       settings: {
         site: {
-          name: process.env.NEXT_PUBLIC_SITE_NAME || siteConfig.name,
+          name: dbSettings.NEXT_PUBLIC_SITE_NAME || process.env.NEXT_PUBLIC_SITE_NAME || siteConfig.name,
           url: appUrl,
-          tagline: process.env.NEXT_PUBLIC_SITE_TAGLINE || siteConfig.tagline,
-          contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "noverailepublishing@gmail.com",
-          currency: process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || siteConfig.defaultCurrency,
+          tagline: dbSettings.NEXT_PUBLIC_SITE_TAGLINE || process.env.NEXT_PUBLIC_SITE_TAGLINE || siteConfig.tagline,
+          contactEmail: dbSettings.NEXT_PUBLIC_CONTACT_EMAIL || process.env.NEXT_PUBLIC_CONTACT_EMAIL || "noverailepublishing@gmail.com",
+          currency: dbSettings.NEXT_PUBLIC_DEFAULT_CURRENCY || process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || siteConfig.defaultCurrency,
           storageDriver: process.env.STORAGE_DRIVER || "local",
           jwtSessionExpiryDays: Number(process.env.SESSION_EXPIRY_DAYS) || 30,
         },
         paystack: {
-          isConfigured: isPaystackConfigured,
-          mode: paystackMode,
-          publicKey: paystackPublicKey,
-          secretKeyMasked: paystackSecretKey ? `sk_...${paystackSecretKey.slice(-4)}` : "",
+          isConfigured: paystackCreds.isConfigured,
+          mode: paystackCreds.mode,
+          publicKey: paystackCreds.publicKey,
+          secretKeyMasked: paystackCreds.secretKey ? `sk_...${paystackCreds.secretKey.slice(-4)}` : "",
           webhookUrl: paystackWebhookUrl,
         },
         nowpayments: {
-          isConfigured: isNowPaymentsConfigured,
-          mode: getNowPaymentsMode(),
-          apiKeyMasked: getNowPaymentsApiKey() ? `np_...${getNowPaymentsApiKey().slice(-4)}` : "",
-          ipnSecretMasked: getNowPaymentsIpnSecret() ? `ipn_...${getNowPaymentsIpnSecret().slice(-4)}` : "",
+          isConfigured: nowpaymentsCreds.isConfigured,
+          mode: nowpaymentsCreds.mode,
+          apiKeyMasked: nowpaymentsCreds.apiKey ? `np_...${nowpaymentsCreds.apiKey.slice(-4)}` : "",
+          ipnSecretMasked: nowpaymentsCreds.ipnSecret ? `ipn_...${nowpaymentsCreds.ipnSecret.slice(-4)}` : "",
           webhookUrl: `${appUrl}/api/checkout/nowpayments-webhook`,
         },
         payment: {
@@ -125,7 +148,7 @@ export async function GET() {
           webhookSecretMasked: stripeWebhookSecret ? `whsec_...${stripeWebhookSecret.slice(-4)}` : "",
           webhookUrl: stripeWebhookUrl,
           allowSandboxCheckout:
-            process.env.ALLOW_SANDBOX_CHECKOUT === "true" || (!isPaystackConfigured && !stripeSecretKey.trim() && !isNowPaymentsConfigured),
+            process.env.ALLOW_SANDBOX_CHECKOUT === "true" || (!paystackCreds.isConfigured && !stripeSecretKey.trim() && !nowpaymentsCreds.isConfigured),
         },
         email: {
           smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -284,6 +307,10 @@ export async function POST(req: Request) {
       if (stripeSecretKey !== undefined && stripeSecretKey.trim() !== "") updates.STRIPE_SECRET_KEY = stripeSecretKey.trim();
       if (stripeWebhookSecret !== undefined && stripeWebhookSecret.trim() !== "") updates.STRIPE_WEBHOOK_SECRET = stripeWebhookSecret.trim();
 
+      // Persist to Neon PostgreSQL Database
+      await savePlatformSettings(updates);
+
+      // Also update local .env file if available
       updateEnvFile(updates);
 
       // Record audit log
