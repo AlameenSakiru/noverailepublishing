@@ -54,12 +54,12 @@ export function getGoogleOAuthRedirectUri(req: Request, fallbackAppUrl?: string)
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || url.host;
   const protocol = req.headers.get("x-forwarded-proto") || (url.protocol.replace(":", "") || "https");
 
-  // Local development
-  if (host.includes("localhost") || host.includes("127.0.0.1")) {
-    return `http://${host}/api/auth/google/callback`;
+  if (host) {
+    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+    const proto = isLocal ? "http" : (protocol || "https");
+    return `${proto}://${host}/api/auth/google/callback`;
   }
 
-  // Canonical base URL: prefer configured production URL if on production domain
   const rawBase = fallbackAppUrl?.trim() || `${protocol}://${host}`;
   const normalizedBase = rawBase.replace(/\/+$/, "");
   return `${normalizedBase}/api/auth/google/callback`;
