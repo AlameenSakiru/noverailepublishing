@@ -12,6 +12,7 @@ import {
   Tag,
   Sliders,
   Megaphone,
+  Award,
 } from "lucide-react";
 
 export function AdminNavTabs({ role = "ADMIN" }: { role?: string }) {
@@ -20,6 +21,7 @@ export function AdminNavTabs({ role = "ADMIN" }: { role?: string }) {
   const allTabs = [
     { label: "Overview", href: "/admin", icon: LayoutDashboard, editorAllowed: false },
     { label: "Books & Publishing", href: "/admin/books", icon: BookOpen, editorAllowed: true },
+    { label: "Reader Stories", href: "/admin/stories", icon: Award, editorAllowed: true },
     { label: "Orders & Royalties", href: "/admin/orders", icon: ShoppingBag, editorAllowed: false },
     { label: "Categories", href: "/admin/categories", icon: FolderTree, editorAllowed: true },
     { label: "Customer Access", href: "/admin/customers", icon: Users, editorAllowed: false },
