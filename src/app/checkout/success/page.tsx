@@ -12,6 +12,7 @@ interface SuccessPageProps {
     trxref?: string;
     session_id?: string;
     provider?: string;
+    status?: string;
   };
 }
 
@@ -63,6 +64,7 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
       reference={searchParams.reference || searchParams.trxref || undefined}
       sessionId={searchParams.session_id}
       provider={searchParams.provider}
+      initialStatus={searchParams.status}
     />
   );
 }

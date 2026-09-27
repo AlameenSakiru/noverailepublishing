@@ -224,7 +224,7 @@ export async function POST(req: Request) {
 
       const ipnCallbackUrl = `${appBaseUrl}/api/checkout/nowpayments-webhook`;
       const successUrl = `${appBaseUrl}/checkout/success?orderNumber=${order.orderNumber}&provider=nowpayments`;
-      const cancelUrl = `${appBaseUrl}/cart`;
+      const cancelUrl = `${appBaseUrl}/checkout/success?orderNumber=${order.orderNumber}&status=cancelled&provider=nowpayments`;
 
       const invoiceRes = await createNowPaymentsInvoice({
         priceAmount: totalAmount,

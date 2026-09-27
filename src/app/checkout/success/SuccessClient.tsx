@@ -1,9 +1,24 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { CheckCircle2, BookOpen, ArrowRight, Library, Receipt, Gift, Sparkles, Heart } from "lucide-react";
+import {
+  CheckCircle2,
+  BookOpen,
+  ArrowRight,
+  Library,
+  Receipt,
+  Gift,
+  Heart,
+  Clock,
+  ExternalLink,
+  RefreshCw,
+  XCircle,
+  AlertCircle,
+  Coins,
+  ShieldAlert,
+} from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 
@@ -12,53 +27,315 @@ interface SuccessClientProps {
   reference?: string;
   sessionId?: string;
   provider?: string;
+  initialStatus?: string;
 }
 
-export function SuccessClient({ order, reference, sessionId, provider }: SuccessClientProps) {
+export function SuccessClient({
+  order: initialOrder,
+  reference,
+  sessionId,
+  provider,
+  initialStatus,
+}: SuccessClientProps) {
   const { clearCart, itemCount } = useCart();
   const { refreshUser } = useAuth();
   const hasClearedRef = useRef(false);
 
-  const isGift = Boolean(order.isGift && order.recipientEmail);
+  const [order, setOrder] = useState<any>(initialOrder);
+  const [paymentStatus, setPaymentStatus] = useState<string>(
+    initialStatus === "cancelled" ? "CANCELLED" : initialOrder.paymentStatus || "PENDING"
+  );
+  const [isChecking, setIsChecking] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [pollCount, setPollCount] = useState(0);
 
+  const isGift = Boolean(order.isGift && order.recipientEmail);
+  const isCrypto =
+    provider === "nowpayments" ||
+    Boolean(order.cryptoPaymentId) ||
+    Boolean(order.cryptoInvoiceUrl);
+
+  // Clear shopping cart once on mount if paid or pending
   useEffect(() => {
-    // 1. Clear shopping cart only once on mount to avoid re-render loops
-    if (!hasClearedRef.current) {
+    if (!hasClearedRef.current && paymentStatus !== "CANCELLED") {
       hasClearedRef.current = true;
       if (itemCount > 0) {
         clearCart();
       }
     }
+  }, [paymentStatus, itemCount, clearCart]);
 
-    // 2. Guarantee customer session is verified and active for this order
-    const claimSession = async () => {
-      try {
-        const res = await fetch("/api/checkout/claim-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderNumber: order.orderNumber,
-            reference: reference || order.stripeSessionId,
-            sessionId,
-          }),
-        });
-        if (res.ok) {
-          await refreshUser();
+  // Attempt to claim user session if order is confirmed paid
+  useEffect(() => {
+    if (paymentStatus === "PAID") {
+      const claimSession = async () => {
+        try {
+          const res = await fetch("/api/checkout/claim-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              orderNumber: order.orderNumber,
+              reference: reference || order.stripeSessionId,
+              sessionId,
+            }),
+          });
+          if (res.ok) {
+            await refreshUser();
+          }
+        } catch (err) {
+          console.error("Order session claim error:", err);
         }
-      } catch (err) {
-        console.error("Order session claim error:", err);
-      }
-    };
+      };
 
-    claimSession();
-  }, [order.orderNumber, reference, sessionId]); // Safe dependencies
+      claimSession();
+    }
+  }, [paymentStatus, order.orderNumber, reference, sessionId, refreshUser]);
+
+  // Automatic live status poller while order is PENDING
+  useEffect(() => {
+    if (paymentStatus !== "PENDING") return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/checkout/order-status?orderNumber=${encodeURIComponent(order.orderNumber)}`);
+        const data = await res.json();
+        if (res.ok && data.success && data.order) {
+          setOrder((prev: any) => ({ ...prev, ...data.order }));
+          if (data.order.paymentStatus !== "PENDING") {
+            setPaymentStatus(data.order.paymentStatus);
+          }
+        }
+      } catch {}
+      setPollCount((c) => c + 1);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [paymentStatus, order.orderNumber]);
+
+  // Manual status check trigger
+  const handleManualStatusCheck = async () => {
+    setIsChecking(true);
+    try {
+      const res = await fetch(`/api/checkout/order-status?orderNumber=${encodeURIComponent(order.orderNumber)}`);
+      const data = await res.json();
+      if (res.ok && data.success && data.order) {
+        setOrder((prev: any) => ({ ...prev, ...data.order }));
+        setPaymentStatus(data.order.paymentStatus);
+      }
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  // Cancel order handler
+  const handleCancelOrder = async () => {
+    if (!confirm("Are you sure you want to cancel this pending checkout session?")) return;
+    setIsCancelling(true);
+    try {
+      const res = await fetch("/api/checkout/cancel-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNumber: order.orderNumber }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPaymentStatus("CANCELLED");
+      }
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   const firstItem = order.items?.[0];
   const firstBook = firstItem?.book;
   const firstSlug = firstBook?.slug || firstItem?.bookId;
 
+  // =========================================================================
+  // VIEW 1: PAYMENT CANCELLED OR INCOMPLETE
+  // =========================================================================
+  if (paymentStatus === "CANCELLED") {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 sm:py-24 text-center animate-in fade-in">
+        <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-6 shadow-xs">
+          <XCircle className="w-9 h-9" />
+        </div>
+
+        <span className="text-xs font-bold uppercase tracking-widest text-rose-700 bg-rose-50 px-3 py-1 rounded-full border border-rose-200 inline-block mb-3">
+          Checkout Cancelled • Order {order.orderNumber}
+        </span>
+
+        <h1 className="font-serif text-3xl sm:text-4xl font-bold text-brand-ink tracking-tight">
+          Payment was not completed
+        </h1>
+
+        <p className="text-sm sm:text-base text-brand-slate max-w-md mx-auto mt-3 leading-relaxed font-light">
+          This payment session was cancelled before completion. No digital entitlements were granted and your account was not charged.
+        </p>
+
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            href="/cart"
+            className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <ArrowRight className="w-4 h-4 rotate-180" />
+            <span>Return to Cart & Retry</span>
+          </Link>
+
+          <Link
+            href="/books"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white border border-brand-border text-brand-ink font-semibold text-sm hover:bg-brand-50 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Library className="w-4 h-4 text-brand-500" />
+            <span>Browse Catalog</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 2: AWAITING ON-CHAIN CONFIRMATION (PENDING)
+  // =========================================================================
+  if (paymentStatus === "PENDING") {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-16 sm:py-24 text-center animate-in fade-in">
+        <div className="relative w-20 h-20 rounded-full bg-amber-100/90 text-amber-700 flex items-center justify-center mx-auto mb-6 shadow-sm border border-amber-200">
+          <Clock className="w-10 h-10 animate-pulse text-amber-700" />
+          <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-amber-500 ring-4 ring-white animate-ping" />
+        </div>
+
+        <span className="text-xs font-bold uppercase tracking-widest text-amber-900 bg-amber-100/80 px-3 py-1 rounded-full border border-amber-300 inline-block mb-3">
+          ⏳ Awaiting Payment Confirmation • Order {order.orderNumber}
+        </span>
+
+        <h1 className="font-serif text-3xl sm:text-5xl font-bold text-brand-ink tracking-tight">
+          Payment Processing
+        </h1>
+
+        <p className="text-sm sm:text-base text-brand-slate max-w-lg mx-auto mt-4 leading-relaxed font-light">
+          {isCrypto
+            ? "Your crypto payment session has been initiated. As soon as the network confirms your transaction on-chain (usually 1–5 minutes), your digital publications will unlock automatically."
+            : "We are confirming your payment with the processing gateway. Your titles will unlock immediately once confirmed."}
+        </p>
+
+        {/* Real-time Status Card */}
+        <div className="mt-7 max-w-md mx-auto p-5 rounded-2xl bg-amber-50/80 border border-amber-200 text-left space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase text-amber-950 flex items-center gap-1.5">
+              <Coins className="w-4 h-4 text-amber-600" />
+              <span>Payment Status: Pending On-Chain</span>
+            </span>
+            <span className="text-[11px] font-semibold text-amber-800 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              Live Polling
+            </span>
+          </div>
+
+          <div className="text-xs text-amber-900 leading-relaxed font-light">
+            Amount Due: <strong className="font-bold text-amber-950">${Number(order.totalAmount || 0).toFixed(2)} USD</strong>
+            <br />
+            Linked Email: <strong className="font-bold text-amber-950">{order.customerEmail}</strong>
+          </div>
+
+          <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between gap-2 text-xs">
+            <button
+              onClick={handleManualStatusCheck}
+              disabled={isChecking}
+              className="px-3 py-1.5 rounded-lg bg-amber-800 hover:bg-amber-900 text-white font-semibold transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? "animate-spin" : ""}`} />
+              <span>{isChecking ? "Checking..." : "Check Status Now"}</span>
+            </button>
+
+            <button
+              onClick={handleCancelOrder}
+              disabled={isCancelling}
+              className="text-xs font-semibold text-rose-700 hover:text-rose-900 hover:underline cursor-pointer disabled:opacity-50"
+            >
+              Cancel Order
+            </button>
+          </div>
+        </div>
+
+        {/* Action CTAs for Pending */}
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+          {order.cryptoInvoiceUrl && (
+            <a
+              href={order.cryptoInvoiceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+            >
+              <span>Complete Payment in New Tab</span>
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          )}
+
+          <Link
+            href="/my-library?tab=orders"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white border border-brand-border text-brand-ink font-semibold text-sm hover:bg-brand-50 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Receipt className="w-4 h-4 text-brand-500" />
+            <span>View Pending Orders</span>
+          </Link>
+
+          <Link
+            href="/books"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white border border-brand-border text-brand-ink font-semibold text-sm hover:bg-brand-50 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Library className="w-4 h-4 text-brand-500" />
+            <span>Continue Browsing</span>
+          </Link>
+        </div>
+
+        {/* Ordered Publications List (Showing Pending Lock Status) */}
+        <div className="mt-12 text-left bg-white rounded-2xl border border-brand-border p-6 shadow-xs divide-y divide-gray-100">
+          <h3 className="font-serif text-base font-bold text-brand-ink pb-3 flex items-center justify-between">
+            <span>Pending Publications ({order.items?.length || 1})</span>
+            <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+              Unlocks Upon Payment
+            </span>
+          </h3>
+
+          {order.items?.map((item: any) => (
+            <div key={item.id} className="py-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {item.book?.coverImage && (
+                  <div className="relative w-12 aspect-[2/3] rounded shadow-xs overflow-hidden shrink-0 border border-brand-border/60 opacity-80">
+                    <Image
+                      src={item.book.coverImage}
+                      alt={item.bookTitle}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <div>
+                  <h4 className="font-serif text-sm font-bold text-brand-ink">
+                    {item.bookTitle}
+                  </h4>
+                  <span className="text-[11px] font-medium text-amber-700 flex items-center gap-1 mt-0.5">
+                    <Clock className="w-3 h-3" />
+                    <span>Awaiting Block Confirmation</span>
+                  </span>
+                </div>
+              </div>
+
+              <span className="text-xs font-semibold text-brand-slate px-3 py-1.5 rounded-lg bg-gray-100">
+                Locked
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 3: CONFIRMED PAID (ENTITLEMENTS UNLOCKED)
+  // =========================================================================
   return (
-    <div className="max-w-3xl mx-auto px-4 py-16 sm:py-24 text-center">
+    <div className="max-w-3xl mx-auto px-4 py-16 sm:py-24 text-center animate-in fade-in">
       {isGift ? (
         <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-6 shadow-xs">
           <Gift className="w-9 h-9" />
@@ -69,9 +346,11 @@ export function SuccessClient({ order, reference, sessionId, provider }: Success
         </div>
       )}
 
-      <span className={`text-xs font-semibold uppercase tracking-widest block mb-2 ${
-        isGift ? "text-amber-800" : "text-emerald-700"
-      }`}>
+      <span
+        className={`text-xs font-semibold uppercase tracking-widest block mb-2 ${
+          isGift ? "text-amber-800" : "text-emerald-700"
+        }`}
+      >
         {isGift ? "🎁 Book Gift Dispatched" : "Payment Confirmed"} • Order {order.orderNumber}
       </span>
 
@@ -92,16 +371,16 @@ export function SuccessClient({ order, reference, sessionId, provider }: Success
         </p>
       )}
 
-      {(provider === "nowpayments" || order.cryptoPaymentId || order.cryptoInvoiceUrl) && (
-        <div className="mt-4 max-w-lg mx-auto p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-amber-900 flex items-center justify-center gap-2">
+      {isCrypto && (
+        <div className="mt-4 max-w-lg mx-auto p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-xs text-emerald-900 flex items-center justify-center gap-2">
           <span className="text-base">🪙</span>
           <span>
-            Crypto transaction processed via <strong>NOWPayments</strong>. Digital entitlements unlock automatically upon on-chain block confirmation.
+            Crypto payment verified via <strong>NOWPayments</strong> on-chain. Digital access activated!
           </span>
         </div>
       )}
 
-      {/* Gift Card Message Preview (if included) */}
+      {/* Gift Card Message Preview */}
       {isGift && order.giftMessage && (
         <div className="mt-8 max-w-lg mx-auto p-5 rounded-2xl bg-amber-50/70 border border-amber-200/80 text-left">
           <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-amber-900 mb-1.5">
@@ -128,11 +407,11 @@ export function SuccessClient({ order, reference, sessionId, provider }: Success
         ) : null}
 
         <Link
-          href="/my-library?tab=orders"
+          href="/my-library"
           className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
         >
           <Receipt className="w-4 h-4 text-brand-300" />
-          <span>View Order Receipt</span>
+          <span>My Library</span>
         </Link>
 
         <Link
@@ -174,9 +453,11 @@ export function SuccessClient({ order, reference, sessionId, provider }: Success
                   <h4 className="font-serif text-sm font-bold text-brand-ink">
                     {item.bookTitle}
                   </h4>
-                  <span className={`text-[11px] font-medium ${
-                    isGift ? "text-amber-800" : "text-emerald-700"
-                  }`}>
+                  <span
+                    className={`text-[11px] font-medium ${
+                      isGift ? "text-amber-800" : "text-emerald-700"
+                    }`}
+                  >
                     {isGift
                       ? `Access Granted to ${order.recipientEmail}`
                       : "Active in Your Library"}

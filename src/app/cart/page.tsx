@@ -21,8 +21,10 @@ import {
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 export default function CartPage() {
+  const router = useRouter();
   const [paymentMethod, setPaymentMethod] = useState<"CARD" | "CRYPTO">("CARD");
   const {
     items,
@@ -114,8 +116,21 @@ export default function CartPage() {
       // Clear cart locally upon successful checkout placement
       clearCart();
 
-      // Redirect to checkout URL (Stripe, Paystack, or instant success)
-      window.location.href = data.checkoutUrl;
+      // If Crypto, pop out invoice in a new tab so user continues viewing website
+      if (paymentMethod === "CRYPTO" && data.checkoutUrl && data.checkoutUrl.startsWith("http")) {
+        try {
+          window.open(data.checkoutUrl, "_blank");
+        } catch {}
+
+        if (data.orderNumber) {
+          router.push(`/checkout/success?orderNumber=${encodeURIComponent(data.orderNumber)}&provider=nowpayments`);
+        } else {
+          window.location.href = data.checkoutUrl;
+        }
+      } else {
+        // Standard redirect for card / Paystack
+        window.location.href = data.checkoutUrl;
+      }
     } catch {
       setCheckoutError("Network error initiating checkout.");
       setIsCheckingOut(false);

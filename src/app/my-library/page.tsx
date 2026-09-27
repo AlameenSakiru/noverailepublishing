@@ -390,10 +390,21 @@ export default async function MyLibraryPage({ searchParams }: MyLibraryPageProps
                             <span>Gift Purchase</span>
                           </span>
                         )}
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>{order.paymentStatus === "PAID" ? "Payment Completed" : order.paymentStatus}</span>
-                        </span>
+                        {order.paymentStatus === "PAID" ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Payment Completed</span>
+                          </span>
+                        ) : order.paymentStatus === "PENDING" ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                            <span>Payment Pending</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+                            <span>Cancelled</span>
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -446,7 +457,7 @@ export default async function MyLibraryPage({ searchParams }: MyLibraryPageProps
                           </div>
 
                           <div>
-                            {!order.isGift ? (
+                            {order.paymentStatus === "PAID" && !order.isGift ? (
                               <Link
                                 href={`/reader/${item.book.slug}`}
                                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-ink hover:bg-brand-900 text-white text-xs font-semibold shadow-xs transition-colors"
@@ -454,9 +465,29 @@ export default async function MyLibraryPage({ searchParams }: MyLibraryPageProps
                                 <BookOpen className="w-3.5 h-3.5 text-brand-300" />
                                 <span>Read Now</span>
                               </Link>
-                            ) : (
+                            ) : order.paymentStatus === "PENDING" ? (
+                              order.cryptoInvoiceUrl ? (
+                                <a
+                                  href={order.cryptoInvoiceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-2xs transition-colors"
+                                >
+                                  <span>Pay Now</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              ) : (
+                                <span className="text-xs font-medium text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
+                                  Pending
+                                </span>
+                              )
+                            ) : order.isGift ? (
                               <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
                                 Delivered as Gift
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-500 font-medium">
+                                Inactive
                               </span>
                             )}
                           </div>
