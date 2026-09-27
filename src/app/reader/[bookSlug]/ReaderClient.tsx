@@ -34,7 +34,54 @@ import {
   FileText,
   Compass,
   Hash,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
+
+// Web Audio API realistic page turn rustle sound synthesizer (0 network assets, instant)
+function playPageFlipSound() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+
+    const duration = 0.22;
+    const bufferSize = Math.floor(ctx.sampleRate * duration);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+      const t = i / bufferSize;
+      const noise = Math.random() * 2 - 1;
+      const envelope = Math.sin(t * Math.PI) * Math.exp(-t * 3.2);
+      data[i] = noise * envelope;
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(1500, ctx.currentTime);
+    filter.Q.setValueAtTime(0.7, ctx.currentTime);
+
+    const gainNode = ctx.createGain();
+    gainNode.gain.setValueAtTime(0.22, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+    source.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    source.start();
+  } catch {
+    // Audio synthesis suppressed or not permitted
+  }
+}
 
 interface ReaderClientProps {
   book: {
@@ -240,6 +287,14 @@ export function ReaderClient({
   const [bookmarks, setBookmarks] = useState<{ page: number; title: string }[]>([]);
   const [isBookmarked, setIsBookmarked] = useState(false);
 
+  // 3D Realistic Page Flip Animation & Audio States
+  const [flipSound, setFlipSound] = useState(true);
+  const [flipAnimation, setFlipAnimation] = useState<{
+    active: boolean;
+    direction: "next" | "prev";
+    snapshotUrl: string | null;
+  } | null>(null);
+
   // Canvas Refs
   const canvasLeftRef = useRef<HTMLCanvasElement | null>(null);
   const canvasRightRef = useRef<HTMLCanvasElement | null>(null);
@@ -260,6 +315,10 @@ export function ReaderClient({
       const savedLayout = localStorage.getItem("noveraile_reader_layout");
       if (savedLayout === "single" || savedLayout === "spread" || savedLayout === "scroll") {
         setLayoutMode(savedLayout);
+      }
+      const savedSound = localStorage.getItem("noveraile_reader_sound");
+      if (savedSound !== null) {
+        setFlipSound(savedSound === "true");
       }
     } catch {
       // LocalStorage unavailable
@@ -527,23 +586,75 @@ export function ReaderClient({
     setIsBookmarked(bookmarks.some((b) => b.page === currentPage));
   }, [currentPage, bookmarks]);
 
-  // Page Turn Handlers
+  // Page Turn Handlers with 3D Book Flip Animation & Audio
   const handleNextPage = () => {
+    if (currentPage >= totalPages) return;
+
     if (layoutMode === "scroll") {
       goToPage(currentPage + 1);
-    } else {
-      const step = layoutMode === "spread" ? 2 : 1;
-      goToPage(currentPage + step);
+      return;
     }
+
+    if (flipSound) {
+      playPageFlipSound();
+    }
+
+    let snapshot: string | null = null;
+    try {
+      if (canvasLeftRef.current) {
+        snapshot = canvasLeftRef.current.toDataURL();
+      }
+    } catch {}
+
+    const step = layoutMode === "spread" ? 2 : 1;
+    const target = Math.min(totalPages, currentPage + step);
+
+    setFlipAnimation({
+      active: true,
+      direction: "next",
+      snapshotUrl: snapshot,
+    });
+
+    goToPage(target);
+
+    setTimeout(() => {
+      setFlipAnimation(null);
+    }, 460);
   };
 
   const handlePrevPage = () => {
+    if (currentPage <= 1) return;
+
     if (layoutMode === "scroll") {
       goToPage(currentPage - 1);
-    } else {
-      const step = layoutMode === "spread" ? 2 : 1;
-      goToPage(currentPage - step);
+      return;
     }
+
+    if (flipSound) {
+      playPageFlipSound();
+    }
+
+    let snapshot: string | null = null;
+    try {
+      if (canvasLeftRef.current) {
+        snapshot = canvasLeftRef.current.toDataURL();
+      }
+    } catch {}
+
+    const step = layoutMode === "spread" ? 2 : 1;
+    const target = Math.max(1, currentPage - step);
+
+    setFlipAnimation({
+      active: true,
+      direction: "prev",
+      snapshotUrl: snapshot,
+    });
+
+    goToPage(target);
+
+    setTimeout(() => {
+      setFlipAnimation(null);
+    }, 460);
   };
 
   const handleJumpSubmit = (e: React.FormEvent) => {
@@ -827,6 +938,29 @@ export function ReaderClient({
             {isBookmarked ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
           </button>
 
+          {/* Page Turn Audio Toggle */}
+          <button
+            onClick={() => {
+              const nextVal = !flipSound;
+              setFlipSound(nextVal);
+              try {
+                localStorage.setItem("noveraile_reader_sound", String(nextVal));
+              } catch {}
+            }}
+            className={`p-1.5 rounded-lg transition-colors ${
+              flipSound
+                ? "text-amber-600 dark:text-amber-400 bg-amber-500/10"
+                : "opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5"
+            }`}
+            title={
+              flipSound
+                ? "Tactile Page Turn Sound: Enabled (Click to Mute)"
+                : "Tactile Page Turn Sound: Muted (Click to Enable)"
+            }
+          >
+            {flipSound ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          </button>
+
           {/* Theme Toggles */}
           <div className="hidden sm:flex items-center gap-0.5 bg-black/5 dark:bg-white/5 rounded-lg p-0.5">
             <button
@@ -1080,76 +1214,178 @@ export function ReaderClient({
                   ))}
                 </div>
               ) : (
-                /* PDF Canvas Container: Handles single page or two-page spread */
-                <div
-                  className={`flex items-center justify-center gap-4 sm:gap-6 ${
-                    layoutMode === "spread" ? "flex-col lg:flex-row" : "flex-col"
-                  }`}
-                >
-                  {/* Left (or Single) Page Canvas */}
-                  <div className="flex flex-col items-center">
-                    <div
-                      className={`relative rounded-xl overflow-hidden ${canvasBackgrounds[theme]} transition-all`}
-                    >
-                      <canvas ref={canvasLeftRef} className="block select-none" />
-                    </div>
-                    <span className="text-[10px] font-mono opacity-50 mt-1.5">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                  </div>
+                /* PDF Canvas Container: Handles single page or two-page spread with 3D Page Flip */
+                <div className="relative w-full flex items-center justify-center py-2 book-stage-perspective">
+                  {/* Floating Left Page Turn Arrow */}
+                  <button
+                    onClick={handlePrevPage}
+                    disabled={currentPage <= 1}
+                    aria-label="Previous Page (Flip Left)"
+                    className="absolute -left-1 sm:left-2 md:left-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 flex items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
+                    title="Previous Page (Flip Left • Arrow Left)"
+                  >
+                    <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:-translate-x-0.5" />
+                  </button>
 
-                  {/* Right Page Canvas (Spread Mode) */}
-                  {layoutMode === "spread" && currentPage + 1 <= totalPages && (
-                    <div className="flex flex-col items-center">
+                  {/* Floating Right Page Turn Arrow */}
+                  <button
+                    onClick={handleNextPage}
+                    disabled={currentPage >= totalPages}
+                    aria-label="Next Page (Flip Right)"
+                    className="absolute -right-1 sm:right-2 md:right-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 flex items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
+                    title="Next Page (Flip Right • Arrow Right)"
+                  >
+                    <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+
+                  {/* Pages Spread Container */}
+                  <div
+                    className={`flex items-center justify-center gap-4 sm:gap-6 ${
+                      layoutMode === "spread" ? "flex-col lg:flex-row" : "flex-col"
+                    }`}
+                  >
+                    {/* Left (or Single) Page Canvas */}
+                    <div className="flex flex-col items-center relative group/leaf">
+                      {/* Interactive Top-Right Dog-Ear Corner Curl for quick page turn */}
+                      {currentPage < totalPages && (
+                        <button
+                          onClick={handleNextPage}
+                          className="dog-ear-curl absolute -top-1 -right-1 z-25 w-10 h-10 overflow-hidden cursor-pointer rounded-tr-xl"
+                          title={`Click to flip to page ${currentPage + 1}`}
+                        >
+                          <div className="w-12 h-12 bg-gradient-to-bl from-amber-400 via-amber-200 to-amber-100 dark:from-amber-600 dark:via-amber-800 dark:to-gray-900 -rotate-45 translate-x-6 -translate-y-6 shadow-md border-b border-l border-amber-500/50" />
+                        </button>
+                      )}
+
                       <div
-                        className={`relative rounded-xl overflow-hidden ${canvasBackgrounds[theme]} transition-all`}
+                        className={`relative rounded-xl overflow-hidden ${canvasBackgrounds[theme]} book-edge-stack book-spine-gutter-left transition-all`}
                       >
-                        <canvas ref={canvasRightRef} className="block select-none" />
+                        <canvas ref={canvasLeftRef} className="block select-none" />
+
+                        {/* 3D Animated Flip Leaf Overlay (Visible during page turns) */}
+                        {flipAnimation?.active && flipAnimation.snapshotUrl && (
+                          <div
+                            className={`absolute inset-0 z-20 pointer-events-none book-page-leaf ${
+                              flipAnimation.direction === "next"
+                                ? "animate-page-flip-forward"
+                                : "animate-page-flip-backward"
+                            }`}
+                          >
+                            <img
+                              src={flipAnimation.snapshotUrl}
+                              alt="Flipping Page"
+                              className="w-full h-full object-contain block select-none pointer-events-none"
+                            />
+                            {/* Realistic Paper Curve Shading Gradient */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-white/10 to-transparent pointer-events-none" />
+                          </div>
+                        )}
                       </div>
-                      <span className="text-[10px] font-mono opacity-50 mt-1.5">
-                        Page {currentPage + 1} of {totalPages}
-                      </span>
+
+                      <div className="flex items-center justify-between w-full px-2 mt-1.5 text-[10px] font-mono opacity-50">
+                        <span>Page {currentPage} of {totalPages}</span>
+                        <span className="hidden sm:inline font-sans text-amber-700 dark:text-amber-400 font-medium">
+                          {flipSound ? "Turn audio on • " : ""}Click corners or arrows to flip
+                        </span>
+                      </div>
                     </div>
-                  )}
+
+                    {/* Right Page Canvas (Spread Mode) */}
+                    {layoutMode === "spread" && currentPage + 1 <= totalPages && (
+                      <div className="flex flex-col items-center relative">
+                        <div
+                          className={`relative rounded-xl overflow-hidden ${canvasBackgrounds[theme]} book-edge-stack book-spine-gutter-right transition-all`}
+                        >
+                          <canvas ref={canvasRightRef} className="block select-none" />
+                        </div>
+                        <span className="text-[10px] font-mono opacity-50 mt-1.5">
+                          Page {currentPage + 1} of {totalPages}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           ) : (
             /* =================== FORMATTED ADAPTIVE TEXT RENDERER =================== */
-            <div className="max-w-3xl w-full min-h-[75vh] flex flex-col justify-between py-6">
-              {textLoading ? (
-                <div className="flex flex-col items-center justify-center py-24 text-center">
-                  <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mb-4" />
-                  <p className="font-serif text-xs font-semibold">Streaming curriculum section...</p>
-                </div>
-              ) : textError ? (
-                <div className="my-auto py-12 text-center max-w-md mx-auto p-6 bg-red-500/10 rounded-2xl border border-red-500/30">
-                  <Lock className="w-8 h-8 text-red-500 mx-auto mb-2" />
-                  <p className="text-xs text-red-700 dark:text-red-300">{textError}</p>
-                </div>
-              ) : textPageData ? (
-                <div className="space-y-6">
-                  <div className="pb-4 border-b border-inherit">
-                    <span className="text-[11px] font-mono uppercase tracking-widest text-amber-700 dark:text-amber-400 block font-semibold">
-                      {textPageData.chapterTitle}
-                    </span>
-                    <h1 className="font-serif text-2xl sm:text-3xl font-bold mt-1">
-                      {textPageData.title}
-                    </h1>
-                  </div>
+            <div className="relative max-w-3xl w-full min-h-[75vh] flex flex-col justify-between py-6 book-stage-perspective">
+              {/* Floating Left Page Turn Arrow */}
+              <button
+                onClick={handlePrevPage}
+                disabled={currentPage <= 1}
+                aria-label="Previous Page (Flip Left)"
+                className="absolute -left-2 sm:-left-6 md:-left-12 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 flex items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
+                title="Previous Page (Flip Left • Arrow Left)"
+              >
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:-translate-x-0.5" />
+              </button>
 
-                  <div
-                    className={`font-serif leading-relaxed ${
-                      fontSize === "normal"
-                        ? "text-base sm:text-lg"
-                        : fontSize === "large"
-                        ? "text-lg sm:text-xl"
-                        : "text-xl sm:text-2xl"
-                    }`}
-                    dangerouslySetInnerHTML={{ __html: textPageData.contentHtml }}
-                  />
-                </div>
-              ) : null}
+              {/* Floating Right Page Turn Arrow */}
+              <button
+                onClick={handleNextPage}
+                disabled={currentPage >= totalPages}
+                aria-label="Next Page (Flip Right)"
+                className="absolute -right-2 sm:-right-6 md:-right-12 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-xl border border-black/10 dark:border-white/10 flex items-center justify-center text-brand-ink dark:text-white hover:scale-110 active:scale-95 hover:bg-amber-500 hover:text-gray-950 transition-all disabled:opacity-0 disabled:pointer-events-none group"
+                title="Next Page (Flip Right • Arrow Right)"
+              >
+                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:translate-x-0.5" />
+              </button>
+
+              {/* Top-Right Dog-Ear Corner Curl for quick page turn */}
+              {currentPage < totalPages && (
+                <button
+                  onClick={handleNextPage}
+                  className="dog-ear-curl absolute top-2 right-2 z-25 w-10 h-10 overflow-hidden cursor-pointer rounded-tr-xl"
+                  title={`Click to flip to page ${currentPage + 1}`}
+                >
+                  <div className="w-12 h-12 bg-gradient-to-bl from-amber-400 via-amber-200 to-amber-100 dark:from-amber-600 dark:via-amber-800 dark:to-gray-900 -rotate-45 translate-x-6 -translate-y-6 shadow-md border-b border-l border-amber-500/50" />
+                </button>
+              )}
+
+              <div
+                className={`relative transition-all ${
+                  flipAnimation?.active
+                    ? flipAnimation.direction === "next"
+                      ? "animate-page-flip-forward"
+                      : "animate-page-flip-backward"
+                    : ""
+                }`}
+              >
+                {textLoading ? (
+                  <div className="flex flex-col items-center justify-center py-24 text-center">
+                    <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mb-4" />
+                    <p className="font-serif text-xs font-semibold">Streaming curriculum section...</p>
+                  </div>
+                ) : textError ? (
+                  <div className="my-auto py-12 text-center max-w-md mx-auto p-6 bg-red-500/10 rounded-2xl border border-red-500/30">
+                    <Lock className="w-8 h-8 text-red-500 mx-auto mb-2" />
+                    <p className="text-xs text-red-700 dark:text-red-300">{textError}</p>
+                  </div>
+                ) : textPageData ? (
+                  <div className="space-y-6">
+                    <div className="pb-4 border-b border-inherit">
+                      <span className="text-[11px] font-mono uppercase tracking-widest text-amber-700 dark:text-amber-400 block font-semibold">
+                        {textPageData.chapterTitle}
+                      </span>
+                      <h1 className="font-serif text-2xl sm:text-3xl font-bold mt-1">
+                        {textPageData.title}
+                      </h1>
+                    </div>
+
+                    <div
+                      className={`font-serif leading-relaxed ${
+                        fontSize === "normal"
+                          ? "text-base sm:text-lg"
+                          : fontSize === "large"
+                          ? "text-lg sm:text-xl"
+                          : "text-xl sm:text-2xl"
+                      }`}
+                      dangerouslySetInnerHTML={{ __html: textPageData.contentHtml }}
+                    />
+                  </div>
+                ) : null}
+              </div>
 
               <div className="pt-8 mt-12 border-t border-inherit flex items-center justify-between text-[11px] opacity-60 font-mono">
                 <span>{book.title}</span>
