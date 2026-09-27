@@ -52,7 +52,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full scroll-smooth" suppressHydrationWarning>
       <body className="flex flex-col min-h-screen antialiased bg-[#fbfaf8] text-brand-ink selection:bg-brand-200 selection:text-brand-900" suppressHydrationWarning>
-        <GoogleAnalytics />
+        <GoogleAnalytics gaId="G-T40Y4VFKPX" />
         <AuthProvider>
           <CartProvider>
             <Header />

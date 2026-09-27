@@ -3,18 +3,20 @@
 import React from "react";
 import Script from "next/script";
 
+const GA_TRACKING_ID = "G-T40Y4VFKPX";
+
 export function GoogleAnalytics({
-  gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID,
+  gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || GA_TRACKING_ID,
 }: {
   gaId?: string;
 }) {
-  if (!gaId) return null;
+  const measurementId = gaId || GA_TRACKING_ID;
 
   return (
     <>
       <Script
         strategy="afterInteractive"
-        src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+        src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`}
       />
       <Script
         id="google-analytics"
@@ -24,7 +26,7 @@ export function GoogleAnalytics({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', '${gaId}', {
+            gtag('config', '${measurementId}', {
               page_path: window.location.pathname,
             });
           `,
