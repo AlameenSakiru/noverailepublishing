@@ -149,6 +149,19 @@ export async function POST(req: Request) {
     const totalAmount = Math.max(0, subtotal - discountAmount);
     const defaultCurrency = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || siteConfig.defaultCurrency || "USD";
 
+    // Resolve active base URL dynamically (supports Vercel, custom domain, or local dev)
+    const origin = req.headers.get("origin") || req.headers.get("referer");
+    let detectedOrigin = "";
+    if (origin) {
+      try {
+        detectedOrigin = new URL(origin).origin;
+      } catch {}
+    }
+    const appBaseUrl =
+      (detectedOrigin && !detectedOrigin.includes("localhost"))
+        ? detectedOrigin
+        : (process.env.NEXT_PUBLIC_APP_URL || "https://noverailepublishing-tsukifi.vercel.app");
+
     // Determine target payment provider
     const isCryptoRequested = preferredGateway === "NOWPAYMENTS" || preferredGateway === "CRYPTO";
 
@@ -207,7 +220,6 @@ export async function POST(req: Request) {
         },
       });
 
-      const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || siteConfig.url || "http://localhost:3000";
       const ipnCallbackUrl = `${appBaseUrl}/api/checkout/nowpayments-webhook`;
       const successUrl = `${appBaseUrl}/checkout/success?orderNumber=${order.orderNumber}&provider=nowpayments`;
       const cancelUrl = `${appBaseUrl}/cart`;
@@ -291,7 +303,7 @@ export async function POST(req: Request) {
         },
       });
 
-      const callbackUrl = `${siteConfig.url}/checkout/success?orderNumber=${order.orderNumber}&reference=${order.orderNumber}&provider=paystack`;
+      const callbackUrl = `${appBaseUrl}/checkout/success?orderNumber=${order.orderNumber}&reference=${order.orderNumber}&provider=paystack`;
 
       const paystackRes = await initializePaystackTransaction({
         email: cleanEmail,
