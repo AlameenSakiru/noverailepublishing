@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import { setSessionCookie, hashPassword } from "@/lib/auth";
 import crypto from "crypto";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
