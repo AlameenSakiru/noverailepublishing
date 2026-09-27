@@ -207,6 +207,10 @@ model Order {
   paymentStatus         String        @default("PENDING") // "PENDING", "PAID", "FAILED", "REFUNDED"
   stripeSessionId       String?
   stripePaymentIntentId String?
+  cryptoPaymentId       String?
+  cryptoInvoiceUrl      String?
+  cryptoCurrency        String?
+  cryptoAmount          Float?
   isGift                Boolean       @default(false)
   recipientName         String?
   recipientEmail        String?
@@ -225,6 +229,7 @@ model Order {
   @@index([customerEmail])
   @@index([paymentStatus])
   @@index([recipientEmail])
+  @@index([cryptoPaymentId])
 }
 
 model OrderItem {
@@ -242,17 +247,21 @@ model OrderItem {
 }
 
 model Payment {
-  id            String   @id @default(cuid())
-  orderId       String   @unique
-  provider      String   @default("STRIPE") // "STRIPE", "SANDBOX"
-  transactionId String
-  status        String   // "SUCCEEDED", "FAILED", "PENDING"
-  amount        Float
-  currency      String   @default("USD")
-  receiptUrl    String?
-  createdAt     DateTime @default(now())
+  id              String   @id @default(cuid())
+  orderId         String   @unique
+  provider        String   @default("STRIPE") // "STRIPE", "PAYSTACK", "NOWPAYMENTS", "SANDBOX"
+  transactionId   String
+  status          String   // "SUCCEEDED", "FAILED", "PENDING"
+  amount          Float
+  currency        String   @default("USD")
+  cryptoCurrency  String?
+  cryptoAmount    Float?
+  cryptoPaymentId String?
+  txHash          String?
+  receiptUrl      String?
+  createdAt       DateTime @default(now())
 
-  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model Entitlement {

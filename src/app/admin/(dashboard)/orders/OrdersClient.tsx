@@ -19,6 +19,7 @@ import {
   Sliders,
   Calculator,
   Gift,
+  Coins,
 } from "lucide-react";
 
 export interface TitlePerformanceItem {
@@ -46,6 +47,10 @@ interface Payment {
   transactionId: string;
   status: string;
   amount: number;
+  cryptoCurrency?: string | null;
+  cryptoAmount?: number | null;
+  cryptoPaymentId?: string | null;
+  txHash?: string | null;
 }
 
 interface Order {
@@ -55,6 +60,10 @@ interface Order {
   totalAmount: number;
   paymentStatus: string;
   currency: string;
+  cryptoPaymentId?: string | null;
+  cryptoInvoiceUrl?: string | null;
+  cryptoCurrency?: string | null;
+  cryptoAmount?: number | null;
   isGift?: boolean;
   recipientName?: string | null;
   recipientEmail?: string | null;
@@ -539,8 +548,14 @@ export function OrdersClient({
                         <React.Fragment key={order.id}>
                           <tr className="hover:bg-gray-50/60 transition-colors">
                             <td className="p-4 font-mono font-bold text-brand-ink">
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <span>{order.orderNumber}</span>
+                                {order.payment?.provider === "NOWPAYMENTS" && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1">
+                                    <Coins className="w-2.5 h-2.5 text-amber-700" />
+                                    <span>CRYPTO</span>
+                                  </span>
+                                )}
                                 {order.isGift && (
                                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
                                     GIFT
@@ -625,6 +640,25 @@ export function OrdersClient({
                                       <span>Processed Digitally</span>
                                     </div>
                                   </div>
+
+                                  {/* Crypto Details Row */}
+                                  {(order.payment?.provider === "NOWPAYMENTS" || order.payment?.cryptoCurrency || order.cryptoCurrency) && (
+                                    <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1">
+                                      <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                                        <Coins className="w-3.5 h-3.5 text-amber-700" />
+                                        <span>NOWPayments Crypto Transaction</span>
+                                      </div>
+                                      <div>
+                                        <span className="font-semibold">Cryptocurrency:</span> {order.payment?.cryptoCurrency || order.cryptoCurrency || "Multi-Coin"}
+                                        {order.payment?.cryptoAmount || order.cryptoAmount ? ` (Amount: ${order.payment?.cryptoAmount || order.cryptoAmount})` : ""}
+                                      </div>
+                                      {order.payment?.transactionId && (
+                                        <div className="font-mono text-[11px] text-gray-600">
+                                          <span className="font-semibold font-sans">Payment / Invoice ID:</span> {order.payment.transactionId}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
 
                                   {/* Gift Details Row */}
                                   {order.isGift && (

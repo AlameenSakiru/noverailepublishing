@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getCurrentUser, hashPassword, setSessionCookie } from "@/lib/auth";
 import { isStripeConfigured, createCheckoutSession, CheckoutItem } from "@/lib/stripe";
 import { isPaystackConfigured, initializePaystackTransaction } from "@/lib/paystack";
+import { isNowPaymentsConfigured, createNowPaymentsInvoice } from "@/lib/nowpayments";
 import { siteConfig } from "@/lib/config";
 import { checkRateLimit, getClientIp } from "@/lib/security";
 import { sendGiftDeliveryEmail } from "@/lib/email";
@@ -149,11 +150,108 @@ export async function POST(req: Request) {
     const defaultCurrency = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || siteConfig.defaultCurrency || "USD";
 
     // Determine target payment provider
-    const usePaystack = isPaystackConfigured && (!preferredGateway || preferredGateway === "PAYSTACK");
-    const useStripe = !usePaystack && isStripeConfigured && (!preferredGateway || preferredGateway === "STRIPE");
+    const isCryptoRequested = preferredGateway === "NOWPAYMENTS" || preferredGateway === "CRYPTO";
+
+    if (isCryptoRequested && !isNowPaymentsConfigured) {
+      return NextResponse.json(
+        {
+          error:
+            "NOWPayments crypto gateway is not configured yet. Please enter your NOWPAYMENTS_API_KEY in Admin Settings or .env.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const useNowPayments = isNowPaymentsConfigured && (isCryptoRequested || (!isPaystackConfigured && !isStripeConfigured));
+    const usePaystack = !isCryptoRequested && isPaystackConfigured && (!preferredGateway || preferredGateway === "PAYSTACK");
+    const useStripe = !isCryptoRequested && !usePaystack && isStripeConfigured && (!preferredGateway || preferredGateway === "STRIPE");
 
     // =========================================================================
-    // 1. PAYSTACK CHECKOUT FLOW
+    // 1. NOWPAYMENTS MULTI-COIN CRYPTO CHECKOUT FLOW
+    // =========================================================================
+    if (useNowPayments) {
+      const randomSuffix = crypto.randomBytes(4).toString("hex").toUpperCase();
+      const orderNumber = `NOV-2026-${randomSuffix}`;
+
+      // Look up existing user if guest
+      let userId = currentUser?.userId || null;
+      if (!userId) {
+        const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
+        if (existingUser) {
+          userId = existingUser.id;
+        }
+      }
+
+      // Create PENDING order in DB with gift metadata
+      const order = await prisma.order.create({
+        data: {
+          orderNumber,
+          userId,
+          customerEmail: cleanEmail,
+          totalAmount,
+          subtotal,
+          discountAmount,
+          currency: defaultCurrency,
+          paymentStatus: "PENDING",
+          isGift: cleanIsGift,
+          recipientName: cleanRecipientName,
+          recipientEmail: cleanRecipientEmail,
+          giftMessage: cleanGiftMessage,
+          items: {
+            create: checkoutItems.map((item) => ({
+              bookId: item.bookId,
+              price: item.price,
+              bookTitle: item.title,
+            })),
+          },
+        },
+      });
+
+      const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || siteConfig.url || "http://localhost:3000";
+      const ipnCallbackUrl = `${appBaseUrl}/api/checkout/nowpayments-webhook`;
+      const successUrl = `${appBaseUrl}/checkout/success?orderNumber=${order.orderNumber}&provider=nowpayments`;
+      const cancelUrl = `${appBaseUrl}/cart`;
+
+      const invoiceRes = await createNowPaymentsInvoice({
+        priceAmount: totalAmount,
+        priceCurrency: "usd",
+        orderId: order.orderNumber,
+        orderDescription: `Noveraile Publishing Order #${order.orderNumber}`,
+        ipnCallbackUrl,
+        successUrl,
+        cancelUrl,
+      });
+
+      if (!invoiceRes.success || !invoiceRes.invoiceUrl) {
+        console.error("❌ NOWPayments invoice creation failed:", invoiceRes.error);
+        return NextResponse.json(
+          {
+            error:
+              invoiceRes.error ||
+              "Unable to create NOWPayments crypto invoice. Please verify your API key.",
+          },
+          { status: 400 }
+        );
+      }
+
+      // Update order with crypto invoice details
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          cryptoPaymentId: invoiceRes.invoiceId || null,
+          cryptoInvoiceUrl: invoiceRes.invoiceUrl,
+        },
+      });
+
+      return NextResponse.json({
+        checkoutUrl: invoiceRes.invoiceUrl,
+        provider: "NOWPAYMENTS",
+        orderNumber: order.orderNumber,
+      });
+    }
+
+    // =========================================================================
+    // 2. PAYSTACK CHECKOUT FLOW
     // =========================================================================
     if (usePaystack) {
       const randomSuffix = crypto.randomBytes(4).toString("hex").toUpperCase();

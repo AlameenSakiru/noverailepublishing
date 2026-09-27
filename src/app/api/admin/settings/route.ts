@@ -9,6 +9,12 @@ import {
   getPaystackMode,
   testPaystackConnection,
 } from "@/lib/paystack";
+import {
+  isNowPaymentsConfigured,
+  getNowPaymentsApiKey,
+  getNowPaymentsIpnSecret,
+  getNowPaymentsMode,
+} from "@/lib/nowpayments";
 import fs from "fs";
 import path from "path";
 
@@ -104,6 +110,13 @@ export async function GET() {
           secretKeyMasked: paystackSecretKey ? `sk_...${paystackSecretKey.slice(-4)}` : "",
           webhookUrl: paystackWebhookUrl,
         },
+        nowpayments: {
+          isConfigured: isNowPaymentsConfigured,
+          mode: getNowPaymentsMode(),
+          apiKeyMasked: getNowPaymentsApiKey() ? `np_...${getNowPaymentsApiKey().slice(-4)}` : "",
+          ipnSecretMasked: getNowPaymentsIpnSecret() ? `ipn_...${getNowPaymentsIpnSecret().slice(-4)}` : "",
+          webhookUrl: `${appUrl}/api/checkout/nowpayments-webhook`,
+        },
         payment: {
           isStripeConfigured: Boolean(stripeSecretKey.trim()),
           stripeMode,
@@ -112,7 +125,7 @@ export async function GET() {
           webhookSecretMasked: stripeWebhookSecret ? `whsec_...${stripeWebhookSecret.slice(-4)}` : "",
           webhookUrl: stripeWebhookUrl,
           allowSandboxCheckout:
-            process.env.ALLOW_SANDBOX_CHECKOUT === "true" || (!isPaystackConfigured && !stripeSecretKey.trim()),
+            process.env.ALLOW_SANDBOX_CHECKOUT === "true" || (!isPaystackConfigured && !stripeSecretKey.trim() && !isNowPaymentsConfigured),
         },
         email: {
           smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -217,6 +230,9 @@ export async function POST(req: Request) {
         currency,
         paystackPublicKey,
         paystackSecretKey,
+        nowpaymentsApiKey,
+        nowpaymentsIpnSecret,
+        nowpaymentsSandbox,
         stripePublishableKey,
         stripeSecretKey,
         stripeWebhookSecret,
@@ -236,6 +252,18 @@ export async function POST(req: Request) {
       }
       if (paystackSecretKey !== undefined && paystackSecretKey.trim() !== "") {
         updates.PAYSTACK_SECRET_KEY = paystackSecretKey.trim();
+      }
+
+      // NOWPayments configuration
+      if (nowpaymentsApiKey !== undefined && nowpaymentsApiKey.trim() !== "") {
+        updates.NOWPAYMENTS_API_KEY = nowpaymentsApiKey.trim();
+      }
+      if (nowpaymentsIpnSecret !== undefined && nowpaymentsIpnSecret.trim() !== "") {
+        updates.NOWPAYMENTS_IPN_SECRET = nowpaymentsIpnSecret.trim();
+      }
+      if (nowpaymentsSandbox !== undefined) {
+        updates.NOWPAYMENTS_SANDBOX = nowpaymentsSandbox ? "true" : "false";
+        updates.NEXT_PUBLIC_NOWPAYMENTS_SANDBOX = nowpaymentsSandbox ? "true" : "false";
       }
 
       // Stripe configuration

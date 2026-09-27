@@ -88,8 +88,17 @@ export function SuccessClient({ order, reference, sessionId, provider }: Success
       ) : (
         <p className="text-sm sm:text-base text-brand-slate max-w-lg mx-auto mt-4 leading-relaxed font-light">
           A license confirmation has been dispatched to{" "}
-          <strong className="text-brand-ink">{order.customerEmail}</strong>. Your publications are now active inside your personal cloud library.
+          <strong className="text-brand-ink">{order.customerEmail}</strong>. Your publications are active inside your personal cloud library.
         </p>
+      )}
+
+      {(provider === "nowpayments" || order.cryptoPaymentId || order.cryptoInvoiceUrl) && (
+        <div className="mt-4 max-w-lg mx-auto p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-amber-900 flex items-center justify-center gap-2">
+          <span className="text-base">🪙</span>
+          <span>
+            Crypto transaction processed via <strong>NOWPayments</strong>. Digital entitlements unlock automatically upon on-chain block confirmation.
+          </span>
+        </div>
       )}
 
       {/* Gift Card Message Preview (if included) */}

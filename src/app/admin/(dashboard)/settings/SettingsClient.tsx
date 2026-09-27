@@ -31,6 +31,7 @@ import {
   EyeOff,
   User,
   X,
+  Coins,
 } from "lucide-react";
 
 export interface AdminUserData {
@@ -56,6 +57,13 @@ interface SettingsData {
     mode: "LIVE" | "TEST" | "UNCONFIGURED";
     publicKey: string;
     secretKeyMasked: string;
+    webhookUrl: string;
+  };
+  nowpayments?: {
+    isConfigured: boolean;
+    mode: "LIVE" | "SANDBOX" | "UNCONFIGURED";
+    apiKeyMasked: string;
+    ipnSecretMasked: string;
     webhookUrl: string;
   };
   payment: {
@@ -124,6 +132,12 @@ export function SettingsClient({
   const [paystackPublicKey, setPaystackPublicKey] = useState(settings.paystack?.publicKey || "");
   const [paystackSecretKey, setPaystackSecretKey] = useState("");
 
+  // NOWPayments Crypto
+  const [nowpaymentsApiKey, setNowpaymentsApiKey] = useState("");
+  const [nowpaymentsIpnSecret, setNowpaymentsIpnSecret] = useState("");
+  const [nowpaymentsSandbox, setNowpaymentsSandbox] = useState(settings.nowpayments?.mode === "SANDBOX");
+  const [copiedNowPaymentsWebhook, setCopiedNowPaymentsWebhook] = useState(false);
+
   // Stripe
   const [stripePublishableKey, setStripePublishableKey] = useState(settings.payment.publishableKey);
   const [stripeSecretKey, setStripeSecretKey] = useState("");
@@ -144,6 +158,14 @@ export function SettingsClient({
     navigator.clipboard.writeText(settings.paystack.webhookUrl);
     setCopiedPaystackWebhook(true);
     setTimeout(() => setCopiedPaystackWebhook(false), 2500);
+  };
+
+  const handleCopyNowPaymentsWebhook = () => {
+    if (settings.nowpayments?.webhookUrl) {
+      navigator.clipboard.writeText(settings.nowpayments.webhookUrl);
+      setCopiedNowPaymentsWebhook(true);
+      setTimeout(() => setCopiedNowPaymentsWebhook(false), 2500);
+    }
   };
 
   const handleCopyStripeWebhook = () => {
@@ -217,6 +239,9 @@ export function SettingsClient({
           currency,
           paystackPublicKey: paystackPublicKey || undefined,
           paystackSecretKey: paystackSecretKey.trim() || undefined,
+          nowpaymentsApiKey: nowpaymentsApiKey.trim() || undefined,
+          nowpaymentsIpnSecret: nowpaymentsIpnSecret.trim() || undefined,
+          nowpaymentsSandbox,
           stripePublishableKey: stripePublishableKey || undefined,
           stripeSecretKey: stripeSecretKey.trim() || undefined,
           stripeWebhookSecret: stripeWebhookSecret.trim() || undefined,
@@ -227,6 +252,8 @@ export function SettingsClient({
       if (res.ok && data.success) {
         setActionAlert({ success: true, message: data.message || "Settings updated successfully!" });
         setPaystackSecretKey("");
+        setNowpaymentsApiKey("");
+        setNowpaymentsIpnSecret("");
         setStripeSecretKey("");
         setStripeWebhookSecret("");
         await handleRefresh();
@@ -644,6 +671,136 @@ export function SettingsClient({
               <div className="text-[11px] text-emerald-800 leading-relaxed pt-1">
                 <strong>Setup Step:</strong> In your Paystack Dashboard, navigate to{" "}
                 <em>Settings &gt; API Keys & Webhooks</em>, paste this URL into the <strong>Webhook URL</strong> field, and click Save.
+              </div>
+            </div>
+
+            {/* ========================================================================= */}
+            {/* NOWPAYMENTS MULTI-COIN CRYPTO GATEWAY CONFIGURATION                       */}
+            {/* ========================================================================= */}
+            <div className="pt-6 border-t border-gray-100 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                    <Coins className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-950 flex items-center gap-2">
+                      <span>NOWPayments Multi-Coin Crypto Gateway</span>
+                      {settings.nowpayments?.isConfigured ? (
+                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          {settings.nowpayments.mode === "SANDBOX" ? "Sandbox / Test" : "Live & Active"}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                          Unconfigured
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Accept USDT (TRC20/BEP20), Bitcoin, Ethereum, Solana, and 300+ cryptocurrencies with instant automatic payout.
+                    </p>
+                  </div>
+                </div>
+
+                <a
+                  href="https://account.nowpayments.io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold text-amber-700 hover:text-amber-800 hover:underline inline-flex items-center gap-1 shrink-0"
+                >
+                  <span>Open NOWPayments Dashboard</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    NOWPayments API Key
+                  </label>
+                  <input
+                    type="text"
+                    value={nowpaymentsApiKey}
+                    onChange={(e) => setNowpaymentsApiKey(e.target.value)}
+                    placeholder={
+                      settings.nowpayments?.apiKeyMasked
+                        ? `Currently configured (${settings.nowpayments.apiKeyMasked}). Leave blank to keep.`
+                        : "Paste your NOWPayments API Key"
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 font-mono text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Found in NOWPayments Dashboard &gt; <em>Store Settings &gt; API Keys</em>.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    NOWPayments IPN Secret Key
+                  </label>
+                  <input
+                    type="password"
+                    value={nowpaymentsIpnSecret}
+                    onChange={(e) => setNowpaymentsIpnSecret(e.target.value)}
+                    placeholder={
+                      settings.nowpayments?.ipnSecretMasked
+                        ? `Currently configured (${settings.nowpayments.ipnSecretMasked}). Leave blank to keep.`
+                        : "Paste your IPN Secret Key"
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 font-mono text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Used to securely verify on-chain payment webhook notifications (HMAC-SHA512).
+                  </p>
+                </div>
+              </div>
+
+              {/* Sandbox Toggle */}
+              <div className="flex items-center gap-3 p-3.5 bg-amber-50/50 border border-amber-200/70 rounded-xl">
+                <input
+                  type="checkbox"
+                  id="nowpayments_sandbox_toggle"
+                  checked={nowpaymentsSandbox}
+                  onChange={(e) => setNowpaymentsSandbox(e.target.checked)}
+                  className="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500 cursor-pointer"
+                />
+                <label htmlFor="nowpayments_sandbox_toggle" className="text-xs text-amber-950 font-medium cursor-pointer">
+                  Enable NOWPayments Sandbox / Test Mode (Uses <code>api-sandbox.nowpayments.io</code>)
+                </label>
+              </div>
+
+              {/* IPN Webhook URL Box */}
+              <div className="p-4 bg-amber-50/80 border border-amber-200/90 rounded-2xl space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                  <span className="text-xs font-bold text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Instant Payment Notification (IPN) Callback URL</span>
+                  </span>
+                  <span className="text-[11px] text-amber-800 font-medium">Automatic On-Chain Confirmation</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="w-full px-3.5 py-2 bg-white border border-amber-300 rounded-xl font-mono text-xs text-gray-900 truncate select-all">
+                    {settings.nowpayments?.webhookUrl || `${settings.site.url}/api/checkout/nowpayments-webhook`}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyNowPaymentsWebhook}
+                    className="px-3.5 py-2 rounded-xl bg-amber-800 hover:bg-amber-900 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  >
+                    {copiedNowPaymentsWebhook ? (
+                      <Check className="w-3.5 h-3.5 text-amber-300" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    <span>{copiedNowPaymentsWebhook ? "Copied!" : "Copy IPN URL"}</span>
+                  </button>
+                </div>
+
+                <div className="text-[11px] text-amber-900 leading-relaxed pt-1">
+                  <strong>Setup Step:</strong> In your NOWPayments dashboard, go to{" "}
+                  <em>Store Settings &gt; Instant Payment Notifications (IPN)</em>, paste this URL and click <strong>Generate IPN secret key</strong>.
+                </div>
               </div>
             </div>
 

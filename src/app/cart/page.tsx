@@ -15,11 +15,15 @@ import {
   Heart,
   Sparkles,
   CheckCircle2,
+  CreditCard,
+  Coins,
+  Zap,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 
 export default function CartPage() {
+  const [paymentMethod, setPaymentMethod] = useState<"CARD" | "CRYPTO">("CARD");
   const {
     items,
     removeItem,
@@ -91,6 +95,7 @@ export default function CartPage() {
           items,
           couponCode: coupon?.code || null,
           email: emailToUse,
+          preferredGateway: paymentMethod === "CRYPTO" ? "NOWPAYMENTS" : "PAYSTACK",
           isGift,
           recipientName: isGift ? recipientName.trim() : null,
           recipientEmail: isGift ? recipientEmail.trim() : null,
@@ -447,6 +452,62 @@ export default function CartPage() {
               </form>
             )}
 
+            {/* Payment Method Selector */}
+            <div className="mt-5 pt-4 border-t border-gray-100">
+              <label className="block text-xs font-bold text-brand-ink mb-2">
+                Payment Method
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("CARD")}
+                  className={`p-3 rounded-xl border text-left transition-all relative ${
+                    paymentMethod === "CARD"
+                      ? "bg-brand-50/70 border-brand-ink shadow-xs ring-1 ring-brand-ink"
+                      : "bg-white border-gray-200 hover:border-gray-300 text-gray-600"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <CreditCard className={`w-4 h-4 ${paymentMethod === "CARD" ? "text-brand-ink" : "text-gray-400"}`} />
+                    {paymentMethod === "CARD" && (
+                      <span className="w-2 h-2 rounded-full bg-brand-ink"></span>
+                    )}
+                  </div>
+                  <div className="text-xs font-bold text-brand-ink">Cards & Bank</div>
+                  <div className="text-[10px] text-brand-muted mt-0.5">Paystack • Instant</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("CRYPTO")}
+                  className={`p-3 rounded-xl border text-left transition-all relative ${
+                    paymentMethod === "CRYPTO"
+                      ? "bg-gradient-to-br from-amber-50/90 to-amber-100/40 border-amber-500 shadow-xs ring-1 ring-amber-500"
+                      : "bg-white border-gray-200 hover:border-gray-300 text-gray-600"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <Coins className={`w-4 h-4 ${paymentMethod === "CRYPTO" ? "text-amber-600" : "text-gray-400"}`} />
+                    {paymentMethod === "CRYPTO" && (
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    )}
+                  </div>
+                  <div className="text-xs font-bold text-brand-ink flex items-center gap-1">
+                    <span>Crypto</span>
+                    <span className="text-[9px] px-1 py-0.5 rounded bg-amber-200 text-amber-900 font-extrabold">300+</span>
+                  </div>
+                  <div className="text-[10px] text-amber-800/80 font-medium mt-0.5">USDT, BTC, SOL</div>
+                </button>
+              </div>
+
+              {paymentMethod === "CRYPTO" && (
+                <div className="mt-2.5 p-2.5 rounded-lg bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-900 flex items-center gap-2">
+                  <Zap className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>Powered by NOWPayments. Auto-confirms on-chain with instant library access.</span>
+                </div>
+              )}
+            </div>
+
             {checkoutError && (
               <div className="mt-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs">
                 {checkoutError}
@@ -457,14 +518,28 @@ export default function CartPage() {
             <button
               onClick={handleCheckout}
               disabled={isCheckingOut}
-              className="w-full mt-6 py-3.5 px-6 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-50"
+              className={`w-full mt-5 py-3.5 px-6 rounded-xl font-semibold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-50 ${
+                paymentMethod === "CRYPTO"
+                  ? "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white shadow-amber-900/10"
+                  : "bg-brand-ink hover:bg-brand-900 text-white"
+              }`}
             >
-              <Lock className="w-4 h-4 text-brand-300" />
+              {paymentMethod === "CRYPTO" ? (
+                <Coins className="w-4 h-4 text-amber-200" />
+              ) : (
+                <Lock className="w-4 h-4 text-brand-300" />
+              )}
               <span>
                 {isCheckingOut
-                  ? "Connecting to Secure Gateway..."
+                  ? paymentMethod === "CRYPTO"
+                    ? "Connecting to NOWPayments..."
+                    : "Connecting to Secure Gateway..."
                   : isGift
-                  ? "Complete Gift Purchase"
+                  ? paymentMethod === "CRYPTO"
+                    ? "Pay Gift with Crypto (NOWPayments)"
+                    : "Complete Gift Purchase"
+                  : paymentMethod === "CRYPTO"
+                  ? "Pay with Crypto (NOWPayments)"
                   : "Proceed to Secure Checkout"}
               </span>
             </button>
@@ -473,16 +548,34 @@ export default function CartPage() {
             <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
               <div className="flex items-center justify-center gap-1.5 text-[11px] text-brand-muted">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Paystack Encrypted Checkout • Instant Access</span>
+                <span>
+                  {paymentMethod === "CRYPTO"
+                    ? "NOWPayments Multi-Coin Checkout • Instant Fulfillment"
+                    : "Paystack Encrypted Checkout • Instant Access"}
+                </span>
               </div>
               <div className="flex items-center justify-center gap-2 text-[10px] text-gray-400">
-                <span>Cards</span>
-                <span>•</span>
-                <span>Bank Transfer</span>
-                <span>•</span>
-                <span>USSD</span>
-                <span>•</span>
-                <span>Apple Pay</span>
+                {paymentMethod === "CRYPTO" ? (
+                  <>
+                    <span>USDT (TRC20/BEP20)</span>
+                    <span>•</span>
+                    <span>Bitcoin (BTC)</span>
+                    <span>•</span>
+                    <span>Ethereum (ETH)</span>
+                    <span>•</span>
+                    <span>Solana (SOL)</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Cards</span>
+                    <span>•</span>
+                    <span>Bank Transfer</span>
+                    <span>•</span>
+                    <span>USSD</span>
+                    <span>•</span>
+                    <span>Apple Pay</span>
+                  </>
+                )}
               </div>
             </div>
           </div>

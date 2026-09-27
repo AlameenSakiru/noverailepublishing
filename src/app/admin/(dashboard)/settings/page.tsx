@@ -7,6 +7,12 @@ import {
   getPaystackPublicKey,
   getPaystackMode,
 } from "@/lib/paystack";
+import {
+  isNowPaymentsConfigured,
+  getNowPaymentsApiKey,
+  getNowPaymentsIpnSecret,
+  getNowPaymentsMode,
+} from "@/lib/nowpayments";
 import { SettingsClient } from "./SettingsClient";
 
 export const dynamic = "force-dynamic";
@@ -19,12 +25,18 @@ export const metadata = {
 export default async function AdminSettingsPage() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const paystackWebhookUrl = `${appUrl}/api/checkout/paystack-webhook`;
+  const nowpaymentsWebhookUrl = `${appUrl}/api/checkout/nowpayments-webhook`;
   const stripeWebhookUrl = `${appUrl}/api/checkout/webhook`;
 
   // Paystack
   const paystackPublicKey = getPaystackPublicKey();
   const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || "";
   const paystackMode = getPaystackMode();
+
+  // NOWPayments
+  const nowpaymentsApiKey = getNowPaymentsApiKey();
+  const nowpaymentsIpnSecret = getNowPaymentsIpnSecret();
+  const nowpaymentsMode = getNowPaymentsMode();
 
   // Stripe
   const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
@@ -64,6 +76,13 @@ export default async function AdminSettingsPage() {
       secretKeyMasked: paystackSecretKey ? `sk_...${paystackSecretKey.slice(-4)}` : "",
       webhookUrl: paystackWebhookUrl,
     },
+    nowpayments: {
+      isConfigured: isNowPaymentsConfigured,
+      mode: nowpaymentsMode,
+      apiKeyMasked: nowpaymentsApiKey ? `np_...${nowpaymentsApiKey.slice(-4)}` : "",
+      ipnSecretMasked: nowpaymentsIpnSecret ? `ipn_...${nowpaymentsIpnSecret.slice(-4)}` : "",
+      webhookUrl: nowpaymentsWebhookUrl,
+    },
     payment: {
       isStripeConfigured: Boolean(stripeSecretKey.trim()),
       stripeMode,
@@ -72,7 +91,7 @@ export default async function AdminSettingsPage() {
       webhookSecretMasked: stripeWebhookSecret ? `whsec_...${stripeWebhookSecret.slice(-4)}` : "",
       webhookUrl: stripeWebhookUrl,
       allowSandboxCheckout:
-        process.env.ALLOW_SANDBOX_CHECKOUT === "true" || (!isPaystackConfigured && !stripeSecretKey.trim()),
+        process.env.ALLOW_SANDBOX_CHECKOUT === "true" || (!isPaystackConfigured && !stripeSecretKey.trim() && !isNowPaymentsConfigured),
     },
     email: {
       smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
