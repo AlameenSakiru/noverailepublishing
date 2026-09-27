@@ -17,7 +17,7 @@ export default async function AdminStoriesPage() {
     redirect("/admin/login?error=forbidden");
   }
 
-  // Load saved stories from PlatformSetting
+  // 1. Load saved stories from PlatformSetting
   const record = await prisma.platformSetting.findUnique({
     where: { key: "featured_stories_json" },
   });
@@ -34,7 +34,7 @@ export default async function AdminStoriesPage() {
     }
   }
 
-  // Load available books for the dropdown
+  // 2. Load available books for dropdown
   const books = await prisma.book.findMany({
     select: {
       id: true,
@@ -44,10 +44,33 @@ export default async function AdminStoriesPage() {
     orderBy: { title: "asc" },
   });
 
+  // 3. Load all customer reviews from the database
+  const customerReviews = await prisma.review.findMany({
+    include: {
+      book: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          coverImage: true,
+        },
+      },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
   return (
     <StoriesAdminClient
       initialStories={initialStories}
       availableBooks={books}
+      initialCustomerReviews={customerReviews}
     />
   );
 }
