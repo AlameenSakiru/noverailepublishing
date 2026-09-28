@@ -13,6 +13,7 @@ import {
   Sliders,
   Megaphone,
   Award,
+  Headphones,
 } from "lucide-react";
 
 export function AdminNavTabs({ role = "ADMIN" }: { role?: string }) {
@@ -25,6 +26,7 @@ export function AdminNavTabs({ role = "ADMIN" }: { role?: string }) {
     { label: "Orders & Royalties", href: "/admin/orders", icon: ShoppingBag, editorAllowed: false },
     { label: "Categories", href: "/admin/categories", icon: FolderTree, editorAllowed: true },
     { label: "Customer Access", href: "/admin/customers", icon: Users, editorAllowed: false },
+    { label: "Support Desk", href: "/admin/support", icon: Headphones, editorAllowed: true },
     { label: "Discounts", href: "/admin/coupons", icon: Tag, editorAllowed: false },
     { label: "Broadcasts", href: "/admin/broadcasts", icon: Megaphone, editorAllowed: false },
     { label: "Settings", href: "/admin/settings", icon: Sliders, editorAllowed: false },

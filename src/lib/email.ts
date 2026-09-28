@@ -1334,3 +1334,321 @@ export async function sendBroadcastEmail(opts: BroadcastEmailOptions) {
     attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
   });
 }
+
+const SUPPORT_CATEGORY_LABELS: Record<string, string> = {
+  ORDER_ACCESS: "Order & Library Entitlement",
+  EXAM_PREP: "Exam Prep Content & Errata",
+  EDITORIAL: "Author Submission / Manuscript",
+  LICENSING: "Institutional & Academic Licensing",
+  TECHNICAL: "Technical & Account Security",
+  GENERAL: "General Reader Inquiry",
+};
+
+export async function sendSupportTicketConfirmationToCustomer({
+  ticketNumber,
+  customerName,
+  customerEmail,
+  category,
+  subject,
+  message,
+}: {
+  ticketNumber: string;
+  customerName: string;
+  customerEmail: string;
+  category: string;
+  subject: string;
+  message: string;
+}) {
+  const appUrl =
+    (await getSettingValue("NEXT_PUBLIC_APP_URL", "")) ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://noverailepublishing.com";
+
+  const categoryName = SUPPORT_CATEGORY_LABELS[category] || category || "General Support";
+  const emailSubject = `[${ticketNumber}] Support Ticket Received: ${subject}`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${emailSubject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 40px 15px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+          <!-- Gold Accent Bar -->
+          <tr>
+            <td style="height: 4px; background: linear-gradient(90deg, #b45309 0%, #f59e0b 50%, #b45309 100%);"></td>
+          </tr>
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="padding: 32px 36px 20px 36px; border-bottom: 1px solid #f1f5f9;">
+              <div style="font-family: Georgia, Cambria, serif; font-size: 20px; font-weight: 800; letter-spacing: 0.2em; color: #0f172a;">
+                NOVERAILE
+              </div>
+              <div style="font-size: 9px; letter-spacing: 0.35em; color: #64748b; text-transform: uppercase; margin-top: 3px; font-weight: 600;">
+                CUSTOMER SUPPORT DESK
+              </div>
+            </td>
+          </tr>
+
+          <!-- Content Body -->
+          <tr>
+            <td style="padding: 36px 36px 28px 36px;">
+              <div style="display: inline-block; background-color: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 9999px; margin-bottom: 16px;">
+                ✓ Request Logged & In Queue
+              </div>
+
+              <h1 style="font-family: Georgia, Cambria, serif; font-size: 24px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0; line-height: 1.3;">
+                We Have Received Your Inquiry
+              </h1>
+
+              <p style="font-size: 14px; line-height: 1.7; color: #475569; margin: 0 0 24px 0;">
+                Dear ${customerName},<br><br>
+                Thank you for reaching out to Noveraile Publishing. Your inquiry has been routed to our specialist team. We strive to provide comprehensive, thoughtful resolutions within <strong>24 business hours</strong>.
+              </p>
+
+              <!-- Ticket Details Card -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin: 0 0 24px 0;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; padding-bottom: 6px;">
+                          Ticket Reference
+                        </td>
+                        <td align="right" style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 800; color: #0f172a; padding-bottom: 6px;">
+                          ${ticketNumber}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; padding-bottom: 6px;">
+                          Inquiry Category
+                        </td>
+                        <td align="right" style="font-size: 12px; font-weight: 600; color: #334155; padding-bottom: 6px;">
+                          ${categoryName}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">
+                          Subject
+                        </td>
+                        <td align="right" style="font-size: 12px; font-weight: 600; color: #334155;">
+                          ${subject}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Message Copy -->
+              <div style="background-color: #ffffff; border-left: 3px solid #f59e0b; padding: 16px 20px; border-radius: 0 12px 12px 0; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 6px;">
+                  Your Message Summary:
+                </div>
+                <div style="font-size: 13px; line-height: 1.6; color: #334155; white-space: pre-wrap;">
+                  ${message}
+                </div>
+              </div>
+
+              <!-- Reply instructions -->
+              <p style="font-size: 12px; line-height: 1.6; color: #64748b; margin: 0 0 28px 0;">
+                💡 <em>Have additional context or screenshots to provide? Simply reply directly to this email without modifying the subject line, and it will be appended to your ticket record.</em>
+              </p>
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="center">
+                    <a href="${appUrl}/help" target="_blank" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 14px rgba(15,23,42,0.18);">
+                      Visit Help & Knowledge Center &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 36px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.6;">
+              <div style="font-weight: 700; color: #475569; margin-bottom: 4px;">
+                Noveraile Publishing Customer Support Desk
+              </div>
+              <div>
+                Direct email: <a href="mailto:noverailepublishing@gmail.com" style="color: #64748b;">noverailepublishing@gmail.com</a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  return sendEmail({
+    to: customerEmail,
+    subject: emailSubject,
+    html,
+    text: `Support Ticket Received [${ticketNumber}]\n\nDear ${customerName},\n\nWe have received your support inquiry regarding "${subject}" (${categoryName}).\n\nYour message:\n${message}\n\nOur team will review your inquiry and respond within 24 business hours.\n\nNoveraile Publishing Support Desk`,
+  });
+}
+
+export async function sendSupportTicketNotificationToAdmin({
+  ticketNumber,
+  customerName,
+  customerEmail,
+  category,
+  subject,
+  message,
+  source = "CONTACT_FORM",
+}: {
+  ticketNumber: string;
+  customerName: string;
+  customerEmail: string;
+  category: string;
+  subject: string;
+  message: string;
+  source?: string;
+}) {
+  const appUrl =
+    (await getSettingValue("NEXT_PUBLIC_APP_URL", "")) ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://noverailepublishing.com";
+
+  const adminEmail =
+    (await getSettingValue("ADMIN_NOTIFICATION_EMAIL", "")) ||
+    (await getSettingValue("SMTP_USER", "noverailepublishing@gmail.com"));
+
+  const categoryName = SUPPORT_CATEGORY_LABELS[category] || category || "General Support";
+  const emailSubject = `🚨 [SUPPORT #${ticketNumber}] ${categoryName}: ${subject}`;
+
+  const adminSupportUrl = `${appUrl}/admin/support?ticket=${ticketNumber}`;
+  const replyMailto = `mailto:${encodeURIComponent(customerEmail)}?subject=${encodeURIComponent(
+    `Re: [${ticketNumber}] ${subject} - Noveraile Publishing Support`
+  )}`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${emailSubject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 40px 15px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 620px; background-color: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+          <!-- Top Navy Bar -->
+          <tr>
+            <td style="height: 6px; background-color: #0f172a;"></td>
+          </tr>
+
+          <!-- Header -->
+          <tr>
+            <td style="padding: 24px 32px; background-color: #0f172a; color: #ffffff;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.2em; color: #f59e0b; text-transform: uppercase;">
+                      Support Desk Alert
+                    </span>
+                    <h2 style="font-family: Georgia, Cambria, serif; font-size: 20px; font-weight: 700; color: #ffffff; margin: 4px 0 0 0;">
+                      New Customer Ticket: ${ticketNumber}
+                    </h2>
+                  </td>
+                  <td align="right">
+                    <span style="font-family: monospace; font-size: 11px; background: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 6px; color: #e2e8f0;">
+                      ${source}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Meta Grid -->
+          <tr>
+            <td style="padding: 24px 32px 16px 32px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size: 13px;">
+                <tr>
+                  <td width="30%" style="color: #64748b; font-weight: 600; padding-bottom: 8px;">Customer:</td>
+                  <td width="70%" style="color: #0f172a; font-weight: 700; padding-bottom: 8px;">
+                    ${customerName} &lt;<a href="mailto:${customerEmail}" style="color: #2563eb; text-decoration: none;">${customerEmail}</a>&gt;
+                  </td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; font-weight: 600; padding-bottom: 8px;">Category:</td>
+                  <td style="color: #0f172a; font-weight: 600; padding-bottom: 8px;">
+                    <span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">
+                      ${categoryName}
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; font-weight: 600;">Subject:</td>
+                  <td style="color: #0f172a; font-weight: 700;">${subject}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Message Body -->
+          <tr>
+            <td style="padding: 28px 32px;">
+              <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; margin-bottom: 10px;">
+                Customer Inquiry Message
+              </div>
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; font-size: 14px; line-height: 1.7; color: #1e293b; white-space: pre-wrap;">
+                ${message}
+              </div>
+
+              <!-- Action buttons -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top: 28px;">
+                <tr>
+                  <td align="left">
+                    <a href="${adminSupportUrl}" target="_blank" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 24px; border-radius: 10px;">
+                      Open Ticket in Admin Desk &rarr;
+                    </a>
+                  </td>
+                  <td align="right">
+                    <a href="${replyMailto}" style="display: inline-block; background-color: #2563eb; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 24px; border-radius: 10px;">
+                      Direct Reply to Customer &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 32px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center; font-size: 11px; color: #94a3b8;">
+              Noveraile Publishing Platform &bull; Automated Support Dispatch
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  return sendEmail({
+    to: adminEmail,
+    subject: emailSubject,
+    html,
+    text: `NEW SUPPORT TICKET: #${ticketNumber}\n\nFrom: ${customerName} (${customerEmail})\nCategory: ${categoryName}\nSubject: ${subject}\nSource: ${source}\n\nMessage:\n${message}\n\nAdmin View: ${adminSupportUrl}`,
+  });
+}
+
