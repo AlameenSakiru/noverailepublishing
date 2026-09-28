@@ -27,6 +27,16 @@ import {
   Send,
 } from "lucide-react";
 
+interface SupportMessageItem {
+  id: string;
+  ticketId: string;
+  senderType: string;
+  senderName: string;
+  senderEmail: string | null;
+  message: string;
+  createdAt: string;
+}
+
 interface Ticket {
   id: string;
   ticketNumber: string;
@@ -43,6 +53,7 @@ interface Ticket {
   createdAt: string;
   updatedAt: string;
   resolvedAt: string | null;
+  messages?: SupportMessageItem[];
   user?: {
     id: string;
     name: string;
@@ -161,6 +172,14 @@ export function SupportClient({
   const [saveNoteSuccess, setSaveNoteSuccess] = useState(false);
   const [adminNoteDraft, setAdminNoteDraft] = useState("");
 
+  // In-app Reply States
+  const [replyDraft, setReplyDraft] = useState("");
+  const [replyStatusChoice, setReplyStatusChoice] = useState<
+    "IN_PROGRESS" | "RESOLVED" | "KEEP"
+  >("IN_PROGRESS");
+  const [sendingReply, setSendingReply] = useState(false);
+  const [replySuccessMsg, setReplySuccessMsg] = useState<string | null>(null);
+
   // Select ticket based on query param or first item
   useEffect(() => {
     if (ticketParam) {
@@ -183,11 +202,13 @@ export function SupportClient({
     return tickets.find((t) => t.id === selectedTicketId) || null;
   }, [tickets, selectedTicketId]);
 
-  // When selected ticket changes, update note draft
+  // When selected ticket changes, update note draft & reset reply draft
   useEffect(() => {
     if (selectedTicket) {
       setAdminNoteDraft(selectedTicket.adminNotes || "");
       setSaveNoteSuccess(false);
+      setReplyDraft("");
+      setReplySuccessMsg(null);
     }
   }, [selectedTicketId]);
 
@@ -265,6 +286,51 @@ export function SupportClient({
       console.error("Failed to update ticket", err);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  // Dispatch In-App Reply to Customer
+  const handleSendReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTicket || !replyDraft.trim()) return;
+
+    setSendingReply(true);
+    setReplySuccessMsg(null);
+
+    try {
+      const res = await fetch(`/api/admin/support/${selectedTicket.id}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: replyDraft.trim(),
+          newStatus:
+            replyStatusChoice === "RESOLVED"
+              ? "RESOLVED"
+              : replyStatusChoice === "IN_PROGRESS"
+              ? "IN_PROGRESS"
+              : undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to dispatch reply.");
+      }
+
+      // Update ticket in local state
+      setTickets((prev) =>
+        prev.map((t) => (t.id === selectedTicket.id ? data.ticket : t))
+      );
+      setReplyDraft("");
+      setReplySuccessMsg(
+        `Official reply dispatched to ${selectedTicket.email} and recorded in ticket history.`
+      );
+      setTimeout(() => setReplySuccessMsg(null), 6000);
+      refreshTickets();
+    } catch (err: any) {
+      alert(err.message || "Failed to dispatch reply.");
+    } finally {
+      setSendingReply(false);
     }
   };
 
@@ -701,6 +767,180 @@ export function SupportClient({
                     </span>
                   </div>
                 )}
+              </div>
+
+              {/* Conversation History & In-App Replies */}
+              <div className="p-6 border-b border-gray-100 bg-white space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-800">
+                      Conversation Thread ({1 + (selectedTicket.messages?.length || 0)})
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-semibold">
+                      Live History
+                    </span>
+                  </div>
+                </div>
+
+                {/* Messages Timeline */}
+                <div className="space-y-3 pt-1">
+                  {/* Original Customer Message Bubble */}
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 text-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px]">
+                          {selectedTicket.name.charAt(0).toUpperCase()}
+                        </span>
+                        <span className="font-semibold text-slate-900">
+                          {selectedTicket.name} (Customer)
+                        </span>
+                        <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-medium">
+                          Original Inquiry
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400">
+                        {new Date(selectedTicket.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="text-slate-800 leading-relaxed whitespace-pre-wrap pl-7">
+                      {selectedTicket.message}
+                    </div>
+                  </div>
+
+                  {/* Any Previous Replies */}
+                  {selectedTicket.messages && selectedTicket.messages.length > 0 ? (
+                    selectedTicket.messages.map((m) => {
+                      const isAdmin = m.senderType === "ADMIN";
+                      return (
+                        <div
+                          key={m.id}
+                          className={`p-4 rounded-2xl text-xs space-y-2 border transition-all ${
+                            isAdmin
+                              ? "bg-slate-900 text-white border-slate-800 shadow-xs"
+                              : "bg-blue-50/70 text-slate-900 border-blue-200"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {isAdmin ? (
+                                <span className="w-5 h-5 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center font-bold text-[10px]">
+                                  ★
+                                </span>
+                              ) : (
+                                <span className="w-5 h-5 rounded-full bg-blue-200 text-blue-800 flex items-center justify-center font-bold text-[10px]">
+                                  {m.senderName.charAt(0).toUpperCase()}
+                                </span>
+                              )}
+                              <span
+                                className={`font-semibold ${
+                                  isAdmin ? "text-white" : "text-slate-900"
+                                }`}
+                              >
+                                {m.senderName}
+                              </span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                                  isAdmin
+                                    ? "bg-amber-400/20 text-amber-300 border border-amber-400/30"
+                                    : "bg-blue-100 text-blue-700"
+                                }`}
+                              >
+                                {isAdmin
+                                  ? "Noveraile Support Desk"
+                                  : "Customer Reply"}
+                              </span>
+                            </div>
+                            <span
+                              className={`text-[10px] ${
+                                isAdmin ? "text-slate-400" : "text-slate-400"
+                              }`}
+                            >
+                              {new Date(m.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                          <div
+                            className={`leading-relaxed whitespace-pre-wrap pl-7 ${
+                              isAdmin ? "text-slate-200" : "text-slate-800"
+                            }`}
+                          >
+                            {m.message}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : null}
+                </div>
+
+                {/* In-App Reply Composer Box */}
+                <form
+                  onSubmit={handleSendReply}
+                  className="mt-6 pt-5 border-t border-slate-100 space-y-3 bg-amber-50/30 -mx-6 -mb-6 p-6 rounded-b-3xl border-t border-amber-100"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="p-1 rounded-lg bg-[#0f172a] text-amber-400">
+                        <Send className="w-3.5 h-3.5" />
+                      </span>
+                      <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        Reply Directly from Website
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-slate-500">
+                      Dispatched instantly to <strong>{selectedTicket.email}</strong>
+                    </span>
+                  </div>
+
+                  {replySuccessMsg && (
+                    <div className="p-3 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{replySuccessMsg}</span>
+                    </div>
+                  )}
+
+                  <textarea
+                    rows={4}
+                    required
+                    value={replyDraft}
+                    onChange={(e) => setReplyDraft(e.target.value)}
+                    placeholder={`Write your response to ${selectedTicket.name} here. It will appear in this thread and be emailed to ${selectedTicket.email}...`}
+                    className="w-full p-3.5 border border-slate-300 rounded-xl text-xs outline-none focus:border-slate-800 transition-colors bg-white leading-relaxed resize-y"
+                  />
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-slate-500 font-medium">After sending:</span>
+                      <select
+                        value={replyStatusChoice}
+                        onChange={(e: any) => setReplyStatusChoice(e.target.value)}
+                        className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white text-xs font-semibold text-slate-800 outline-none cursor-pointer"
+                      >
+                        <option value="IN_PROGRESS">Set Status to In Progress</option>
+                        <option value="RESOLVED">Mark Ticket as Resolved</option>
+                        <option value="KEEP">
+                          Keep Current Status ({selectedTicket.status})
+                        </option>
+                      </select>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={sendingReply || !replyDraft.trim()}
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#0f172a] hover:bg-slate-900 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
+                    >
+                      {sendingReply ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                          <span>Dispatching Reply & Email...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Send Reply to Customer</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
               </div>
 
               {/* Internal Admin Notes */}

@@ -52,6 +52,9 @@ export async function GET(req: NextRequest) {
                 role: true,
               },
             },
+            messages: {
+              orderBy: { createdAt: "asc" },
+            },
           },
         }),
         prisma.supportTicket.count(),

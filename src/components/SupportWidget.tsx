@@ -13,10 +13,9 @@ import {
   Loader2,
   ChevronRight,
   Headphones,
-  FileText,
-  BookOpen,
-  ShieldCheck,
+  Search,
   ExternalLink,
+  RotateCcw,
 } from "lucide-react";
 
 interface FAQItem {
@@ -49,15 +48,34 @@ const QUICK_FAQS: FAQItem[] = [
   },
 ];
 
+interface TrackedTicketMessage {
+  id: string;
+  senderType: string;
+  senderName: string;
+  message: string;
+  createdAt: string;
+}
+
+interface TrackedTicket {
+  ticketNumber: string;
+  category: string;
+  subject: string;
+  message: string;
+  status: string;
+  createdAt: string;
+  resolvedAt: string | null;
+  messages: TrackedTicketMessage[];
+}
+
 export function SupportWidget() {
   const pathname = usePathname();
   const { user } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"FAQS" | "MESSAGE">("FAQS");
+  const [activeTab, setActiveTab] = useState<"FAQS" | "MESSAGE" | "TRACK">("FAQS");
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
-  // Message Form State
+  // New Ticket Form State
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [category, setCategory] = useState("ORDER_ACCESS");
@@ -66,11 +84,26 @@ export function SupportWidget() {
   const [submittedTicket, setSubmittedTicket] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Track Ticket Form State
+  const [trackRef, setTrackRef] = useState("");
+  const [trackEmail, setTrackEmail] = useState("");
+  const [trackLoading, setTrackLoading] = useState(false);
+  const [trackError, setTrackError] = useState<string | null>(null);
+  const [trackedTicket, setTrackedTicket] = useState<TrackedTicket | null>(null);
+
+  // Customer in-widget follow-up reply
+  const [customerReply, setCustomerReply] = useState("");
+  const [replyLoading, setReplyLoading] = useState(false);
+  const [replySuccess, setReplySuccess] = useState(false);
+
   // Auto-fill user if authenticated
   useEffect(() => {
     if (user) {
       if (user.name && !name) setName(user.name);
-      if (user.email && !email) setEmail(user.email);
+      if (user.email && !email) {
+        setEmail(user.email);
+        setTrackEmail(user.email);
+      }
     }
   }, [user]);
 
@@ -104,11 +137,78 @@ export function SupportWidget() {
       }
 
       setSubmittedTicket(data.ticketNumber);
+      setTrackRef(data.ticketNumber);
+      setTrackEmail(email.trim());
       setMessage("");
     } catch (err: any) {
       setError(err.message || "Something went wrong.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTrackTicket = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!trackRef.trim() || !trackEmail.trim()) {
+      setTrackError("Please enter your Ticket Reference and Email Address.");
+      return;
+    }
+
+    setTrackLoading(true);
+    setTrackError(null);
+
+    try {
+      const res = await fetch(
+        `/api/support/ticket?ticketNumber=${encodeURIComponent(
+          trackRef.trim()
+        )}&email=${encodeURIComponent(trackEmail.trim())}`
+      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Ticket not found.");
+      }
+
+      setTrackedTicket(data.ticket);
+    } catch (err: any) {
+      setTrackError(err.message || "Unable to find ticket.");
+      setTrackedTicket(null);
+    } finally {
+      setTrackLoading(false);
+    }
+  };
+
+  const handleCustomerReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!trackedTicket || !customerReply.trim()) return;
+
+    setReplyLoading(true);
+    setTrackError(null);
+
+    try {
+      const res = await fetch("/api/support/ticket/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketNumber: trackedTicket.ticketNumber,
+          email: trackEmail.trim(),
+          message: customerReply.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send reply.");
+      }
+
+      setTrackedTicket(data.ticket);
+      setCustomerReply("");
+      setReplySuccess(true);
+      setTimeout(() => setReplySuccess(false), 4000);
+    } catch (err: any) {
+      setTrackError(err.message || "Failed to send follow-up.");
+    } finally {
+      setReplyLoading(false);
     }
   };
 
@@ -132,7 +232,7 @@ export function SupportWidget() {
 
       {/* Support Popover Drawer */}
       {isOpen && (
-        <div className="w-[360px] sm:w-[400px] max-h-[580px] bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="w-[360px] sm:w-[410px] max-h-[600px] bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-5 duration-200">
           {/* Header */}
           <div className="bg-[#0f172a] text-white p-4.5 px-5 flex items-center justify-between border-b border-slate-800">
             <div className="flex items-center gap-3">
@@ -169,32 +269,46 @@ export function SupportWidget() {
             <button
               type="button"
               onClick={() => setActiveTab("FAQS")}
-              className={`flex-1 py-2 rounded-xl font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex-1 py-2 rounded-xl font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                 activeTab === "FAQS"
                   ? "bg-white text-slate-900 shadow-xs border border-gray-200"
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>Instant Answers</span>
+              <HelpCircle className="w-3 h-3" />
+              <span>Answers</span>
             </button>
+
             <button
               type="button"
               onClick={() => setActiveTab("MESSAGE")}
-              className={`flex-1 py-2 rounded-xl font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex-1 py-2 rounded-xl font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                 activeTab === "MESSAGE"
                   ? "bg-white text-slate-900 shadow-xs border border-gray-200"
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>Submit Ticket</span>
+              <MessageSquare className="w-3 h-3" />
+              <span>New Ticket</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("TRACK")}
+              className={`flex-1 py-2 rounded-xl font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                activeTab === "TRACK"
+                  ? "bg-white text-slate-900 shadow-xs border border-gray-200"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <Search className="w-3 h-3" />
+              <span>Track & Reply</span>
             </button>
           </div>
 
           {/* Tab Content */}
-          <div className="flex-1 overflow-y-auto p-4.5 space-y-4 max-h-[420px] text-xs">
-            {activeTab === "FAQS" ? (
+          <div className="flex-1 overflow-y-auto p-4.5 space-y-4 max-h-[440px] text-xs">
+            {activeTab === "FAQS" && (
               <div className="space-y-3">
                 <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-1">
                   Frequently Asked Questions
@@ -250,8 +364,9 @@ export function SupportWidget() {
                   </Link>
                 </div>
               </div>
-            ) : (
-              /* Message Form */
+            )}
+
+            {activeTab === "MESSAGE" && (
               <div>
                 {submittedTicket ? (
                   <div className="py-6 text-center space-y-3">
@@ -265,15 +380,27 @@ export function SupportWidget() {
                       Ticket #{submittedTicket}
                     </div>
                     <p className="text-[11px] text-slate-500 leading-relaxed max-w-[280px] mx-auto">
-                      A confirmation email has been dispatched to your inbox. Our desk responds within 24 business hours.
+                      A confirmation email has been dispatched. You can track replies right in this widget or reply via email.
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => setSubmittedTicket(null)}
-                      className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
-                    >
-                      Send Another Inquiry
-                    </button>
+                    <div className="flex flex-col gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab("TRACK");
+                          handleTrackTicket();
+                        }}
+                        className="w-full py-2 bg-[#0f172a] text-white text-xs font-semibold rounded-xl hover:bg-slate-900 transition-colors"
+                      >
+                        View Ticket & Replies Online &rarr;
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSubmittedTicket(null)}
+                        className="w-full py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+                      >
+                        Send Another Inquiry
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <form onSubmit={handleSendMessage} className="space-y-3">
@@ -360,6 +487,196 @@ export function SupportWidget() {
                       )}
                     </button>
                   </form>
+                )}
+              </div>
+            )}
+
+            {activeTab === "TRACK" && (
+              <div className="space-y-4">
+                {!trackedTicket ? (
+                  <form onSubmit={handleTrackTicket} className="space-y-3">
+                    <div className="text-[11px] text-slate-500 leading-relaxed">
+                      Enter your Ticket Reference Number and email to see live responses and continue the conversation.
+                    </div>
+
+                    {trackError && (
+                      <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-[11px]">
+                        {trackError}
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
+                        Ticket Reference *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={trackRef}
+                        onChange={(e) => setTrackRef(e.target.value)}
+                        placeholder="e.g. NOV-2026-X9Y2"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-mono uppercase outline-none focus:border-slate-800 transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={trackEmail}
+                        onChange={(e) => setTrackEmail(e.target.value)}
+                        placeholder="your-email@example.com"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-slate-800 transition-colors"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={trackLoading}
+                      className="w-full py-2.5 bg-[#0f172a] hover:bg-slate-900 disabled:bg-slate-400 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {trackLoading ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Looking up Ticket...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Search className="w-3.5 h-3.5" />
+                          <span>View Ticket & Replies</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Ticket Header Card */}
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                          {trackedTicket.ticketNumber}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            trackedTicket.status === "RESOLVED"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : trackedTicket.status === "IN_PROGRESS"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {trackedTicket.status}
+                        </span>
+                      </div>
+                      <div className="font-semibold text-xs text-slate-800">
+                        {trackedTicket.subject}
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400">
+                        <span>Category: {trackedTicket.category}</span>
+                        <button
+                          type="button"
+                          onClick={() => setTrackedTicket(null)}
+                          className="text-amber-700 hover:underline flex items-center gap-1 font-semibold"
+                        >
+                          <RotateCcw className="w-3 h-3" /> Change Ticket
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Conversation Messages */}
+                    <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                      {/* Customer Inquiry */}
+                      <div className="p-3 rounded-xl bg-slate-100/80 border border-slate-200 text-xs space-y-1">
+                        <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                          <span>Your Initial Inquiry</span>
+                          <span>{new Date(trackedTicket.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <div className="text-slate-800 text-[11px] leading-relaxed whitespace-pre-wrap">
+                          {trackedTicket.message}
+                        </div>
+                      </div>
+
+                      {/* Replies */}
+                      {trackedTicket.messages && trackedTicket.messages.length > 0 ? (
+                        trackedTicket.messages.map((m) => {
+                          const isAdmin = m.senderType === "ADMIN";
+                          return (
+                            <div
+                              key={m.id}
+                              className={`p-3 rounded-xl text-xs space-y-1 border ${
+                                isAdmin
+                                  ? "bg-slate-900 text-white border-slate-800"
+                                  : "bg-blue-50 text-slate-900 border-blue-200"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-[10px]">
+                                <span
+                                  className={`font-bold ${
+                                    isAdmin ? "text-amber-400" : "text-blue-800"
+                                  }`}
+                                >
+                                  {isAdmin ? "★ Noveraile Support" : "You (Follow-up)"}
+                                </span>
+                                <span className={isAdmin ? "text-slate-400" : "text-slate-500"}>
+                                  {new Date(m.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div
+                                className={`text-[11px] leading-relaxed whitespace-pre-wrap ${
+                                  isAdmin ? "text-slate-200" : "text-slate-800"
+                                }`}
+                              >
+                                {m.message}
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="p-3 text-center text-[11px] text-slate-400 bg-white rounded-xl border border-dashed border-slate-200">
+                          No replies yet. Our specialists are reviewing your inquiry.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Follow-up Reply Input */}
+                    <form onSubmit={handleCustomerReply} className="space-y-2 pt-2 border-t border-slate-100">
+                      {replySuccess && (
+                        <div className="p-2 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Follow-up sent to our desk!
+                        </div>
+                      )}
+
+                      <textarea
+                        rows={2}
+                        required
+                        value={customerReply}
+                        onChange={(e) => setCustomerReply(e.target.value)}
+                        placeholder="Add a follow-up reply or question..."
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-slate-800 resize-none"
+                      />
+
+                      <button
+                        type="submit"
+                        disabled={replyLoading || !customerReply.trim()}
+                        className="w-full py-2 bg-[#0f172a] hover:bg-slate-900 disabled:bg-slate-400 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        {replyLoading ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span>Sending Follow-up...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-3 h-3 text-amber-400" />
+                            <span>Send Follow-up Message</span>
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  </div>
                 )}
               </div>
             )}

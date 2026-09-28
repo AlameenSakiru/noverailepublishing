@@ -35,6 +35,9 @@ export default async function AdminSupportPage() {
               role: true,
             },
           },
+          messages: {
+            orderBy: { createdAt: "asc" },
+          },
         },
       }),
       prisma.supportTicket.count(),

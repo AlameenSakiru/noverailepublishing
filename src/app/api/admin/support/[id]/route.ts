@@ -27,6 +27,9 @@ export async function GET(
             role: true,
           },
         },
+        messages: {
+          orderBy: { createdAt: "asc" },
+        },
       },
     });
 
@@ -90,6 +93,19 @@ export async function PATCH(
     const updated = await prisma.supportTicket.update({
       where: { id },
       data: updateData,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+        messages: {
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
 
     return NextResponse.json({

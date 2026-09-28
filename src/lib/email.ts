@@ -1652,3 +1652,161 @@ export async function sendSupportTicketNotificationToAdmin({
   });
 }
 
+export async function sendSupportTicketReplyToCustomer({
+  ticketNumber,
+  customerName,
+  customerEmail,
+  subject,
+  replyMessage,
+  adminName = "Support Team",
+  originalMessage,
+}: {
+  ticketNumber: string;
+  customerName: string;
+  customerEmail: string;
+  subject: string;
+  replyMessage: string;
+  adminName?: string;
+  originalMessage?: string;
+}) {
+  const appUrl =
+    (await getSettingValue("NEXT_PUBLIC_APP_URL", "")) ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://noverailepublishing.com";
+
+  const emailSubject = `[${ticketNumber}] Response from Noveraile Support: ${subject}`;
+  const paragraphs = replyMessage
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const replyHtml = paragraphs
+    .map(
+      (p) =>
+        `<p style="font-size: 14px; line-height: 1.7; color: #1e293b; margin: 0 0 14px 0;">${p.replace(
+          /\n/g,
+          "<br>"
+        )}</p>`
+    )
+    .join("");
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${emailSubject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 40px 15px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+          <!-- Top Navy Bar with Gold Accent -->
+          <tr>
+            <td style="height: 4px; background: linear-gradient(90deg, #0f172a 0%, #f59e0b 50%, #0f172a 100%);"></td>
+          </tr>
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="padding: 32px 36px 20px 36px; border-bottom: 1px solid #f1f5f9;">
+              <div style="font-family: Georgia, Cambria, serif; font-size: 20px; font-weight: 800; letter-spacing: 0.2em; color: #0f172a;">
+                NOVERAILE
+              </div>
+              <div style="font-size: 9px; letter-spacing: 0.35em; color: #64748b; text-transform: uppercase; margin-top: 3px; font-weight: 600;">
+                CUSTOMER SUPPORT DESK
+              </div>
+            </td>
+          </tr>
+
+          <!-- Content Body -->
+          <tr>
+            <td style="padding: 36px 36px 28px 36px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <span style="font-family: 'Courier New', monospace; font-size: 13px; font-weight: 800; background-color: #f1f5f9; color: #0f172a; padding: 4px 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                  Ticket #${ticketNumber}
+                </span>
+                <span style="font-size: 11px; font-weight: 600; color: #64748b;">
+                  Regarding: ${subject}
+                </span>
+              </div>
+
+              <h2 style="font-family: Georgia, Cambria, serif; font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 16px 0;">
+                New Response to Your Inquiry
+              </h2>
+
+              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
+                Dear ${customerName},<br><br>
+                Our customer desk has reviewed your inquiry and left the following response:
+              </p>
+
+              <!-- Official Response Box -->
+              <div style="background-color: #f8fafc; border-left: 4px solid #0f172a; border-radius: 0 16px 16px 0; padding: 22px 24px; margin-bottom: 24px; border: 1px solid #e2e8f0; border-left-width: 4px;">
+                <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #b45309; margin-bottom: 10px;">
+                  Response from ${adminName} &bull; Editorial & Support Desk
+                </div>
+                ${replyHtml}
+              </div>
+
+              <!-- Quoted Previous Message (if available) -->
+              ${
+                originalMessage
+                  ? `
+                <div style="margin-bottom: 24px;">
+                  <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; display: block; margin-bottom: 6px;">
+                    Your Previous Message:
+                  </span>
+                  <div style="font-size: 12px; line-height: 1.6; color: #64748b; background-color: #ffffff; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 12px 16px; white-space: pre-wrap;">
+                    ${originalMessage}
+                  </div>
+                </div>
+              `
+                  : ""
+              }
+
+              <!-- Follow up instructions -->
+              <div style="background-color: #fefce8; border: 1px solid #fef08a; border-radius: 12px; padding: 14px 18px; margin-bottom: 24px; font-size: 12px; line-height: 1.6; color: #854d0e;">
+                💬 <strong>Need further clarification?</strong> Simply reply directly to this email with your follow-up questions, or submit an additional inquiry anytime via our website.
+              </div>
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="center">
+                    <a href="${appUrl}/help" target="_blank" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 13px 32px; border-radius: 12px; box-shadow: 0 4px 14px rgba(15,23,42,0.18);">
+                      Visit Noveraile Help Center &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 36px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.6;">
+              <div style="font-weight: 700; color: #475569; margin-bottom: 4px;">
+                Noveraile Publishing Customer Support Desk
+              </div>
+              <div>
+                Direct email: <a href="mailto:noverailepublishing@gmail.com" style="color: #64748b;">noverailepublishing@gmail.com</a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  return sendEmail({
+    to: customerEmail,
+    subject: emailSubject,
+    html,
+    text: `Support Response [${ticketNumber}]\n\nDear ${customerName},\n\nOur team has responded to your inquiry regarding "${subject}":\n\n${replyMessage}\n\nWarm regards,\n${adminName}\nNoveraile Publishing Support Desk`,
+  });
+}
+
+
