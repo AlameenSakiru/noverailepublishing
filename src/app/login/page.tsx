@@ -2,6 +2,7 @@
 
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck } from "lucide-react";
@@ -51,12 +52,16 @@ function LoginForm() {
   return (
     <div className="w-full max-w-md bg-white rounded-3xl border border-brand-border p-8 md:p-10 shadow-book">
       <div className="text-center mb-6">
-        <span className="font-serif text-2xl font-bold tracking-[0.15em] text-brand-ink block">
-          NOVERAILE
-        </span>
-        <span className="font-sans text-[10px] tracking-[0.35em] text-brand-muted uppercase block -mt-1 mb-4">
-          PUBLISHING
-        </span>
+        <Link href="/" className="inline-block mb-3" aria-label="Noveraile Publishing Home">
+          <Image
+            src="/logo.png"
+            alt="Noveraile Publishing"
+            width={190}
+            height={44}
+            className="h-10 w-auto mx-auto object-contain"
+            priority
+          />
+        </Link>
         <h1 className="font-serif text-2xl font-bold text-brand-ink">
           Reader Account Sign In
         </h1>

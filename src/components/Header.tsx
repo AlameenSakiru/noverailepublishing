@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { BookOpen, ShoppingBag, Search, Menu, X, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -39,13 +40,15 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo & Brand Treatment */}
-          <Link href="/" className="flex flex-col group">
-            <span className="font-serif text-2xl font-bold tracking-[0.15em] text-brand-ink group-hover:text-brand-700 transition-colors">
-              NOVERAILE
-            </span>
-            <span className="font-sans text-[10px] tracking-[0.35em] text-brand-muted uppercase -mt-1">
-              PUBLISHING
-            </span>
+          <Link href="/" className="flex items-center group py-2" aria-label="Noveraile Publishing Home">
+            <Image
+              src="/logo.png"
+              alt="Noveraile Publishing"
+              width={200}
+              height={46}
+              priority
+              className="h-10 sm:h-11 w-auto object-contain transition-transform group-hover:scale-[1.02]"
+            />
           </Link>
 
           {/* Desktop Nav Links - Clean, balanced publishing navigation */}

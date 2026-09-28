@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Shield,
@@ -223,12 +224,16 @@ function AdminLoginForm() {
           {step === "CREDENTIALS" ? <Shield className="w-6 h-6" /> : <Mail className="w-6 h-6" />}
         </div>
 
-        <span className="font-serif text-xl font-bold tracking-[0.2em] text-white block">
-          NOVERAILE
-        </span>
-        <span className="font-sans text-[10px] tracking-[0.35em] text-amber-400/90 uppercase block -mt-1 mb-3">
-          PUBLISHING
-        </span>
+        <div className="mb-3">
+          <Image
+            src="/logo-white.png"
+            alt="Noveraile Publishing"
+            width={180}
+            height={42}
+            className="h-9 w-auto mx-auto object-contain"
+            priority
+          />
+        </div>
 
         <h1 className="text-lg font-semibold text-white tracking-wide">
           {step === "CREDENTIALS" ? "Management Console" : "2-Step Security Verification"}

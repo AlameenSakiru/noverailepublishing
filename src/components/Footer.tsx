@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { siteConfig } from "@/lib/config";
 import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
@@ -100,13 +101,14 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12">
           {/* Brand Info */}
           <div className="md:col-span-2">
-            <Link href="/" className="flex flex-col mb-3">
-              <span className="font-serif text-2xl font-bold tracking-[0.15em] text-white">
-                NOVERAILE
-              </span>
-              <span className="font-sans text-[10px] tracking-[0.35em] text-brand-400 uppercase -mt-1">
-                PUBLISHING
-              </span>
+            <Link href="/" className="inline-block mb-4 group" aria-label="Noveraile Publishing Home">
+              <Image
+                src="/logo-white.png"
+                alt="Noveraile Publishing"
+                width={200}
+                height={46}
+                className="h-10 w-auto object-contain transition-opacity group-hover:opacity-90"
+              />
             </Link>
             <p className="text-sm text-gray-400 leading-relaxed max-w-sm font-light">
               Direct-to-reader digital publishing. Authoritative books across professional exam preparation, literature, travel, and business strategy.
