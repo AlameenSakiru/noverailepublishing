@@ -8,7 +8,7 @@ export const siteConfig = {
   tagline: process.env.NEXT_PUBLIC_SITE_TAGLINE || "Books built for where you're going next.",
   subTagline: "Discover professionally developed digital books across exam preparation, fiction, travel, self-development, business and more. Purchase once and read securely from your personal Noveraile library.",
   examPrepTagline: "Prepare. Practice. Pass.",
-  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "support@noverailepublishing.com",
+  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "noverailepublishing@gmail.com",
   defaultCurrency: process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || "USD",
   currencySymbol: "$",
   imprints: [

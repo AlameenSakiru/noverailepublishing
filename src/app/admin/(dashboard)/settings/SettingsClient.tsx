@@ -1075,7 +1075,7 @@ export function SettingsClient({
                 type="email"
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
-                placeholder="support@noverailepublishing.com"
+                placeholder="noverailepublishing@gmail.com"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-ink"
                 required
               />
