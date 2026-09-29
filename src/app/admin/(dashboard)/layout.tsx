@@ -62,7 +62,9 @@ export default async function AdminDashboardLayout({
 
             <div className="flex items-center gap-4 text-xs">
               <div className="hidden sm:flex flex-col text-right">
-                <span className="font-semibold text-gray-200">{currentUser.name}</span>
+                <span className="font-semibold text-gray-200">
+                  {currentUser.name === "Editorial Director" ? "Noveraile Publishing Director" : currentUser.name}
+                </span>
                 <span className="text-[11px] text-gray-400">{currentUser.email}</span>
               </div>
               <AdminSignOutButton />

@@ -5,10 +5,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { siteConfig } from "@/lib/config";
+import { useStorefront } from "@/context/StorefrontContext";
 import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 
 export function Footer() {
   const pathname = usePathname();
+  const { siteName, siteTagline, contactEmail, logoStyle } = useStorefront();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -101,17 +103,28 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12">
           {/* Brand Info */}
           <div className="md:col-span-2">
-            <Link href="/" className="inline-block mb-4 group" aria-label="Noveraile Publishing Home">
-              <Image
-                src="/logo-white.png"
-                alt="Noveraile Publishing"
-                width={200}
-                height={46}
-                className="h-10 w-auto object-contain transition-opacity group-hover:opacity-90"
-              />
+            <Link href="/" className="inline-block mb-4 group" aria-label={`${siteName} Home`}>
+              {logoStyle === "TEXT" ? (
+                <div className="flex flex-col">
+                  <span className="font-serif text-2xl font-bold tracking-tight text-white transition-colors group-hover:text-brand-300">
+                    {siteName}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-widest text-gray-400 font-sans mt-0.5">
+                    Independent Digital Publisher
+                  </span>
+                </div>
+              ) : (
+                <Image
+                  src="/logo-white.png"
+                  alt={siteName}
+                  width={200}
+                  height={46}
+                  className="h-10 w-auto object-contain transition-opacity group-hover:opacity-90"
+                />
+              )}
             </Link>
             <p className="text-sm text-gray-400 leading-relaxed max-w-sm font-light">
-              Direct-to-reader digital publishing. Authoritative books across professional exam preparation, literature, travel, and business strategy.
+              Direct-to-reader digital publishing. {siteTagline || "Authoritative books across professional exam preparation, literature, travel, and business strategy."}
             </p>
           </div>
 
@@ -176,7 +189,7 @@ export function Footer() {
 
         {/* Bottom Bar with Essential Legal Links */}
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-400 border-t border-gray-800/80 pt-6 gap-3">
-          <p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {siteName}. All rights reserved.</p>
           <div className="flex items-center gap-4 text-gray-400">
             <Link href="/privacy" className="hover:text-white transition-colors">
               Privacy Policy

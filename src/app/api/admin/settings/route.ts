@@ -19,7 +19,7 @@ import {
   checkNowPaymentsHealth,
 } from "@/lib/nowpayments";
 import { getResolvedGoogleCredentials } from "@/lib/googleAuth";
-import { getAllPlatformSettings, savePlatformSettings } from "@/lib/settings";
+import { getAllPlatformSettings, savePlatformSettings, CURRENCY_MAP } from "@/lib/settings";
 import fs from "fs";
 import path from "path";
 
@@ -113,13 +113,30 @@ export async function GET() {
       select: { id: true, name: true, email: true, role: true, isEmailVerified: true },
     });
 
+    const resolvedAdminName =
+      adminUser?.name && adminUser.name !== "Editorial Director"
+        ? adminUser.name
+        : "Noveraile Publishing Director";
+
+    const resolvedCurrency = (
+      dbSettings.NEXT_PUBLIC_DEFAULT_CURRENCY ||
+      process.env.NEXT_PUBLIC_DEFAULT_CURRENCY ||
+      siteConfig.defaultCurrency ||
+      "USD"
+    ).toUpperCase();
+
+    const resolvedCurrencySymbol =
+      dbSettings.NEXT_PUBLIC_CURRENCY_SYMBOL ||
+      CURRENCY_MAP[resolvedCurrency]?.symbol ||
+      "$";
+
     return NextResponse.json({
       success: true,
-      adminUser: adminUser || {
-        id: session.userId,
-        name: session.name,
-        email: session.email,
-        role: session.role,
+      adminUser: {
+        id: adminUser?.id || session.userId,
+        name: resolvedAdminName,
+        email: adminUser?.email || session.email,
+        role: adminUser?.role || session.role,
         isEmailVerified: true,
       },
       settings: {
@@ -127,8 +144,13 @@ export async function GET() {
           name: dbSettings.NEXT_PUBLIC_SITE_NAME || process.env.NEXT_PUBLIC_SITE_NAME || siteConfig.name,
           url: appUrl,
           tagline: dbSettings.NEXT_PUBLIC_SITE_TAGLINE || process.env.NEXT_PUBLIC_SITE_TAGLINE || siteConfig.tagline,
+          subTagline: dbSettings.NEXT_PUBLIC_SITE_SUBTAGLINE || process.env.NEXT_PUBLIC_SITE_SUBTAGLINE || siteConfig.subTagline,
           contactEmail: dbSettings.NEXT_PUBLIC_CONTACT_EMAIL || process.env.NEXT_PUBLIC_CONTACT_EMAIL || "noverailepublishing@gmail.com",
-          currency: dbSettings.NEXT_PUBLIC_DEFAULT_CURRENCY || process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || siteConfig.defaultCurrency,
+          currency: resolvedCurrency,
+          currencySymbol: resolvedCurrencySymbol,
+          announcementBanner: dbSettings.NEXT_PUBLIC_ANNOUNCEMENT_BANNER || "",
+          announcementEnabled: dbSettings.NEXT_PUBLIC_ANNOUNCEMENT_ENABLED === "true",
+          logoStyle: dbSettings.NEXT_PUBLIC_LOGO_STYLE || "IMAGE",
           storageDriver: process.env.STORAGE_DRIVER || "local",
           jwtSessionExpiryDays: Number(process.env.SESSION_EXPIRY_DAYS) || 30,
         },
@@ -275,10 +297,16 @@ export async function POST(req: Request) {
       const {
         siteName,
         siteTagline,
+        siteSubTagline,
         contactEmail,
         currency,
+        currencySymbol,
+        announcementBanner,
+        announcementEnabled,
+        logoStyle,
         paystackPublicKey,
         paystackSecretKey,
+        usdToNgnRate,
         googleClientId,
         googleClientSecret,
         nowpaymentsApiKey,
@@ -296,10 +324,36 @@ export async function POST(req: Request) {
 
       const updates: Record<string, string> = {};
 
-      if (siteName) updates.NEXT_PUBLIC_SITE_NAME = siteName.trim();
-      if (siteTagline) updates.NEXT_PUBLIC_SITE_TAGLINE = siteTagline.trim();
-      if (contactEmail) updates.NEXT_PUBLIC_CONTACT_EMAIL = contactEmail.trim().toLowerCase();
-      if (currency) updates.NEXT_PUBLIC_DEFAULT_CURRENCY = currency.trim().toUpperCase();
+      if (siteName !== undefined && siteName.trim()) {
+        updates.NEXT_PUBLIC_SITE_NAME = siteName.trim();
+      }
+      if (siteTagline !== undefined && siteTagline.trim()) {
+        updates.NEXT_PUBLIC_SITE_TAGLINE = siteTagline.trim();
+      }
+      if (siteSubTagline !== undefined) {
+        updates.NEXT_PUBLIC_SITE_SUBTAGLINE = siteSubTagline.trim();
+      }
+      if (contactEmail !== undefined && contactEmail.trim()) {
+        updates.NEXT_PUBLIC_CONTACT_EMAIL = contactEmail.trim().toLowerCase();
+      }
+      if (currency !== undefined && currency.trim()) {
+        const cleanCurrency = currency.trim().toUpperCase();
+        updates.NEXT_PUBLIC_DEFAULT_CURRENCY = cleanCurrency;
+        updates.NEXT_PUBLIC_CURRENCY_SYMBOL =
+          currencySymbol?.trim() || CURRENCY_MAP[cleanCurrency]?.symbol || "$";
+      }
+      if (currencySymbol !== undefined && currencySymbol.trim()) {
+        updates.NEXT_PUBLIC_CURRENCY_SYMBOL = currencySymbol.trim();
+      }
+      if (announcementBanner !== undefined) {
+        updates.NEXT_PUBLIC_ANNOUNCEMENT_BANNER = announcementBanner.trim();
+      }
+      if (announcementEnabled !== undefined) {
+        updates.NEXT_PUBLIC_ANNOUNCEMENT_ENABLED = announcementEnabled ? "true" : "false";
+      }
+      if (logoStyle !== undefined) {
+        updates.NEXT_PUBLIC_LOGO_STYLE = logoStyle === "TEXT" ? "TEXT" : "IMAGE";
+      }
 
       // Google OAuth configuration
       if (googleClientId !== undefined) {
@@ -317,6 +371,9 @@ export async function POST(req: Request) {
       }
       if (paystackSecretKey !== undefined && paystackSecretKey.trim() !== "") {
         updates.PAYSTACK_SECRET_KEY = paystackSecretKey.trim();
+      }
+      if (usdToNgnRate !== undefined && Number(usdToNgnRate) > 0) {
+        updates.USD_TO_NGN_RATE = String(Math.round(Number(usdToNgnRate)));
       }
 
       // NOWPayments configuration

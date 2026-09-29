@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { BookOpen, ShoppingBag, Search, Menu, X, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import { useStorefront } from "@/context/StorefrontContext";
 import { siteConfig } from "@/lib/config";
 import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 
@@ -16,6 +17,7 @@ export function Header() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { itemCount } = useCart();
+  const { siteName, announcementBanner, announcementEnabled, logoStyle } = useStorefront();
 
   // Keyboard shortcut (Cmd+K / Ctrl+K) to open search
   useEffect(() => {
@@ -36,19 +38,38 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-brand-border transition-all">
+      {/* Top Announcement Bar if enabled */}
+      {announcementEnabled && announcementBanner && (
+        <div className="bg-[#0f172a] text-white text-[11px] sm:text-xs py-2 px-4 text-center font-medium tracking-wide flex items-center justify-center gap-2 border-b border-gray-800 animate-in fade-in">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
+          <span>{announcementBanner}</span>
+        </div>
+      )}
+
       {/* Main Navigation Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo & Brand Treatment */}
-          <Link href="/" className="flex items-center group py-2" aria-label="Noveraile Publishing Home">
-            <Image
-              src="/logo.png"
-              alt="Noveraile Publishing"
-              width={200}
-              height={46}
-              priority
-              className="h-10 sm:h-11 w-auto object-contain transition-transform group-hover:scale-[1.02]"
-            />
+          <Link href="/" className="flex items-center group py-2" aria-label={`${siteName} Home`}>
+            {logoStyle === "TEXT" ? (
+              <div className="flex flex-col">
+                <span className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-brand-ink transition-colors group-hover:text-brand-700">
+                  {siteName}
+                </span>
+                <span className="text-[9px] uppercase tracking-widest text-brand-slate font-sans">
+                  Digital Editions
+                </span>
+              </div>
+            ) : (
+              <Image
+                src="/logo.png"
+                alt={siteName}
+                width={200}
+                height={46}
+                priority
+                className="h-10 sm:h-11 w-auto object-contain transition-transform group-hover:scale-[1.02]"
+              />
+            )}
           </Link>
 
           {/* Desktop Nav Links - Clean, balanced publishing navigation */}

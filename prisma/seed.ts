@@ -33,7 +33,7 @@ async function main() {
     data: {
       email: "admin@noveraile.com",
       passwordHash: adminPassword,
-      name: "Editorial Director",
+      name: "Noveraile Publishing Director",
       role: "ADMIN",
       isEmailVerified: true,
       status: "ACTIVE",

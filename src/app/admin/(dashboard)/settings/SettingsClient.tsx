@@ -47,8 +47,13 @@ interface SettingsData {
     name: string;
     url: string;
     tagline: string;
+    subTagline?: string;
     contactEmail: string;
     currency: string;
+    currencySymbol?: string;
+    announcementBanner?: string;
+    announcementEnabled?: boolean;
+    logoStyle?: "IMAGE" | "TEXT";
     storageDriver: string;
     jwtSessionExpiryDays: number;
   };
@@ -58,6 +63,7 @@ interface SettingsData {
     publicKey: string;
     secretKeyMasked: string;
     webhookUrl: string;
+    usdToNgnRate?: number;
   };
   nowpayments?: {
     isConfigured: boolean;
@@ -111,7 +117,7 @@ export function SettingsClient({
   const [adminUser, setAdminUser] = useState<AdminUserData>(
     initialAdminUser || {
       id: "admin-1",
-      name: "Company Administrator",
+      name: "Noveraile Publishing Director",
       email: "noverailepublishing@gmail.com",
       role: "ADMIN",
       isEmailVerified: true,
@@ -129,15 +135,44 @@ export function SettingsClient({
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordAlert, setPasswordAlert] = useState<{ success: boolean; message: string } | null>(null);
 
-  // Editable Form States
-  const [siteName, setSiteName] = useState(settings.site.name);
-  const [siteTagline, setSiteTagline] = useState(settings.site.tagline);
-  const [contactEmail, setContactEmail] = useState(settings.site.contactEmail);
-  const [currency, setCurrency] = useState(settings.site.currency);
+  // Editable Storefront States
+  const [siteName, setSiteName] = useState(settings.site.name || "Noveraile Publishing");
+  const [siteTagline, setSiteTagline] = useState(settings.site.tagline || "Books built for where you're going next.");
+  const [siteSubTagline, setSiteSubTagline] = useState(
+    settings.site.subTagline ||
+      "Authoritative publications across professional certification prep, literature, travel, and strategic leadership. Read instantly in your browser on any device — zero apps or downloads required."
+  );
+  const [contactEmail, setContactEmail] = useState(settings.site.contactEmail || "noverailepublishing@gmail.com");
+  const [currency, setCurrency] = useState(settings.site.currency || "USD");
+  const [currencySymbol, setCurrencySymbol] = useState(settings.site.currencySymbol || "$");
+  const [announcementBanner, setAnnouncementBanner] = useState(settings.site.announcementBanner || "");
+  const [announcementEnabled, setAnnouncementEnabled] = useState(Boolean(settings.site.announcementEnabled));
+  const [logoStyle, setLogoStyle] = useState<"IMAGE" | "TEXT">(settings.site.logoStyle || "IMAGE");
+  const [storefrontSaving, setStorefrontSaving] = useState(false);
+  const [storefrontAlert, setStorefrontAlert] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleCurrencyChange = (newCurrency: string) => {
+    setCurrency(newCurrency);
+    const symbols: Record<string, string> = {
+      USD: "$",
+      NGN: "₦",
+      EUR: "€",
+      GBP: "£",
+      CAD: "CA$",
+      AUD: "AU$",
+      GHS: "GH₵",
+      ZAR: "R",
+      KES: "KSh",
+    };
+    if (symbols[newCurrency]) {
+      setCurrencySymbol(symbols[newCurrency]);
+    }
+  };
 
   // Paystack
   const [paystackPublicKey, setPaystackPublicKey] = useState(settings.paystack?.publicKey || "");
   const [paystackSecretKey, setPaystackSecretKey] = useState("");
+  const [usdToNgnRate, setUsdToNgnRate] = useState<number>(settings.paystack?.usdToNgnRate || 1600);
 
   // NOWPayments Crypto
   const [nowpaymentsApiKey, setNowpaymentsApiKey] = useState("");
@@ -189,9 +224,12 @@ export function SettingsClient({
     setTimeout(() => setCopiedStripeWebhook(false), 2500);
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = async (preserveAlerts = false) => {
     setRefreshing(true);
-    setActionAlert(null);
+    if (!preserveAlerts) {
+      setActionAlert(null);
+      setStorefrontAlert(null);
+    }
     try {
       const res = await fetch("/api/admin/settings");
       const data = await res.json();
@@ -199,13 +237,64 @@ export function SettingsClient({
         setSettings(data.settings);
         setSiteName(data.settings.site.name);
         setSiteTagline(data.settings.site.tagline);
+        if (data.settings.site.subTagline) setSiteSubTagline(data.settings.site.subTagline);
         setContactEmail(data.settings.site.contactEmail);
         setCurrency(data.settings.site.currency);
+        if (data.settings.site.currencySymbol) setCurrencySymbol(data.settings.site.currencySymbol);
+        if (data.settings.site.announcementBanner !== undefined) setAnnouncementBanner(data.settings.site.announcementBanner);
+        if (data.settings.site.announcementEnabled !== undefined) setAnnouncementEnabled(Boolean(data.settings.site.announcementEnabled));
+        if (data.settings.site.logoStyle) setLogoStyle(data.settings.site.logoStyle);
         setPaystackPublicKey(data.settings.paystack?.publicKey || "");
         setStripePublishableKey(data.settings.payment.publishableKey);
       }
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const handleSaveStorefront = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStorefrontSaving(true);
+    setStorefrontAlert(null);
+
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "SAVE_SETTINGS",
+          siteName: siteName.trim(),
+          siteTagline: siteTagline.trim(),
+          siteSubTagline: siteSubTagline.trim(),
+          contactEmail: contactEmail.trim().toLowerCase(),
+          currency: currency.trim().toUpperCase(),
+          currencySymbol: currencySymbol.trim(),
+          announcementBanner: announcementBanner.trim(),
+          announcementEnabled,
+          logoStyle,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStorefrontAlert({
+          success: true,
+          message: data.message || "Storefront branding, tagline, currency, and metadata successfully updated and live!",
+        });
+        await handleRefresh(true);
+      } else {
+        setStorefrontAlert({
+          success: false,
+          message: data.error || "Failed to update storefront settings.",
+        });
+      }
+    } catch {
+      setStorefrontAlert({
+        success: false,
+        message: "Network error while saving storefront settings. Please try again.",
+      });
+    } finally {
+      setStorefrontSaving(false);
     }
   };
 
@@ -282,6 +371,7 @@ export function SettingsClient({
           currency,
           paystackPublicKey: paystackPublicKey || undefined,
           paystackSecretKey: paystackSecretKey.trim() || undefined,
+          usdToNgnRate: usdToNgnRate || 1600,
           googleClientId: googleClientId.trim() || undefined,
           googleClientSecret: googleClientSecret.trim() || undefined,
           nowpaymentsApiKey: nowpaymentsApiKey.trim() || undefined,
@@ -452,7 +542,7 @@ export function SettingsClient({
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={handleRefresh}
+            onClick={() => handleRefresh(false)}
             disabled={refreshing}
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
           >
@@ -683,6 +773,40 @@ export function SettingsClient({
                   Never shared publicly. Used on the server to initialize checkout and verify charges.
                 </p>
               </div>
+            </div>
+
+            {/* USD to NGN Automatic Exchange Rate Box */}
+            <div className="p-4 bg-gray-50 border border-gray-200/90 rounded-2xl space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                <label className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>USD to NGN Exchange Rate (₦ per $1 USD)</span>
+                </label>
+                <span className="text-[11px] text-gray-500 font-medium">Automatic Currency Conversion</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative w-full sm:w-60">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500">
+                    ₦
+                  </span>
+                  <input
+                    type="number"
+                    value={usdToNgnRate}
+                    onChange={(e) => setUsdToNgnRate(Number(e.target.value))}
+                    placeholder="1600"
+                    min={100}
+                    max={10000}
+                    step={10}
+                    className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-gray-300 font-mono text-xs font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 bg-white"
+                  />
+                </div>
+                <div className="text-[11px] text-emerald-800 font-medium bg-emerald-50 border border-emerald-200/70 px-3 py-2 rounded-xl">
+                  $10.00 USD converts to ≈ <strong>₦{(10 * (usdToNgnRate || 1600)).toLocaleString()} NGN</strong> on Paystack
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-500 leading-relaxed pt-1">
+                When your store prices are in USD, Paystack will automatically bill Nigerian customers in Naira at this rate. This allows your Nigerian Paystack account to accept payments smoothly without needing a domiciliary bank account!
+              </p>
             </div>
 
 
@@ -1040,104 +1164,324 @@ export function SettingsClient({
       {/* ========================================================================= */}
       {/* TAB 3: STOREFRONT & BRANDING                                              */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* TAB 3: STOREFRONT & BRANDING                                              */}
+      {/* ========================================================================= */}
       {activeTab === "STOREFRONT" && (
-        <form onSubmit={handleSaveSettings} className="bg-white rounded-2xl border border-gray-200/90 p-6 shadow-xs space-y-5 animate-in fade-in">
-          <div>
-            <h3 className="text-sm font-bold text-gray-950 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-purple-600" />
-              <span>Storefront Identity & Localization</span>
-            </h3>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Customize public branding, customer support email, and primary currency.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Publisher Brand Name
-              </label>
-              <input
-                type="text"
-                value={siteName}
-                onChange={(e) => setSiteName(e.target.value)}
-                placeholder="Noveraile Publishing"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-ink"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Support / Contact Email
-              </label>
-              <input
-                type="email"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                placeholder="noverailepublishing@gmail.com"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-ink"
-                required
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Brand Tagline
-              </label>
-              <input
-                type="text"
-                value={siteTagline}
-                onChange={(e) => setSiteTagline(e.target.value)}
-                placeholder="Books built for where you're going next."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-ink"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Default Storefront Currency
-              </label>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand-ink"
-              >
-                <option value="USD">USD ($) - US Dollar</option>
-                <option value="NGN">NGN (₦) - Nigerian Naira</option>
-                <option value="EUR">EUR (€) - Euro</option>
-                <option value="GBP">GBP (£) - British Pound</option>
-                <option value="CAD">CAD ($) - Canadian Dollar</option>
-                <option value="AUD">AUD ($) - Australian Dollar</option>
-                <option value="GHS">GHS (₵) - Ghanaian Cedi</option>
-                <option value="ZAR">ZAR (R) - South African Rand</option>
-                <option value="KES">KES (KSh) - Kenyan Shilling</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Public Base URL
-              </label>
-              <input
-                type="text"
-                value={settings.site.url}
-                disabled
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-500 bg-gray-50 font-mono cursor-not-allowed"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-3">
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-6 py-2.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-xs shadow-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
+        <form onSubmit={handleSaveStorefront} className="space-y-6 animate-in fade-in">
+          {/* Inline Tab Alert */}
+          {storefrontAlert && (
+            <div
+              className={`p-4 rounded-2xl border text-xs flex items-center justify-between gap-3 shadow-xs animate-in fade-in ${
+                storefrontAlert.success
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                  : "bg-rose-50 border-rose-200 text-rose-900"
+              }`}
             >
-              <Save className="w-3.5 h-3.5" />
-              <span>{saving ? "Saving Changes..." : "Save Storefront Settings"}</span>
-            </button>
+              <div className="flex items-center gap-2.5">
+                {storefrontAlert.success ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                )}
+                <span className="font-semibold">{storefrontAlert.message}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStorefrontAlert(null)}
+                className="text-xs font-bold hover:underline opacity-70 cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* Live Storefront Preview Card */}
+          <div className="bg-gradient-to-br from-gray-900 via-slate-900 to-black text-white rounded-3xl p-6 shadow-sm border border-gray-800 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-300">
+                  Live Storefront Visual Preview
+                </span>
+              </div>
+              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
+                Real-Time Reflection
+              </span>
+            </div>
+
+            {/* Simulated Storefront Header */}
+            <div className="bg-[#fbfaf8] text-brand-ink rounded-2xl p-4 border border-brand-border space-y-4">
+              {announcementEnabled && announcementBanner && (
+                <div className="bg-[#0f172a] text-white text-[11px] py-1.5 px-3 rounded-lg text-center font-medium flex items-center justify-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span>{announcementBanner}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between border-b border-brand-border/60 pb-3">
+                {logoStyle === "TEXT" ? (
+                  <div className="flex flex-col">
+                    <span className="font-serif text-lg font-bold text-brand-ink">
+                      {siteName || "Noveraile Publishing"}
+                    </span>
+                    <span className="text-[8px] uppercase tracking-widest text-brand-slate">
+                      Digital Editions
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="font-serif font-bold text-sm tracking-wider text-brand-ink">
+                      NOVERAILE
+                    </span>
+                    <span className="text-[9px] text-brand-slate uppercase font-sans">
+                      PUBLISHING
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-3 text-xs text-brand-slate font-medium">
+                  <span>Catalog</span>
+                  <span>About</span>
+                  <span>Contact</span>
+                </div>
+              </div>
+
+              {/* Simulated Hero Headline */}
+              <div className="text-center py-3 space-y-1.5">
+                <h4 className="font-serif text-xl font-bold text-brand-ink">
+                  {siteTagline || "Books built for where you're going next."}
+                </h4>
+                <p className="text-xs text-brand-slate line-clamp-2 max-w-lg mx-auto font-light">
+                  {siteSubTagline || "Authoritative digital publications across professional certification prep and leadership."}
+                </p>
+              </div>
+
+              {/* Simulated Book Price Badge */}
+              <div className="bg-white rounded-xl p-3 border border-brand-border/70 flex items-center justify-between text-xs">
+                <div>
+                  <span className="font-semibold text-brand-ink block">Sample Digital Publication</span>
+                  <span className="text-[10px] text-brand-muted">Direct Cloud Edition</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-sm text-brand-ink">
+                    {currency === "NGN" ? `${currencySymbol}35,000` : `${currencySymbol}24.99`}
+                  </span>
+                  <span className="text-[10px] text-brand-muted block uppercase">
+                    Currency: {currency}
+                  </span>
+                </div>
+              </div>
+
+              {/* Simulated Footer */}
+              <div className="pt-2 border-t border-brand-border/60 flex items-center justify-between text-[10px] text-brand-muted">
+                <span>© {new Date().getFullYear()} {siteName || "Noveraile Publishing"}. All rights reserved.</span>
+                <span>Direct Support: {contactEmail || "noverailepublishing@gmail.com"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Form Fields Card */}
+          <div className="bg-white rounded-2xl border border-gray-200/90 p-6 shadow-xs space-y-6">
+            <div>
+              <h3 className="text-sm font-bold text-gray-950 flex items-center gap-2">
+                <Globe className="w-4 h-4 text-purple-600" />
+                <span>Storefront Identity & Localization Settings</span>
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Configure brand name, taglines, customer support email, and primary currency across your public website.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Publisher Brand Name
+                </label>
+                <input
+                  type="text"
+                  value={siteName}
+                  onChange={(e) => setSiteName(e.target.value)}
+                  placeholder="Noveraile Publishing"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-ink bg-white font-medium"
+                  required
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Shown in browser title tags, metadata, footer copyright, and receipts.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Customer Support / Contact Email
+                </label>
+                <input
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="noverailepublishing@gmail.com"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-ink bg-white font-medium"
+                  required
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Used for ticket notifications, footer links, and legal disclosure pages.
+                </p>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Brand Tagline (Primary Hero Headline)
+                </label>
+                <input
+                  type="text"
+                  value={siteTagline}
+                  onChange={(e) => setSiteTagline(e.target.value)}
+                  placeholder="Books built for where you're going next."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-ink bg-white font-medium"
+                  required
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Primary headline on the homepage and browser title format.
+                </p>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Supporting Statement (Hero Subheading)
+                </label>
+                <textarea
+                  rows={2}
+                  value={siteSubTagline}
+                  onChange={(e) => setSiteSubTagline(e.target.value)}
+                  placeholder="Authoritative publications across professional certification prep, literature, travel, and strategic leadership..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-ink bg-white font-medium resize-none leading-relaxed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Default Storefront Currency
+                </label>
+                <select
+                  value={currency}
+                  onChange={(e) => handleCurrencyChange(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand-ink font-medium"
+                >
+                  <option value="USD">USD ($) — US Dollar</option>
+                  <option value="NGN">NGN (₦) — Nigerian Naira</option>
+                  <option value="EUR">EUR (€) — Euro</option>
+                  <option value="GBP">GBP (£) — British Pound</option>
+                  <option value="CAD">CAD (CA$) — Canadian Dollar</option>
+                  <option value="AUD">AUD (AU$) — Australian Dollar</option>
+                  <option value="GHS">GHS (GH₵) — Ghanaian Cedi</option>
+                  <option value="ZAR">ZAR (R) — South African Rand</option>
+                  <option value="KES">KES (KSh) — Kenyan Shilling</option>
+                </select>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Applied to all book prices, cart totals, and Paystack checkout.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Currency Symbol
+                </label>
+                <input
+                  type="text"
+                  value={currencySymbol}
+                  onChange={(e) => setCurrencySymbol(e.target.value)}
+                  placeholder="$"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 font-mono bg-white focus:outline-none focus:ring-2 focus:ring-brand-ink font-bold"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Symbol prefixed to amounts (e.g. $, ₦, £, €, CA$).
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Brand Header Display Style
+                </label>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setLogoStyle("IMAGE")}
+                    className={`px-3 py-2 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${
+                      logoStyle === "IMAGE"
+                        ? "bg-brand-ink text-white border-brand-ink shadow-xs"
+                        : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    Logo Graphic (/logo.png)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLogoStyle("TEXT")}
+                    className={`px-3 py-2 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${
+                      logoStyle === "TEXT"
+                        ? "bg-brand-ink text-white border-brand-ink shadow-xs"
+                        : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    Editorial Typography
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Public Base URL
+                </label>
+                <input
+                  type="text"
+                  value={settings.site.url}
+                  disabled
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-500 bg-gray-50 font-mono cursor-not-allowed"
+                />
+              </div>
+
+              {/* Announcement Banner Feature */}
+              <div className="sm:col-span-2 pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="announcement-toggle"
+                      checked={announcementEnabled}
+                      onChange={(e) => setAnnouncementEnabled(e.target.checked)}
+                      className="w-4 h-4 text-brand-ink rounded border-gray-300 focus:ring-brand-ink cursor-pointer"
+                    />
+                    <label htmlFor="announcement-toggle" className="text-xs font-semibold text-gray-900 cursor-pointer">
+                      Enable Top Storefront Announcement Banner
+                    </label>
+                  </div>
+                  <span className="text-[11px] text-gray-400">Optional customer notice</span>
+                </div>
+                {announcementEnabled && (
+                  <input
+                    type="text"
+                    value={announcementBanner}
+                    onChange={(e) => setAnnouncementBanner(e.target.value)}
+                    placeholder="e.g. 🎉 Free reading previews available across all certification editions this week!"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-ink bg-white font-medium animate-in fade-in"
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+              <div className="text-[11px] text-gray-500 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Changes save directly to Neon PostgreSQL and update storefront immediately.</span>
+              </div>
+              <button
+                type="submit"
+                disabled={storefrontSaving}
+                className="px-6 py-2.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-xs shadow-sm transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <Save className={`w-3.5 h-3.5 ${storefrontSaving ? "animate-pulse" : ""}`} />
+                <span>{storefrontSaving ? "Saving & Publishing..." : "Save Storefront Settings"}</span>
+              </button>
+            </div>
           </div>
         </form>
       )}

@@ -5,70 +5,82 @@ import { Footer } from "@/components/Footer";
 import { SupportWidget } from "@/components/SupportWidget";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
+import { StorefrontProvider } from "@/context/StorefrontContext";
+import { getStorefrontSettings } from "@/lib/settings";
 import { siteConfig } from "@/lib/config";
 
-export const metadata: Metadata = {
-  title: {
-    default: `${siteConfig.name} | ${siteConfig.tagline}`,
-    template: `%s | ${siteConfig.name}`,
-  },
-  description: siteConfig.subTagline,
-  keywords: [
-    "digital publishing",
-    "exam prep books",
-    "PTCB study guide",
-    "NCLEX practice questions",
-    "independent bookstore",
-    "protected online reader",
-    "noveraile publishing",
-  ],
-  authors: [{ name: siteConfig.name, url: siteConfig.url }],
-  creator: siteConfig.name,
-  publisher: siteConfig.name,
-  metadataBase: new URL(siteConfig.url),
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: siteConfig.url,
-    title: `${siteConfig.name} — ${siteConfig.tagline}`,
-    description: siteConfig.subTagline,
-    siteName: siteConfig.name,
-    images: [
-      {
-        url: "/logo-square.png",
-        width: 1024,
-        height: 1024,
-        alt: siteConfig.name,
-      },
-    ],
-  },
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon-48x48.png", type: "image/png", sizes: "48x48" },
-      { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
-      { url: "/favicon-192x192.png", type: "image/png", sizes: "192x192" },
-      { url: "/icon.png", type: "image/png", sizes: "512x512" },
-    ],
-    apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: siteConfig.name,
-    description: siteConfig.tagline,
-  },
-  verification: {
-    google: "WNk5Oc4mfX_vzXBxGGKaA-ibTfUgOTwwLTFRheM5YNs",
-  },
-};
+export const dynamic = "force-dynamic";
 
-export default function RootLayout({
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getStorefrontSettings();
+  const siteName = settings.siteName || siteConfig.name;
+  const tagline = settings.siteTagline || siteConfig.tagline;
+  const description = settings.siteSubTagline || siteConfig.subTagline;
+  const siteUrl = siteConfig.url;
+
+  return {
+    title: {
+      default: `${siteName} | ${tagline}`,
+      template: `%s | ${siteName}`,
+    },
+    description,
+    keywords: [
+      "digital publishing",
+      "exam prep books",
+      "PTCB study guide",
+      "NCLEX practice questions",
+      "independent bookstore",
+      "protected online reader",
+      siteName.toLowerCase(),
+    ],
+    authors: [{ name: siteName, url: siteUrl }],
+    creator: siteName,
+    publisher: siteName,
+    metadataBase: new URL(siteUrl),
+    openGraph: {
+      type: "website",
+      locale: "en_US",
+      url: siteUrl,
+      title: `${siteName} — ${tagline}`,
+      description,
+      siteName,
+      images: [
+        {
+          url: "/logo-square.png",
+          width: 1024,
+          height: 1024,
+          alt: siteName,
+        },
+      ],
+    },
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "any" },
+        { url: "/favicon-48x48.png", type: "image/png", sizes: "48x48" },
+        { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
+        { url: "/favicon-192x192.png", type: "image/png", sizes: "192x192" },
+        { url: "/icon.png", type: "image/png", sizes: "512x512" },
+      ],
+      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: siteName,
+      description: tagline,
+    },
+    verification: {
+      google: "WNk5Oc4mfX_vzXBxGGKaA-ibTfUgOTwwLTFRheM5YNs",
+    },
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const storefrontSettings = await getStorefrontSettings();
+
   return (
     <html lang="en" className="h-full scroll-smooth" suppressHydrationWarning>
       <head>
@@ -93,12 +105,14 @@ export default function RootLayout({
       </head>
       <body className="flex flex-col min-h-screen antialiased bg-[#fbfaf8] text-brand-ink selection:bg-brand-200 selection:text-brand-900" suppressHydrationWarning>
         <AuthProvider>
-          <CartProvider>
-            <Header />
-            <main className="flex-1">{children}</main>
-            <Footer />
-            <SupportWidget />
-          </CartProvider>
+          <StorefrontProvider initialSettings={storefrontSettings}>
+            <CartProvider>
+              <Header />
+              <main className="flex-1">{children}</main>
+              <Footer />
+              <SupportWidget />
+            </CartProvider>
+          </StorefrontProvider>
         </AuthProvider>
       </body>
     </html>

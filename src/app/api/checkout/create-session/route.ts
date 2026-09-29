@@ -6,6 +6,7 @@ import { isStripeConfigured, createCheckoutSession, CheckoutItem } from "@/lib/s
 import { isPaystackConfigured, initializePaystackTransaction, getResolvedPaystackCredentials } from "@/lib/paystack";
 import { isNowPaymentsConfigured, createNowPaymentsInvoice, getResolvedNowPaymentsCredentials } from "@/lib/nowpayments";
 import { siteConfig } from "@/lib/config";
+import { getSettingValue, getUsdToNgnRate } from "@/lib/settings";
 import { checkRateLimit, getClientIp } from "@/lib/security";
 import { sendGiftDeliveryEmail, sendOrderConfirmationEmail } from "@/lib/email";
 
@@ -201,7 +202,12 @@ export async function POST(req: Request) {
     }
 
     const totalAmount = Math.max(0, subtotal - discountAmount);
-    const defaultCurrency = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || siteConfig.defaultCurrency || "USD";
+    const defaultCurrency = (
+      await getSettingValue(
+        "NEXT_PUBLIC_DEFAULT_CURRENCY",
+        process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || siteConfig.defaultCurrency || "USD"
+      )
+    ).toUpperCase();
 
     // =========================================================================
     // 0. FREE PUBLICATION / $0.00 CLAIM FLOW (NO PAYMENT GATEWAY NEEDED)
@@ -572,12 +578,31 @@ export async function POST(req: Request) {
 
       const callbackUrl = `${appBaseUrl}/checkout/success?orderNumber=${order.orderNumber}&reference=${order.orderNumber}&provider=paystack`;
 
+      // Resolve Paystack charging currency & amount:
+      // If store is in USD, convert to NGN so Nigerian Paystack accounts can process without dom account
+      const rawCurrency = defaultCurrency.toUpperCase();
+      let paystackCurrency = "NGN";
+      let paystackAmount = totalAmount;
+      let exchangeRateApplied = 1;
+
+      if (rawCurrency === "USD") {
+        const rate = await getUsdToNgnRate();
+        exchangeRateApplied = rate;
+        paystackAmount = Math.round(totalAmount * rate);
+        paystackCurrency = "NGN";
+      } else if (rawCurrency === "NGN") {
+        paystackCurrency = "NGN";
+        paystackAmount = totalAmount;
+      } else {
+        paystackCurrency = rawCurrency;
+      }
+
       const paystackRes = await initializePaystackTransaction({
         email: cleanEmail,
-        amount: totalAmount,
+        amount: paystackAmount,
         reference: order.orderNumber,
         callbackUrl,
-        currency: defaultCurrency,
+        currency: paystackCurrency,
         metadata: {
           orderId: order.id,
           orderNumber: order.orderNumber,
@@ -589,6 +614,11 @@ export async function POST(req: Request) {
           recipientEmail: cleanRecipientEmail || "",
           giftMessage: cleanGiftMessage || "",
           senderName: cleanSenderName || "",
+          storeCurrency: rawCurrency,
+          usdAmount: totalAmount,
+          chargedAmount: paystackAmount,
+          chargedCurrency: paystackCurrency,
+          exchangeRate: exchangeRateApplied,
         },
       });
 

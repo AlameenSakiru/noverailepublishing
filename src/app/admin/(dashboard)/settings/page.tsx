@@ -70,13 +70,29 @@ export default async function AdminSettingsPage() {
   ]);
   const dbLatencyMs = Date.now() - startDb;
 
+  const resolvedCurrency = (
+    dbSettings.NEXT_PUBLIC_DEFAULT_CURRENCY ||
+    process.env.NEXT_PUBLIC_DEFAULT_CURRENCY ||
+    siteConfig.defaultCurrency ||
+    "USD"
+  ).toUpperCase();
+
+  const resolvedCurrencySymbol =
+    dbSettings.NEXT_PUBLIC_CURRENCY_SYMBOL ||
+    (resolvedCurrency === "NGN" ? "₦" : resolvedCurrency === "EUR" ? "€" : resolvedCurrency === "GBP" ? "£" : "$");
+
   const initialSettings = {
     site: {
       name: dbSettings.NEXT_PUBLIC_SITE_NAME || process.env.NEXT_PUBLIC_SITE_NAME || siteConfig.name,
       url: appUrl,
       tagline: dbSettings.NEXT_PUBLIC_SITE_TAGLINE || process.env.NEXT_PUBLIC_SITE_TAGLINE || siteConfig.tagline,
+      subTagline: dbSettings.NEXT_PUBLIC_SITE_SUBTAGLINE || process.env.NEXT_PUBLIC_SITE_SUBTAGLINE || siteConfig.subTagline,
       contactEmail: dbSettings.NEXT_PUBLIC_CONTACT_EMAIL || process.env.NEXT_PUBLIC_CONTACT_EMAIL || "noverailepublishing@gmail.com",
-      currency: dbSettings.NEXT_PUBLIC_DEFAULT_CURRENCY || process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || siteConfig.defaultCurrency,
+      currency: resolvedCurrency,
+      currencySymbol: resolvedCurrencySymbol,
+      announcementBanner: dbSettings.NEXT_PUBLIC_ANNOUNCEMENT_BANNER || "",
+      announcementEnabled: dbSettings.NEXT_PUBLIC_ANNOUNCEMENT_ENABLED === "true",
+      logoStyle: (dbSettings.NEXT_PUBLIC_LOGO_STYLE as "IMAGE" | "TEXT") || "IMAGE",
       storageDriver: process.env.STORAGE_DRIVER || "local",
       jwtSessionExpiryDays: Number(process.env.SESSION_EXPIRY_DAYS) || 30,
     },
@@ -86,6 +102,7 @@ export default async function AdminSettingsPage() {
       publicKey: paystackCreds.publicKey,
       secretKeyMasked: paystackCreds.secretKey ? `sk_...${paystackCreds.secretKey.slice(-4)}` : "",
       webhookUrl: paystackWebhookUrl,
+      usdToNgnRate: Number(dbSettings.USD_TO_NGN_RATE || process.env.USD_TO_NGN_RATE) || 1600,
     },
     nowpayments: {
       isConfigured: nowpaymentsCreds.isConfigured,
@@ -127,17 +144,24 @@ export default async function AdminSettingsPage() {
     select: { id: true, name: true, email: true, role: true, isEmailVerified: true },
   });
 
+  const resolvedAdminName =
+    adminUser?.name && adminUser.name !== "Editorial Director"
+      ? adminUser.name
+      : "Noveraile Publishing Director";
+
   return (
     <SettingsClient
       initialSettings={initialSettings}
       initialAdminUser={
-        adminUser || {
-          id: "admin-1",
-          name: "Company Administrator",
-          email: "noverailepublishing@gmail.com",
-          role: "ADMIN",
-          isEmailVerified: true,
-        }
+        adminUser
+          ? { ...adminUser, name: resolvedAdminName }
+          : {
+              id: "admin-1",
+              name: "Noveraile Publishing Director",
+              email: "noverailepublishing@gmail.com",
+              role: "ADMIN",
+              isEmailVerified: true,
+            }
       }
     />
   );

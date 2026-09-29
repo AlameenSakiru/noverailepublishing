@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useStorefront } from "@/context/StorefrontContext";
 import { PreviewModal } from "@/components/PreviewModal";
 import { AmazonBookDescription } from "@/components/AmazonBookDescription";
 
@@ -88,6 +89,7 @@ export function BookDetailClient({
 
   const { addItem, isInCart, setGiftDetails } = useCart();
   const { isBookOwned } = useAuth();
+  const { formatPrice, currency } = useStorefront();
   const router = useRouter();
 
   const isUserOwned = isOwned || isBookOwned(book.id);
@@ -448,7 +450,7 @@ export function BookDetailClient({
                   Protected In-Browser Reader • Multi-Device Sync
                 </p>
                 <div className="mt-2 text-sm font-bold text-brand-ink">
-                  ${activePrice.toFixed(2)}
+                  {formatPrice(activePrice)}
                 </div>
               </div>
 
@@ -479,15 +481,15 @@ export function BookDetailClient({
             ) : (
               <div className="flex items-baseline gap-3 mb-2">
                 <span className="font-serif text-3xl sm:text-4xl font-extrabold text-brand-ink">
-                  ${activePrice.toFixed(2)}
+                  {formatPrice(activePrice)}
                 </span>
                 {hasDiscount && (
                   <>
                     <span className="text-base text-brand-muted line-through">
-                      ${book.price.toFixed(2)}
+                      {formatPrice(book.price)}
                     </span>
                     <span className="text-xs font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded">
-                      Save ${discountAmount.toFixed(2)} ({discountPercent}% OFF)
+                      Save {formatPrice(discountAmount)} ({discountPercent}% OFF)
                     </span>
                   </>
                 )}

@@ -122,13 +122,13 @@ async function main() {
     create: {
       email: "admin@noveraile.com",
       passwordHash: hashedPassword,
-      name: "Editorial Director",
+      name: "Noveraile Publishing Director",
       role: "ADMIN",
       isEmailVerified: true,
       status: "ACTIVE",
     },
     update: {
-      name: "Editorial Director",
+      name: "Noveraile Publishing Director",
       role: "ADMIN",
       status: "ACTIVE",
     },

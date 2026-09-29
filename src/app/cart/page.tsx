@@ -22,10 +22,12 @@ import {
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useStorefront } from "@/context/StorefrontContext";
 import { useRouter } from "next/navigation";
 
 export default function CartPage() {
   const router = useRouter();
+  const { formatPrice, currency, usdToNgnRate } = useStorefront();
   const [paymentMethod, setPaymentMethod] = useState<"CARD" | "CRYPTO">("CARD");
   const {
     items,
@@ -254,11 +256,11 @@ export default function CartPage() {
                   <div className="text-right flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-4">
                     <div className="text-right">
                       <span className="font-bold text-lg text-brand-ink">
-                        ${activePrice.toFixed(2)}
+                        {formatPrice(activePrice)}
                       </span>
                       {item.salePrice && item.salePrice < item.price && (
                         <p className="text-xs text-brand-muted line-through">
-                          ${item.price.toFixed(2)}
+                          {formatPrice(item.price)}
                         </p>
                       )}
                     </div>
@@ -439,7 +441,7 @@ export default function CartPage() {
             <div className="space-y-3 text-sm">
               <div className="flex justify-between text-brand-slate">
                 <span>Subtotal</span>
-                <span className="font-medium text-brand-ink">${subtotal.toFixed(2)}</span>
+                <span className="font-medium text-brand-ink">{formatPrice(subtotal)}</span>
               </div>
 
               {coupon && (
@@ -449,7 +451,7 @@ export default function CartPage() {
                     <span>Coupon ({coupon.code})</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span>-${discountAmount.toFixed(2)}</span>
+                    <span>-{formatPrice(discountAmount)}</span>
                     <button
                       onClick={removeCoupon}
                       className="text-gray-400 hover:text-red-600"
@@ -476,8 +478,8 @@ export default function CartPage() {
               </div>
 
               <div className="pt-3 border-t border-gray-100 flex justify-between items-baseline">
-                <span className="font-serif font-bold text-base text-brand-ink">Total Due</span>
-                <span className="font-extrabold text-2xl text-brand-ink">${total.toFixed(2)}</span>
+                <span className="font-serif font-bold text-base text-brand-ink">Total Due ({currency})</span>
+                <span className="font-extrabold text-2xl text-brand-ink">{formatPrice(total)}</span>
               </div>
             </div>
 
@@ -570,6 +572,18 @@ export default function CartPage() {
                     <div className="text-[10px] text-amber-800/80 font-medium mt-0.5">USDT, BTC, SOL</div>
                   </button>
                 </div>
+
+                {paymentMethod === "CARD" && currency === "USD" && (
+                  <div className="mt-2.5 p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200/80 text-[11px] text-emerald-950 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Charged via Paystack in Naira</span>
+                    </div>
+                    <span className="font-bold font-mono text-emerald-900">
+                      ≈ ₦{Math.round(total * (usdToNgnRate || 1600)).toLocaleString()} NGN
+                    </span>
+                  </div>
+                )}
 
                 {paymentMethod === "CRYPTO" && (
                   <div className="mt-2.5 p-2.5 rounded-lg bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-900 flex items-center gap-2">

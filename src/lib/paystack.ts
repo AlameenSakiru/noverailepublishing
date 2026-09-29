@@ -90,7 +90,7 @@ export async function initializePaystackTransaction(opts: InitializePaystackOpti
   try {
     // Paystack expects amount in lowest denomination (e.g., Kobo for NGN, Cents for USD)
     const amountInSubunits = Math.round(opts.amount * 100);
-    const currency = (opts.currency || process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || "USD").toUpperCase();
+    const currency = (opts.currency || "NGN").toUpperCase();
 
     const payload: Record<string, any> = {
       email: opts.email,

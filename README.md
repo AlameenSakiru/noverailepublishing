@@ -119,7 +119,7 @@ For immediate testing, two pre-configured accounts are provided in the database 
 | Account | Email | Password | Role / Access |
 |---|---|---|---|
 | **Reader** | `reader@example.com` | `ReaderPass2026!` | Customer account with pre-licensed books (*PTCB Exam Prep 2027* at 60% progress) |
-| **Admin** | `admin@noveraile.com` | `AdminPass2026!` | Editorial Director with full access to `/admin` |
+| **Admin** | `admin@noveraile.com` | `AdminPass2026!` | Noveraile Publishing Director with full access to `/admin` |
 
 ---
 

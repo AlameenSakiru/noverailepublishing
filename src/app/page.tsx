@@ -3,6 +3,7 @@ import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { BookCard } from "@/components/BookCard";
 import { siteConfig } from "@/lib/config";
+import { getStorefrontSettings } from "@/lib/settings";
 import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 import {
   ArrowRight,
@@ -25,6 +26,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   let allBooks: any[] = [];
   let categories: any[] = [];
+  const storefrontSettings = await getStorefrontSettings();
 
   try {
     const [fetchedBooks, fetchedCategories] = await Promise.all([
@@ -72,12 +74,12 @@ export default async function HomePage() {
 
           {/* Primary Headline */}
           <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-brand-ink tracking-tight max-w-4xl mx-auto leading-[1.12]">
-            Books built for where you&apos;re going next.
+            {storefrontSettings.siteTagline || "Books built for where you're going next."}
           </h1>
 
           {/* Supporting Statement */}
           <p className="font-sans text-base sm:text-lg md:text-xl text-brand-slate max-w-2xl mx-auto mt-6 leading-relaxed font-light">
-            Authoritative publications across professional certification prep, literature, travel, and strategic leadership. Read instantly in your browser on any device — zero apps or downloads required.
+            {storefrontSettings.siteSubTagline || "Authoritative publications across professional certification prep, literature, travel, and strategic leadership. Read instantly in your browser on any device — zero apps or downloads required."}
           </p>
 
           {/* Value Badges */}

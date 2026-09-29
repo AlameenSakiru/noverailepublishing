@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ShoppingBag, Check, Star, BookOpen } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useStorefront } from "@/context/StorefrontContext";
 
 export interface BookCardProps {
   id: string;
@@ -38,6 +39,7 @@ export function BookCard({
 }: BookCardProps) {
   const { addItem, isInCart } = useCart();
   const { isBookOwned } = useAuth();
+  const { formatPrice } = useStorefront();
   const isUserOwned = isOwned || isBookOwned(id);
   const inCart = isInCart(id);
 
@@ -177,12 +179,12 @@ export function BookCard({
               </span>
             ) : (
               <span className="text-lg font-bold text-brand-ink">
-                ${activePrice.toFixed(2)}
+                {formatPrice(activePrice)}
               </span>
             )}
             {hasDiscount && activePrice > 0.001 && (
               <span className="text-xs text-brand-muted line-through">
-                ${price.toFixed(2)}
+                {formatPrice(price)}
               </span>
             )}
           </div>
