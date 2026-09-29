@@ -357,11 +357,31 @@ export async function POST(req: Request) {
 
       // Google OAuth configuration
       if (googleClientId !== undefined) {
-        updates.GOOGLE_CLIENT_ID = googleClientId.trim();
-        updates.NEXT_PUBLIC_GOOGLE_CLIENT_ID = googleClientId.trim();
+        const trimmed = googleClientId.trim();
+        if (trimmed && trimmed.includes("@")) {
+          return NextResponse.json(
+            {
+              error:
+                "Invalid Google Client ID. Google Client ID must be an OAuth 2.0 Client ID (ending in '.apps.googleusercontent.com') from Google Cloud Console, not an email address.",
+            },
+            { status: 400 }
+          );
+        }
+        updates.GOOGLE_CLIENT_ID = trimmed;
+        updates.NEXT_PUBLIC_GOOGLE_CLIENT_ID = trimmed;
       }
       if (googleClientSecret !== undefined && googleClientSecret.trim() !== "") {
-        updates.GOOGLE_CLIENT_SECRET = googleClientSecret.trim();
+        const trimmed = googleClientSecret.trim();
+        if (trimmed.includes("@")) {
+          return NextResponse.json(
+            {
+              error:
+                "Invalid Google Client Secret. Please enter your OAuth 2.0 Client Secret from Google Cloud Console, not an email password.",
+            },
+            { status: 400 }
+          );
+        }
+        updates.GOOGLE_CLIENT_SECRET = trimmed;
       }
 
       // Paystack configuration

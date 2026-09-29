@@ -14,15 +14,19 @@ export async function GET(req: Request) {
 
     const { clientId, isConfigured } = await getResolvedGoogleCredentials();
 
-    if (!clientId) {
+    if (!clientId || !isConfigured) {
       const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || url.host;
       const protocol = req.headers.get("x-forwarded-proto") || (url.protocol.replace(":", "") || "https");
       const baseUrl = `${protocol}://${host}`;
 
-      const setupNoticeUrl = new URL(`${baseUrl}/login`);
+      const referer = req.headers.get("referer") || "";
+      const isRegister = referer.includes("/register") || url.searchParams.get("from") === "register";
+      const targetPath = isRegister ? "/register" : "/login";
+
+      const setupNoticeUrl = new URL(`${baseUrl}${targetPath}`);
       setupNoticeUrl.searchParams.set(
         "error",
-        "Google OAuth credentials (GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET) are not configured yet. Please configure them in the Admin Settings panel or sign in with your email."
+        "Google Sign-In is not configured yet. Please sign up or sign in using your email and password below."
       );
       return NextResponse.redirect(setupNoticeUrl.toString());
     }

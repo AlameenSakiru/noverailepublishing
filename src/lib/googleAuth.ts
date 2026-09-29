@@ -23,25 +23,42 @@ export async function getResolvedGoogleCredentials() {
 
     for (const s of settings) {
       if ((s.key === "GOOGLE_CLIENT_ID" || s.key === "NEXT_PUBLIC_GOOGLE_CLIENT_ID") && s.value) {
-        clientId = s.value.trim();
+        const val = s.value.trim();
+        if (val.includes(".apps.googleusercontent.com") && !val.includes("@")) {
+          clientId = val;
+        }
       }
       if (s.key === "GOOGLE_CLIENT_SECRET" && s.value) {
-        clientSecret = s.value.trim();
+        const val = s.value.trim();
+        if (!val.includes("@")) {
+          clientSecret = val;
+        }
       }
     }
   } catch (err) {
     console.warn("Could not query platform settings for Google credentials:", err);
   }
 
-  const isConfigured = Boolean(clientId && clientSecret);
-  const secretKeyMasked = clientSecret
+  const isValidClientId = Boolean(
+    clientId &&
+    clientId.includes(".apps.googleusercontent.com") &&
+    !clientId.includes("@")
+  );
+  const isValidClientSecret = Boolean(
+    clientSecret &&
+    !clientSecret.includes("@") &&
+    clientSecret.length >= 10
+  );
+  const isConfigured = Boolean(isValidClientId && isValidClientSecret);
+
+  const secretKeyMasked = clientSecret && isValidClientSecret
     ? `••••••••••••••••${clientSecret.slice(-4)}`
     : "";
 
   return {
     isConfigured,
-    clientId,
-    clientSecret,
+    clientId: isValidClientId ? clientId : "",
+    clientSecret: isValidClientSecret ? clientSecret : "",
     secretKeyMasked,
   };
 }

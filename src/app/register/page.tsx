@@ -13,14 +13,15 @@ function RegisterForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get("redirect") || "/my-library";
+  const urlError = searchParams.get("error");
+  const [error, setError] = useState<string | null>(urlError || null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const { register, loginWithGoogle } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect") || "/my-library";
 
   // Password Security Calculations
   const hasMinLength = password.length >= 8;
@@ -66,7 +67,7 @@ function RegisterForm() {
   const handleGoogleSignUp = () => {
     setError(null);
     setGoogleLoading(true);
-    window.location.href = `/api/auth/google/oauth?redirect=${encodeURIComponent(redirectUrl)}`;
+    window.location.href = `/api/auth/google/oauth?from=register&redirect=${encodeURIComponent(redirectUrl)}`;
   };
 
   return (

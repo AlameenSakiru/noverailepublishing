@@ -1834,6 +1834,11 @@ export function SettingsClient({
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-mono text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   />
                   <p className="text-[11px] text-gray-400 mt-1">Obtained from Google Cloud Console &gt; APIs &amp; Services &gt; Credentials.</p>
+                  {googleClientId.includes("@") && (
+                    <p className="text-[11px] text-amber-600 font-medium mt-1">
+                      ⚠️ Note: Google Client ID must be an OAuth 2.0 Client ID (ending in .apps.googleusercontent.com), not an email address.
+                    </p>
+                  )}
                 </div>
 
                 <div>
