@@ -634,11 +634,12 @@ export async function POST(req: Request) {
         );
       }
 
-      // Store reference / access code in order
+      // Store reference / access code and payment checkout URL in order
       await prisma.order.update({
         where: { id: order.id },
         data: {
           stripeSessionId: paystackRes.reference || order.orderNumber,
+          cryptoInvoiceUrl: paystackRes.authorizationUrl,
         },
       });
 

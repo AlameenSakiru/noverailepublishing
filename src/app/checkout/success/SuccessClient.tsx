@@ -17,6 +17,7 @@ import {
   XCircle,
   AlertCircle,
   Coins,
+  CreditCard,
   ShieldAlert,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
@@ -60,8 +61,11 @@ export function SuccessClient({
   const isGift = Boolean(order.isGift && order.recipientEmail);
   const isCrypto =
     provider === "nowpayments" ||
-    Boolean(order.cryptoPaymentId) ||
-    Boolean(order.cryptoInvoiceUrl);
+    Boolean(order.cryptoPaymentId);
+  const isPaystack =
+    provider === "paystack" ||
+    (!isCrypto && provider !== "stripe" && (Boolean(order.stripeSessionId) || provider === "paystack"));
+  const paymentUrl = order.cryptoInvoiceUrl;
 
   // Clear shopping cart once on mount if paid or pending
   useEffect(() => {
@@ -259,6 +263,8 @@ export function SuccessClient({
         <p className="text-sm sm:text-base text-brand-slate max-w-lg mx-auto mt-4 leading-relaxed font-light">
           {isCrypto
             ? "Your crypto payment session has been initiated. As soon as the network confirms your transaction on-chain (usually 1–5 minutes), your digital publications will unlock automatically."
+            : isPaystack
+            ? "Your Paystack checkout session has been opened. Complete your card, bank transfer, or USSD payment, and your digital publications will unlock immediately."
             : "We are confirming your payment with the processing gateway. Your titles will unlock immediately once confirmed."}
         </p>
 
@@ -266,8 +272,14 @@ export function SuccessClient({
         <div className="mt-7 max-w-md mx-auto p-5 rounded-2xl bg-amber-50/90 border border-amber-200 text-left space-y-3.5 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-amber-950 flex items-center gap-1.5">
-              <Coins className="w-4 h-4 text-amber-600" />
-              <span>Payment Status: Pending On-Chain</span>
+              {isCrypto ? (
+                <Coins className="w-4 h-4 text-amber-600" />
+              ) : (
+                <CreditCard className="w-4 h-4 text-emerald-600" />
+              )}
+              <span>
+                {isCrypto ? "Payment Status: Pending On-Chain" : "Payment Status: Awaiting Paystack Confirmation"}
+              </span>
             </span>
             <span className="text-[11px] font-semibold text-amber-800 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
@@ -294,7 +306,9 @@ export function SuccessClient({
               />
             </div>
             <span className="text-[10px] text-amber-800/80 block leading-tight">
-              Order automatically cancels if unconfirmed after 12 minutes to protect crypto rates.
+              {isCrypto
+                ? "Order automatically cancels if unconfirmed after 12 minutes to protect crypto rates."
+                : "Order automatically cancels if uncompleted after 12 minutes to protect session security."}
             </span>
           </div>
 
@@ -308,7 +322,9 @@ export function SuccessClient({
             <button
               onClick={handleManualStatusCheck}
               disabled={isChecking}
-              className="px-3 py-1.5 rounded-lg bg-amber-800 hover:bg-amber-900 text-white font-semibold transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className={`px-3 py-1.5 rounded-lg text-white font-semibold transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
+                isCrypto ? "bg-amber-800 hover:bg-amber-900" : "bg-emerald-800 hover:bg-emerald-900"
+              }`}
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? "animate-spin" : ""}`} />
               <span>{isChecking ? "Checking..." : "Check Status Now"}</span>
@@ -326,14 +342,16 @@ export function SuccessClient({
 
         {/* Action CTAs for Pending */}
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-          {order.cryptoInvoiceUrl && (
+          {paymentUrl && (
             <a
-              href={order.cryptoInvoiceUrl}
+              href={paymentUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+              className={`w-full sm:w-auto px-8 py-3.5 rounded-xl text-white font-semibold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] ${
+                isCrypto ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
+              }`}
             >
-              <span>Complete Payment in New Tab</span>
+              <span>{isCrypto ? "Complete Crypto Payment in New Tab" : "Complete Paystack Payment in New Tab"}</span>
               <ExternalLink className="w-4 h-4" />
             </a>
           )}
@@ -383,7 +401,9 @@ export function SuccessClient({
                   </h4>
                   <span className="text-[11px] font-medium text-amber-700 flex items-center gap-1 mt-0.5">
                     <Clock className="w-3 h-3" />
-                    <span>Awaiting Block Confirmation</span>
+                    <span>
+                      {isCrypto ? "Awaiting Block Confirmation" : "Awaiting Payment Confirmation"}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -443,6 +463,15 @@ export function SuccessClient({
           <span className="text-base">🪙</span>
           <span>
             Crypto payment verified via <strong>NOWPayments</strong> on-chain. Digital access activated!
+          </span>
+        </div>
+      )}
+
+      {isPaystack && (
+        <div className="mt-4 max-w-lg mx-auto p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-xs text-emerald-900 flex items-center justify-center gap-2">
+          <span className="text-base">💳</span>
+          <span>
+            Card/Bank payment verified via <strong>Paystack</strong>. Digital access activated!
           </span>
         </div>
       )}

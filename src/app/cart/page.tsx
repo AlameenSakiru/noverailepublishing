@@ -129,19 +129,20 @@ export default function CartPage() {
       // Clear cart locally upon successful checkout placement
       clearCart();
 
-      // If Crypto, pop out invoice in a new tab so user continues viewing website
-      if (paymentMethod === "CRYPTO" && data.checkoutUrl && data.checkoutUrl.startsWith("http")) {
+      // Pop out payment gateway in a new tab so user continues viewing website & live status
+      if (data.checkoutUrl && data.checkoutUrl.startsWith("http")) {
         try {
           window.open(data.checkoutUrl, "_blank");
         } catch {}
 
+        const providerParam = paymentMethod === "CRYPTO" ? "nowpayments" : "paystack";
         if (data.orderNumber) {
-          router.push(`/checkout/success?orderNumber=${encodeURIComponent(data.orderNumber)}&provider=nowpayments`);
+          router.push(`/checkout/success?orderNumber=${encodeURIComponent(data.orderNumber)}&provider=${providerParam}`);
         } else {
           window.location.href = data.checkoutUrl;
         }
       } else {
-        // Standard redirect for card / Paystack
+        // Fallback relative URL (e.g. Free claims)
         window.location.href = data.checkoutUrl;
       }
     } catch {
