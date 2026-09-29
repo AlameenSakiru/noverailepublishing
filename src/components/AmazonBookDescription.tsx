@@ -20,6 +20,15 @@ export function formatAmazonDescriptionHtml(raw: string): string {
 
   let text = raw.trim();
 
+  // Defense-in-depth XSS neutralization: strip script, iframe, object, embed, and inline event handlers
+  text = text
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
+    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, "")
+    .replace(/<embed\b[^>]*>/gi, "")
+    .replace(/\bon\w+\s*=\s*(["'][^"']*["']|[^\s>]+)/gi, "")
+    .replace(/javascript\s*:/gi, "");
+
   // Check if content is already rich HTML (contains <p>, <ul>, <ol>, <h3>, <div>, <b>, <strong>, etc.)
   const hasHtmlTags = /<\/?(p|ul|ol|li|h[1-6]|b|strong|i|em|blockquote|br|div|span|section)[^>]*>/i.test(text);
 

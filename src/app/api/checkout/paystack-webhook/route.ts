@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
+import { getResolvedPaystackCredentials } from "@/lib/paystack";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const secret = process.env.PAYSTACK_SECRET_KEY?.trim();
+  const paystackCreds = await getResolvedPaystackCredentials();
+  const secret = paystackCreds.secretKey;
   if (!secret) {
     return NextResponse.json({ error: "Paystack secret key is not configured" }, { status: 400 });
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { setSessionCookie } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,18 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { success: false, error: "Verification code must be exactly 6 digits." },
         { status: 400 }
+      );
+    }
+
+    // Rate Limiting: max 10 attempts per 15 minutes per IP, 6 per email account
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+    if (
+      !checkRateLimit(`verify_email_ip_${ip}`, 10, 15 * 60 * 1000) ||
+      !checkRateLimit(`verify_email_acc_${cleanEmail}`, 6, 15 * 60 * 1000)
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Too many verification attempts. Please wait 15 minutes or request a new code." },
+        { status: 429 }
       );
     }
 

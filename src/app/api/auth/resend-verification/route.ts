@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
+import { checkRateLimit } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,18 @@ export async function POST(req: Request) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+
+    // Rate Limiting: max 5 requests per 15 minutes per IP, max 3 per email
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+    if (
+      !checkRateLimit(`resend_verif_ip_${ip}`, 5, 15 * 60 * 1000) ||
+      !checkRateLimit(`resend_verif_acc_${cleanEmail}`, 3, 15 * 60 * 1000)
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Too many code requests. Please wait a few minutes before requesting another verification email." },
+        { status: 429 }
+      );
+    }
 
     // Verify user exists with DB retry handling
     let user = null;

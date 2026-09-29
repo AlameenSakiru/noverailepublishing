@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/security";
 import {
   sendSupportTicketConfirmationToCustomer,
   sendSupportTicketNotificationToAdmin,
@@ -18,6 +19,14 @@ function generateTicketNumber(): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+    if (!checkRateLimit(`contact_form_${ip}`, 5, 15 * 60 * 1000)) {
+      return NextResponse.json(
+        { error: "Too many messages sent. Please wait 15 minutes before submitting another inquiry." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { name, email, subject, category, message, source } = body;
 

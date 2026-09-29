@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+    if (!checkRateLimit(`cancel_order_${ip}`, 10, 10 * 60 * 1000)) {
+      return NextResponse.json(
+        { error: "Too many cancel requests. Please try again shortly." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { orderNumber } = body || {};
 
