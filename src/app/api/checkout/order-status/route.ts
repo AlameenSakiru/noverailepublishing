@@ -48,22 +48,40 @@ export async function GET(req: Request) {
       });
     }
 
-    // 2. If order is still PENDING and it was Paystack, attempt instant verification check
+    // 2. If order is still PENDING and it was Paystack, attempt instant verification check & fulfillment
     if (order.paymentStatus === "PENDING" && order.stripeSessionId) {
       const paystackCreds = await getResolvedPaystackCredentials();
       if (paystackCreds.isConfigured) {
         const verifyRes = await verifyPaystackTransaction(order.stripeSessionId);
         if (verifyRes.success) {
-          order = await prisma.order.update({
-            where: { id: order.id },
-            data: { paymentStatus: "PAID" },
-            include: {
-              items: { include: { book: true } },
-              payment: true,
-            },
+          const { fulfillOrder } = await import("@/lib/fulfillment");
+          const fulfillRes = await fulfillOrder({
+            orderId: order.id,
+            provider: "PAYSTACK",
+            transactionId: order.stripeSessionId,
+            amountPaid: verifyRes.amount,
+            currencyPaid: verifyRes.currency,
           });
+          if (fulfillRes.success && fulfillRes.order) {
+            order = fulfillRes.order;
+          } else {
+            const freshOrder = await prisma.order.findUnique({
+              where: { id: order.id },
+              include: {
+                items: { include: { book: true } },
+                payment: true,
+              },
+            });
+            if (freshOrder) {
+              order = freshOrder;
+            }
+          }
         }
       }
+    }
+
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
     return NextResponse.json({

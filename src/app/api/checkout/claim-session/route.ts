@@ -49,175 +49,59 @@ export async function POST(req: Request) {
     // =========================================================================
     // 1. IF ORDER IS STILL PENDING: ATTEMPT INSTANT PAYSTACK VERIFICATION
     // =========================================================================
-    if (order.paymentStatus === "PENDING") {
-      const paystackRef = reference || order.stripeSessionId || order.orderNumber;
-      if (isPaystackConfigured && paystackRef) {
-        const verifyRes = await verifyPaystackTransaction(paystackRef);
-        if (verifyRes.success) {
-          // Resolve or create user account
-          let user = order.user;
-          if (!user) {
-            user = await prisma.user.findUnique({
-              where: { email: order.customerEmail.toLowerCase().trim() },
-            });
-          }
-
-          if (!user) {
-            const randomPass = Math.random().toString(36).slice(-10) + "A1!";
-            const passwordHash = await hashPassword(randomPass);
-            user = await prisma.user.create({
-              data: {
-                email: order.customerEmail.toLowerCase().trim(),
-                name: order.customerEmail.split("@")[0].slice(0, 50),
-                passwordHash,
-                role: "CUSTOMER",
-                isEmailVerified: true,
-              },
-            });
-          }
-
-          // Mark order as PAID and record payment
-          order = await prisma.order.update({
-            where: { id: order.id },
-            data: {
-              paymentStatus: "PAID",
-              userId: user.id,
-              stripeSessionId: paystackRef,
-            },
-            include: {
-              user: true,
-              items: {
-                include: {
-                  book: {
-                    include: {
-                      author: true,
-                    },
+    const paystackRef = reference || order.stripeSessionId || order.orderNumber;
+    if (order.paymentStatus === "PENDING" && isPaystackConfigured && paystackRef) {
+      const verifyRes = await verifyPaystackTransaction(paystackRef);
+      if (verifyRes.success) {
+        const { fulfillOrder } = await import("@/lib/fulfillment");
+        await fulfillOrder({
+          orderId: order.id,
+          provider: "PAYSTACK",
+          transactionId: paystackRef,
+          amountPaid: verifyRes.amount,
+          currencyPaid: verifyRes.currency,
+        });
+        order = (await prisma.order.findUnique({
+          where: { id: order.id },
+          include: {
+            user: true,
+            items: {
+              include: {
+                book: {
+                  include: {
+                    author: true,
                   },
                 },
               },
             },
-          });
-
-          await prisma.payment.upsert({
-            where: { orderId: order.id },
-            update: {
-              status: "SUCCEEDED",
-              amount: verifyRes.amount || order.totalAmount,
-            },
-            create: {
-              orderId: order.id,
-              provider: "PAYSTACK",
-              transactionId: paystackRef,
-              status: "SUCCEEDED",
-              amount: verifyRes.amount || order.totalAmount,
-              currency: verifyRes.currency || order.currency,
-            },
-          });
-
-          // Concurrently grant digital entitlements and reading progress (Gift vs Self)
-          const isGift = Boolean(order.isGift && order.recipientEmail);
-          let entitlementUserId = user.id;
-
-          if (isGift && order.recipientEmail) {
-            const recipientClean = order.recipientEmail.toLowerCase().trim();
-            let recipientUser = await prisma.user.findUnique({ where: { email: recipientClean } });
-            if (!recipientUser) {
-              const randomPass = Math.random().toString(36).slice(-10) + "A1!";
-              const passwordHash = await hashPassword(randomPass);
-              recipientUser = await prisma.user.create({
-                data: {
-                  email: recipientClean,
-                  name: order.recipientName || recipientClean.split("@")[0],
-                  passwordHash,
-                  role: "CUSTOMER",
-                  isEmailVerified: true,
-                },
-              });
-            }
-            entitlementUserId = recipientUser.id;
-          }
-
-          for (const item of order.items) {
-            await prisma.entitlement.upsert({
-              where: {
-                userId_bookId: { userId: entitlementUserId, bookId: item.bookId },
-              },
-              update: {
-                status: "ACTIVE",
-                orderId: order.id,
-                isGift,
-                giftSenderName: isGift ? order.user?.name || order.customerEmail : null,
-                giftSenderEmail: isGift ? order.customerEmail : null,
-                giftMessage: isGift ? order.giftMessage : null,
-              },
-              create: {
-                userId: entitlementUserId,
-                bookId: item.bookId,
-                orderId: order.id,
-                status: "ACTIVE",
-                isGift,
-                giftSenderName: isGift ? order.user?.name || order.customerEmail : null,
-                giftSenderEmail: isGift ? order.customerEmail : null,
-                giftMessage: isGift ? order.giftMessage : null,
-              },
-            }).catch(() => {});
-
-            await prisma.readingProgress.upsert({
-              where: {
-                userId_bookId: { userId: entitlementUserId, bookId: item.bookId },
-              },
-              update: {},
-              create: {
-                userId: entitlementUserId,
-                bookId: item.bookId,
-                currentPage: 1,
-                totalPages: item.book?.pageCount > 0 ? item.book.pageCount : 1,
-                progressPercent: 0,
-              },
-            }).catch(() => {});
-
-            // Dispatch gift delivery email if not sent
-            if (isGift && order.recipientEmail) {
-              const { sendGiftDeliveryEmail } = await import("@/lib/email");
-              sendGiftDeliveryEmail({
-                recipientEmail: order.recipientEmail,
-                recipientName: order.recipientName || order.recipientEmail.split("@")[0],
-                senderName: order.user?.name || order.customerEmail.split("@")[0],
-                senderEmail: order.customerEmail,
-                giftMessage: order.giftMessage || undefined,
-                bookTitle: item.book?.title || item.bookTitle || "Your Gift Book",
-                bookAuthor: item.book?.author?.name || undefined,
-                bookCoverUrl: item.book?.coverImage || undefined,
-              }).catch((err) => console.error("Claim session gift email error:", err));
-            }
-          }
-
-          // Dispatch Order Confirmation Email to the customer
-          const { sendOrderConfirmationEmail } = await import("@/lib/email");
-          sendOrderConfirmationEmail({
-            customerEmail: order.customerEmail,
-            customerName: user.name || order.customerEmail.split("@")[0],
-            orderNumber: order.orderNumber,
-            orderDate: order.createdAt,
-            items: order.items.map((i) => ({
-              title: i.book?.title || i.bookTitle || "Digital Book",
-              author: i.book?.author?.name || undefined,
-              price: i.price,
-              coverImage: i.book?.coverImage || undefined,
-              slug: i.book?.slug || undefined,
-            })),
-            subtotal: order.subtotal,
-            discountAmount: order.discountAmount,
-            totalAmount: order.totalAmount,
-            currency: order.currency,
-            paymentProvider: "PAYSTACK",
-            isGift,
-            recipientName: order.recipientName || undefined,
-            recipientEmail: order.recipientEmail || undefined,
-            giftMessage: order.giftMessage || undefined,
-          }).catch((err) => console.error("Claim session order confirmation email error:", err));
-        }
+          },
+        })) || order;
       }
+    }
+
+    // Ensure order is fully fulfilled (entitlements granted & confirmation email sent)
+    if (order.paymentStatus === "PAID") {
+      const { fulfillOrder } = await import("@/lib/fulfillment");
+      await fulfillOrder({
+        orderId: order.id,
+        provider: "PAYSTACK",
+        transactionId: paystackRef,
+      });
+      order = (await prisma.order.findUnique({
+        where: { id: order.id },
+        include: {
+          user: true,
+          items: {
+            include: {
+              book: {
+                include: {
+                  author: true,
+                },
+              },
+            },
+          },
+        },
+      })) || order;
     }
 
     // Check if payment is still not confirmed
