@@ -74,35 +74,63 @@ export default async function ExamPrepPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {examBooks.map((book) => (
-            <div key={book.id} className="flex flex-col">
-              {book.examMetadata && (
-                <div className="mb-2 flex items-center justify-between text-xs">
-                  <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold font-mono">
-                    {book.examMetadata.examAcronym}
-                  </span>
-                  <span className="text-brand-muted text-[11px]">
-                    {book.examMetadata.yearVersion} Blueprint
-                  </span>
-                </div>
-              )}
-              <BookCard
-                id={book.id}
-                title={book.title}
-                subtitle={book.subtitle}
-                slug={book.slug}
-                coverImage={book.coverImage}
-                authorName={book.author.name}
-                categoryName={book.category.name}
-                price={book.price}
-                salePrice={book.salePrice}
-                rating={book.reviews?.length ? book.reviews.reduce((acc, r) => acc + r.rating, 0) / book.reviews.length : null}
-                reviewCount={book.reviews?.length || 0}
-              />
+        {examBooks.length === 0 ? (
+          <div className="p-8 sm:p-12 rounded-2xl bg-white border border-brand-border text-center max-w-2xl mx-auto shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto mb-4">
+              <BookOpen className="w-6 h-6 text-amber-600" />
             </div>
-          ))}
-        </div>
+            <h3 className="font-serif text-xl font-bold text-brand-ink">
+              New Certification Modules Under Editorial Review
+            </h3>
+            <p className="text-xs sm:text-sm text-brand-slate mt-2 leading-relaxed font-light">
+              Our upcoming licensure prep guides (including PTCB PTCE® and NCLEX-RN® NextGen case banks) are currently undergoing rigorous psychometric review and clinical blueprint alignment.
+            </p>
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/books"
+                className="px-5 py-2.5 rounded-xl bg-brand-ink text-white text-xs font-semibold hover:bg-brand-900 transition-colors shadow-xs"
+              >
+                Explore Active Catalog
+              </Link>
+              <Link
+                href="/help"
+                className="px-5 py-2.5 rounded-xl bg-white border border-brand-border text-brand-ink text-xs font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Contact Editorial Support
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {examBooks.map((book) => (
+              <div key={book.id} className="flex flex-col">
+                {book.examMetadata && (
+                  <div className="mb-2 flex items-center justify-between text-xs">
+                    <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold font-mono">
+                      {book.examMetadata.examAcronym}
+                    </span>
+                    <span className="text-brand-muted text-[11px]">
+                      {book.examMetadata.yearVersion} Blueprint
+                    </span>
+                  </div>
+                )}
+                <BookCard
+                  id={book.id}
+                  title={book.title}
+                  subtitle={book.subtitle}
+                  slug={book.slug}
+                  coverImage={book.coverImage}
+                  authorName={book.author.name}
+                  categoryName={book.category.name}
+                  price={book.price}
+                  salePrice={book.salePrice}
+                  rating={book.reviews?.length ? book.reviews.reduce((acc, r) => acc + r.rating, 0) / book.reviews.length : null}
+                  reviewCount={book.reviews?.length || 0}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Rigor & Quality Framework */}

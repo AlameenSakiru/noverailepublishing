@@ -129,15 +129,21 @@ export function Header() {
             {/* Shopping Cart */}
             <Link
               href="/cart"
-              className="relative p-2 text-brand-slate hover:text-brand-ink hover:bg-brand-50 rounded-full transition-colors"
-              title="Shopping Cart"
+              className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-brand-slate hover:text-brand-ink hover:bg-brand-50 rounded-full transition-colors border border-transparent hover:border-brand-border"
+              title={`Shopping Cart (${itemCount})`}
+              aria-label={`Shopping Cart with ${itemCount} items`}
             >
-              <ShoppingBag className="w-5 h-5" />
-              {itemCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-brand-ink text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {itemCount}
-                </span>
-              )}
+              <div className="relative">
+                <ShoppingBag className="w-5 h-5" />
+                {itemCount > 0 && (
+                  <span className="sm:hidden absolute -top-1 -right-1 w-3.5 h-3.5 bg-brand-ink text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {itemCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-xs font-semibold text-brand-ink hidden sm:inline">
+                Cart ({itemCount})
+              </span>
             </Link>
 
             {/* User Account / My Library CTA */}
@@ -251,6 +257,19 @@ export function Header() {
             className="block py-2 text-base font-medium text-brand-slate hover:text-brand-ink"
           >
             Catalog
+          </Link>
+          <Link
+            href="/cart"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center justify-between py-2 text-base font-medium text-brand-slate hover:text-brand-ink"
+          >
+            <span className="flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5 text-brand-slate" />
+              <span>Shopping Cart</span>
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-brand-100 text-brand-ink">
+              {itemCount}
+            </span>
           </Link>
           <Link
             href="/success-stories"

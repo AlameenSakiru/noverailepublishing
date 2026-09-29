@@ -47,13 +47,33 @@ export async function generateMetadata({ params }: BookPageProps): Promise<Metad
     return { title: "Book Not Found" };
   }
 
+  const bookUrl = `${siteConfig.url}/books/${book.slug}`;
+  const bookTitle = book.title;
+  const bookDescription = book.shortDescription || (book.description ? book.description.replace(/<[^>]*>?/gm, "").slice(0, 160) : "");
+
   return {
-    title: `${book.title} | ${siteConfig.name}`,
-    description: book.shortDescription || book.description.slice(0, 160),
+    title: bookTitle,
+    description: bookDescription,
+    alternates: {
+      canonical: bookUrl,
+    },
     openGraph: {
-      title: `${book.title} | ${siteConfig.name}`,
-      description: book.shortDescription,
-      images: [{ url: book.coverImage }],
+      title: bookTitle,
+      description: bookDescription,
+      url: bookUrl,
+      type: "book",
+      images: [
+        {
+          url: book.coverImage,
+          alt: book.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: bookTitle,
+      description: bookDescription,
+      images: [book.coverImage],
     },
   };
 }
@@ -104,7 +124,9 @@ export default async function BookDetailPage({ params }: BookPageProps) {
     "@type": "Book",
     "name": book.title,
     "alternateName": book.subtitle,
-    "isbn": book.isbn,
+    ...(book.isbn && /^97[89]\d{9}[\dX]$/i.test(book.isbn.replace(/[-\s]/g, ""))
+      ? { isbn: book.isbn }
+      : { identifier: book.isbn || book.id }),
     "numberOfPages": book.pageCount,
     "bookFormat": "https://schema.org/EBook",
     "inLanguage": book.language,

@@ -100,6 +100,9 @@ export function BookDetailClient({
   const discountAmount = hasDiscount ? book.price - activePrice : 0;
   const discountPercent = hasDiscount ? Math.round((discountAmount / book.price) * 100) : 0;
 
+  const isExamPrep = Boolean(book.examMetadata || book.category?.slug === "exam-prep");
+  const isRealIsbn = Boolean(book.isbn && /^97[89]\d{9}[\dX]$/i.test(book.isbn.replace(/[-\s]/g, "")));
+
   // Safe JSON parse for book attributes
   let keyBenefits: string[] = [];
   try {
@@ -397,41 +400,35 @@ export function BookDetailClient({
             <span className="font-serif font-semibold text-brand-ink">
               By {book.author.name}
             </span>
-            <span className="text-gray-300">•</span>
 
-            {/* Dynamic Rating / New Release Badge */}
-            {totalReviews > 0 ? (
-              <a
-                href="#reviews-section"
-                className="flex items-center gap-1.5 text-amber-500 hover:text-amber-600 transition-colors group cursor-pointer"
-              >
-                <div className="flex items-center">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-3.5 h-3.5 ${
-                        i < Math.round(averageRating)
-                          ? "fill-amber-400 text-amber-400"
-                          : "text-gray-200 fill-gray-200"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span className="text-xs font-semibold text-brand-slate group-hover:underline ml-1">
-                  {averageRating.toFixed(1)}
-                </span>
-                <span className="text-xs text-brand-muted">
-                  ({totalReviews} verified {totalReviews === 1 ? "rating" : "ratings"})
-                </span>
-              </a>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200/60">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                  New Release
-                </span>
-                <span className="text-xs text-brand-muted">Verified Direct Edition</span>
-              </div>
+            {/* Dynamic Rating / Verified Reviews */}
+            {totalReviews > 0 && (
+              <>
+                <span className="text-gray-300">•</span>
+                <a
+                  href="#reviews-section"
+                  className="flex items-center gap-1.5 text-amber-500 hover:text-amber-600 transition-colors group cursor-pointer"
+                >
+                  <div className="flex items-center">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-3.5 h-3.5 ${
+                          i < Math.round(averageRating)
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-gray-200 fill-gray-200"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs font-semibold text-brand-slate group-hover:underline ml-1">
+                    {averageRating.toFixed(1)}
+                  </span>
+                  <span className="text-xs text-brand-muted">
+                    ({totalReviews} verified {totalReviews === 1 ? "rating" : "ratings"})
+                  </span>
+                </a>
+              </>
             )}
           </div>
 
@@ -456,11 +453,15 @@ export function BookDetailClient({
 
               <div className="p-3.5 rounded-xl border border-brand-border bg-brand-50/50 opacity-90">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-brand-slate">Digital Study Rights</span>
+                  <span className="text-xs font-semibold text-brand-slate">
+                    {isExamPrep ? "Digital Study Rights" : "Lifetime Access"}
+                  </span>
                   <span className="text-[10px] text-brand-muted">Included</span>
                 </div>
                 <p className="text-[11px] text-brand-muted mt-1">
-                  Lifetime Cloud Access & Free Future Revisions
+                  {isExamPrep
+                    ? "Official Blueprint Alignment & Study Edition"
+                    : "Permanent Cloud Library & Future Errata"}
                 </p>
                 <div className="mt-2 text-xs font-semibold text-emerald-700">
                   Included Free with Purchase
@@ -579,7 +580,7 @@ export function BookDetailClient({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-brand-border/60 text-[11px] text-brand-slate">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>256-Bit SSL Encrypted Checkout</span>
+                <span>TLS / HTTPS Encrypted Checkout</span>
               </div>
               <div className="flex items-center gap-2">
                 <Smartphone className="w-4 h-4 text-brand-600 shrink-0" />
@@ -587,7 +588,7 @@ export function BookDetailClient({
               </div>
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Lifetime Updates & Free Revisions</span>
+                <span>{isExamPrep ? "Lifetime Updates & Free Revisions" : "Lifetime Cloud Library Access"}</span>
               </div>
             </div>
           </div>
@@ -723,7 +724,7 @@ export function BookDetailClient({
               </div>
 
               <div className="flex items-start justify-between py-2 border-b border-gray-100">
-                <span className="text-brand-muted font-medium">ISBN-13 / Catalog ID:</span>
+                <span className="text-brand-muted font-medium">{isRealIsbn ? "ISBN-13:" : "Catalog ID:"}</span>
                 <span className="font-mono font-bold text-brand-ink text-right">
                   {book.isbn || `NOV-${book.id.slice(-8).toUpperCase()}`}
                 </span>
@@ -732,7 +733,7 @@ export function BookDetailClient({
               <div className="flex items-start justify-between py-2 border-b border-gray-100">
                 <span className="text-brand-muted font-medium">Digital Rights Management:</span>
                 <span className="font-semibold text-emerald-800 text-right">
-                  AES-256 Cloud Protected • Multi-Device Sync
+                  Secure Cloud Storage • Multi-Device Sync
                 </span>
               </div>
 
@@ -855,9 +856,11 @@ export function BookDetailClient({
               <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center mb-3">
                 <Sparkles className="w-4 h-4 text-blue-400" />
               </div>
-              <h4 className="font-serif font-bold text-sm">Free Edition Updates</h4>
+              <h4 className="font-serif font-bold text-sm">{isExamPrep ? "Free Edition Updates" : "Lifetime Access"}</h4>
               <p className="text-xs text-gray-400 mt-1 font-light">
-                Whenever tests or chapters update, your digital edition syncs for free.
+                {isExamPrep
+                  ? "Whenever tests or chapters update, your digital edition syncs for free."
+                  : "Enjoy permanent library access and continuous reading across your devices."}
               </p>
             </div>
 
@@ -865,9 +868,9 @@ export function BookDetailClient({
               <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center mb-3">
                 <ShieldCheck className="w-4 h-4 text-amber-400" />
               </div>
-              <h4 className="font-serif font-bold text-sm">Guaranteed Security</h4>
+              <h4 className="font-serif font-bold text-sm">Reader Guarantee</h4>
               <p className="text-xs text-gray-400 mt-1 font-light">
-                256-bit encrypted licenses and a 30-day reader satisfaction guarantee.
+                Secure cloud-authenticated delivery and a 14-day reader satisfaction guarantee.
               </p>
             </div>
           </div>
@@ -1145,7 +1148,7 @@ export function BookDetailClient({
                 Can I read on my iPhone, Android, iPad, or laptop?
               </h4>
               <p className="text-xs sm:text-sm text-brand-slate mt-2 font-light leading-relaxed">
-                Yes. The Noveraile Cloud Reader is fully responsive and optimized for mobile touchscreens, tablets, and desktop displays. Your reading progress, saved bookmarks, and highlighted positions synchronize continuously across all devices.
+                Yes. The Noveraile Cloud Reader is fully responsive and optimized for mobile touchscreens, tablets, and desktop displays. Your reading progress and saved bookmarks synchronize continuously across all devices.
               </p>
             </div>
 
@@ -1163,7 +1166,9 @@ export function BookDetailClient({
                 Will I receive future edition updates?
               </h4>
               <p className="text-xs sm:text-sm text-brand-slate mt-2 font-light leading-relaxed">
-                Yes. If Noveraile publishes updated errata, revised testing blueprints, or new curriculum chapters for this publication, your digital library edition updates automatically at zero additional charge.
+                {isExamPrep
+                  ? "Yes. If Noveraile publishes updated errata, revised testing blueprints, or new curriculum chapters for this certification guide, your digital library edition updates automatically at zero additional charge."
+                  : "Yes. If the author or Noveraile publishes updated editorial errata or revisions for this title, your digital library edition updates automatically at zero additional charge."}
               </p>
             </div>
 

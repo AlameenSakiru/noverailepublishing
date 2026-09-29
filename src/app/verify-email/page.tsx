@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { VerifyEmailClient } from "./VerifyEmailClient";
 
 export const metadata: Metadata = {
-  title: "Verify Email Address | Noveraile Publishing",
+  title: "Verify Email Address",
   description: "Enter your 6-digit verification code to complete your reader registration.",
 };
 

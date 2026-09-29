@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { AccountClient } from "./AccountClient";
 
 export const metadata: Metadata = {
-  title: "My Account & Security | Noveraile Publishing",
+  title: "My Account & Security",
   description: "Manage your personal profile, credentials, and active security sessions.",
 };
 

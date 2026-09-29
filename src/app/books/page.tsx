@@ -63,8 +63,22 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
   });
 
   const categories = await prisma.category.findMany({
-    where: { parentId: null, isActive: true },
-    include: { children: true },
+    where: {
+      parentId: null,
+      isActive: true,
+      OR: [
+        { books: { some: { status: "PUBLISHED" } } },
+        { children: { some: { books: { some: { status: "PUBLISHED" } } } } },
+      ],
+    },
+    include: {
+      children: {
+        where: {
+          isActive: true,
+          books: { some: { status: "PUBLISHED" } },
+        },
+      },
+    },
   });
 
   return (
@@ -104,11 +118,11 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
         </form>
       </div>
 
-      {/* Mobile/Tablet Horizontal Category Chips */}
-      <div className="lg:hidden flex items-center gap-2 overflow-x-auto pb-3 mt-6 scrollbar-none">
+      {/* Unified Horizontal Category Filter Chips */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-3 mt-6 scrollbar-none">
         <Link
           href="/books"
-          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+          className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
             !selectedCategory
               ? "bg-brand-ink text-white shadow-xs"
               : "bg-white border border-brand-border text-brand-slate hover:border-brand-ink"
@@ -120,7 +134,7 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
           <Link
             key={cat.id}
             href={`/books?category=${cat.slug}`}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+            className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
               selectedCategory === cat.slug
                 ? "bg-brand-ink text-white font-semibold shadow-xs"
                 : "bg-white border border-brand-border text-brand-slate hover:border-brand-ink"
@@ -131,113 +145,53 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
         ))}
       </div>
 
-      {/* Main Catalog Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mt-6 lg:mt-8">
-        {/* Category & Niche Sidebar (Desktop Only) */}
-        <div className="hidden lg:block space-y-6">
-          <div className="bg-white p-5 rounded-2xl border border-brand-border shadow-xs">
-            <h3 className="font-serif text-base font-bold text-brand-ink mb-3 pb-2 border-b border-gray-100 flex items-center justify-between">
-              <span>Categories</span>
-              <SlidersHorizontal className="w-4 h-4 text-brand-muted" />
+      {/* Books Results Grid (Full Width) */}
+      <div className="mt-8">
+        {books.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-brand-border p-12 text-center max-w-md mx-auto my-12 shadow-xs">
+            <div className="w-12 h-12 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center mx-auto mb-4">
+              <Search className="w-6 h-6" />
+            </div>
+            <h3 className="font-serif text-lg font-bold text-brand-ink">
+              No matching publications found
             </h3>
-
-            <div className="space-y-1.5 text-sm">
-              <Link
-                href="/books"
-                className={`block px-3 py-1.5 rounded-lg transition-colors ${
-                  !selectedCategory
-                    ? "bg-brand-ink text-white font-semibold"
-                    : "text-brand-slate hover:bg-brand-50"
-                }`}
-              >
-                All Categories
-              </Link>
-
-              {categories.map((cat) => (
-                <div key={cat.id} className="space-y-1">
-                  <Link
-                    href={`/books?category=${cat.slug}`}
-                    className={`block px-3 py-1.5 rounded-lg transition-colors ${
-                      selectedCategory === cat.slug
-                        ? "bg-brand-ink text-white font-semibold"
-                        : "text-brand-slate hover:bg-brand-50 font-medium"
-                    }`}
-                  >
-                    {cat.name}
-                  </Link>
-
-                  {/* Subcategories */}
-                  {cat.children && cat.children.length > 0 && (
-                    <div className="pl-4 space-y-1 border-l border-gray-100 ml-3">
-                      {cat.children.map((sub) => (
-                        <Link
-                          key={sub.id}
-                          href={`/books?category=${sub.slug}`}
-                          className={`block px-2.5 py-1 text-xs rounded transition-colors ${
-                            selectedCategory === sub.slug
-                              ? "text-brand-ink font-bold bg-brand-100"
-                              : "text-brand-muted hover:text-brand-ink"
-                          }`}
-                        >
-                          {sub.name}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            <p className="text-xs text-brand-muted mt-2 leading-relaxed">
+              We couldn&apos;t find a book matching that search. Try searching for broader terms like &quot;PTCB&quot;, &quot;NCLEX&quot;, &quot;Security&quot;, or &quot;Venice&quot;.
+            </p>
+            <Link
+              href="/books"
+              className="inline-block mt-5 px-4 py-2 bg-brand-ink text-white text-xs font-semibold rounded-lg hover:bg-brand-900 transition-colors"
+            >
+              Reset Catalog Filters
+            </Link>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {books.map((book) => {
+              const reviewCount = book.reviews?.length || 0;
+              const avgRating = reviewCount > 0
+                ? book.reviews.reduce((acc, r) => acc + r.rating, 0) / reviewCount
+                : null;
 
-        {/* Books Results Grid */}
-        <div className="lg:col-span-3">
-          {books.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-brand-border p-12 text-center max-w-md mx-auto my-12 shadow-xs">
-              <div className="w-12 h-12 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center mx-auto mb-4">
-                <Search className="w-6 h-6" />
-              </div>
-              <h3 className="font-serif text-lg font-bold text-brand-ink">
-                No matching publications found
-              </h3>
-              <p className="text-xs text-brand-muted mt-2 leading-relaxed">
-                We couldn&apos;t find a book matching that search. Try searching for broader terms like &quot;PTCB&quot;, &quot;NCLEX&quot;, &quot;Security&quot;, or &quot;Venice&quot;.
-              </p>
-              <Link
-                href="/books"
-                className="inline-block mt-5 px-4 py-2 bg-brand-ink text-white text-xs font-semibold rounded-lg hover:bg-brand-900 transition-colors"
-              >
-                Reset Catalog Filters
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {books.map((book) => {
-                const reviewCount = book.reviews?.length || 0;
-                const avgRating = reviewCount > 0
-                  ? book.reviews.reduce((acc, r) => acc + r.rating, 0) / reviewCount
-                  : null;
-
-                return (
-                  <BookCard
-                    key={book.id}
-                    id={book.id}
-                    title={book.title}
-                    subtitle={book.subtitle}
-                    slug={book.slug}
-                    coverImage={book.coverImage}
-                    authorName={book.author.name}
-                    categoryName={book.category.name}
-                    price={book.price}
-                    salePrice={book.salePrice}
-                    rating={avgRating}
-                    reviewCount={reviewCount}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
+              return (
+                <BookCard
+                  key={book.id}
+                  id={book.id}
+                  title={book.title}
+                  subtitle={book.subtitle}
+                  slug={book.slug}
+                  coverImage={book.coverImage}
+                  authorName={book.author.name}
+                  categoryName={book.category.name}
+                  price={book.price}
+                  salePrice={book.salePrice}
+                  rating={avgRating}
+                  reviewCount={reviewCount}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

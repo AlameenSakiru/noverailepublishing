@@ -1,8 +1,10 @@
 import React from "react";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
+import { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { BookCard } from "@/components/BookCard";
+import { siteConfig } from "@/lib/config";
 
 export const revalidate = 60;
 
@@ -12,8 +14,45 @@ interface CategoryPageProps {
   };
 }
 
+export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
+  if (params.slug === "exam-prep") {
+    permanentRedirect("/exam-prep");
+  }
+
+  const category = await prisma.category.findUnique({
+    where: { slug: params.slug },
+    select: { name: true, description: true, slug: true },
+  });
+
+  if (!category) {
+    return { title: "Category Not Found" };
+  }
+
+  const title = `${category.name} Books & Publications`;
+  const description = category.description || `Browse curated digital publications in ${category.name} from Noveraile Publishing.`;
+  const url = `${siteConfig.url}/categories/${category.slug}`;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: url,
+    },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: "website",
+    },
+  };
+}
+
 export default async function CategoryDetailPage({ params }: CategoryPageProps) {
   const { slug } = params;
+
+  if (slug === "exam-prep") {
+    permanentRedirect("/exam-prep");
+  }
 
   const category = await prisma.category.findUnique({
     where: { slug },

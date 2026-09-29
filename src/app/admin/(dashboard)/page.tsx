@@ -7,7 +7,7 @@ import { AdminOverviewClient, ChartDataPoint, BookDataset } from "./AdminOvervie
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Admin Dashboard | Noveraile Publishing",
+  title: "Admin Dashboard",
   description: "Overview of sales, orders, and catalog management.",
 };
 
