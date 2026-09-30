@@ -54,6 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { route: "/refunds", lastModified: new Date("2026-09-25T12:00:00Z"), priority: 0.5 },
     { route: "/terms", lastModified: new Date("2026-09-25T12:00:00Z"), priority: 0.4 },
     { route: "/privacy", lastModified: new Date("2026-09-25T12:00:00Z"), priority: 0.4 },
+    { route: "/cookies", lastModified: new Date("2026-09-30T12:00:00Z"), priority: 0.4 },
     { route: "/accessibility", lastModified: new Date("2026-09-25T12:00:00Z"), priority: 0.4 },
   ];
 

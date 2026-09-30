@@ -23,6 +23,8 @@ import {
   ShieldCheck,
   Check,
   X,
+  Download,
+  Trash2,
 } from "lucide-react";
 
 interface SessionInfo {
@@ -75,6 +77,39 @@ export function AccountClient() {
   // Session Revocation State
   const [revokingSessions, setRevokingSessions] = useState(false);
   const [sessionSuccess, setSessionSuccess] = useState<string | null>(null);
+
+  // Account Deletion State (GDPR Article 17)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDeletingAccount(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          password: deletePassword,
+          confirmation: deleteConfirmation,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to delete account.");
+      }
+      await logout();
+      router.push("/?deleted=true");
+    } catch (err: any) {
+      setDeleteError(err.message || "Failed to delete account.");
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
 
   // Password Security Calculations
   const hasMinLength = newPassword.length >= 8;
@@ -563,6 +598,53 @@ export function AccountClient() {
               </button>
             </div>
           </form>
+
+          {/* Data Privacy & GDPR Rights Section */}
+          <div className="mt-8 pt-8 border-t border-gray-100">
+            <h3 className="font-serif text-base font-bold text-brand-ink mb-1 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Personal Data & Privacy Rights (GDPR / CCPA)</span>
+            </h3>
+            <p className="text-xs text-brand-muted mb-4 font-light">
+              Under international privacy regulations (GDPR Article 15 & 17), you maintain the right to export your complete personal account data or permanently request its erasure.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-brand-50/60 border border-brand-border flex flex-col justify-between">
+                <div>
+                  <h4 className="font-semibold text-xs text-brand-ink">Download Personal Data Archive</h4>
+                  <p className="text-[11px] text-brand-slate mt-1 font-light leading-relaxed">
+                    Export a machine-readable JSON archive of your reader profile, purchase receipts, active library entitlements, and bookmarks.
+                  </p>
+                </div>
+                <a
+                  href="/api/account/export-data"
+                  download
+                  className="inline-flex items-center justify-center gap-2 mt-4 px-4 py-2 rounded-xl bg-white border border-brand-border text-xs font-semibold text-brand-ink hover:bg-gray-50 transition-colors shadow-2xs"
+                >
+                  <Download className="w-3.5 h-3.5 text-brand-slate" />
+                  <span>Export My Data (JSON)</span>
+                </a>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-red-50/40 border border-red-200/60 flex flex-col justify-between">
+                <div>
+                  <h4 className="font-semibold text-xs text-red-900">Delete Account & Erasure</h4>
+                  <p className="text-[11px] text-red-800/80 mt-1 font-light leading-relaxed">
+                    Permanently delete your reader account, active sessions, reading progress, and digital entitlements. This action cannot be undone.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDeleteModalOpen(true)}
+                  className="inline-flex items-center justify-center gap-2 mt-4 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-colors shadow-2xs"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Request Account Deletion</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -656,6 +738,81 @@ export function AccountClient() {
             ) : (
               <p className="text-xs text-gray-500">No active sessions found.</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Account Deletion Confirmation Modal (GDPR Article 17) */}
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-brand-border max-w-md w-full p-6 sm:p-8 shadow-2xl relative">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-700 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6 text-red-600" />
+            </div>
+
+            <h3 className="font-serif text-xl font-bold text-brand-ink text-center">
+              Permanently Delete Account?
+            </h3>
+            <p className="text-xs text-brand-slate text-center mt-2 leading-relaxed font-light">
+              This will permanently revoke your digital library entitlements, delete reading progress, and erase personal profile information. This action is irreversible.
+            </p>
+
+            {deleteError && (
+              <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">
+                {deleteError}
+              </div>
+            )}
+
+            <form onSubmit={handleDeleteAccount} className="mt-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-brand-slate mb-1">
+                  Enter Password to Confirm
+                </label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Your current password"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-border text-xs focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-brand-slate mb-1">
+                  Or type <span className="font-mono text-red-700">DELETE</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                  placeholder="DELETE"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-border text-xs focus:outline-none focus:ring-2 focus:ring-red-500 font-mono"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteModalOpen(false);
+                    setDeleteError(null);
+                    setDeletePassword("");
+                    setDeleteConfirmation("");
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-brand-slate font-semibold text-xs transition-colors"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={deletingAccount || (!deletePassword && deleteConfirmation !== "DELETE")}
+                  className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-xs transition-colors shadow-xs disabled:opacity-40"
+                >
+                  {deletingAccount ? "Erasing Data..." : "Confirm Deletion"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -3,6 +3,7 @@ import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { SupportWidget } from "@/components/SupportWidget";
+import { CookieBanner } from "@/components/CookieBanner";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { StorefrontProvider } from "@/context/StorefrontContext";
@@ -97,6 +98,10 @@ export default async function RootLayout({
             __html: `
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
+              gtag('consent', 'default', {
+                'analytics_storage': 'denied',
+                'ad_storage': 'denied'
+              });
               gtag('js', new Date());
               gtag('config', 'G-T40Y4VFKPX');
             `,
@@ -111,6 +116,7 @@ export default async function RootLayout({
               <main className="flex-1">{children}</main>
               <Footer />
               <SupportWidget />
+              <CookieBanner />
             </CartProvider>
           </StorefrontProvider>
         </AuthProvider>

@@ -255,10 +255,26 @@ function RegisterForm() {
           )}
         </div>
 
+        <p className="text-[11px] text-brand-slate leading-relaxed font-light mt-2 text-center">
+          By selecting Create Account, you acknowledge and agree to Noveraile Publishing&apos;s{" "}
+          <Link href="/terms" target="_blank" className="font-semibold text-brand-ink underline hover:text-amber-800">
+            Terms of Service
+          </Link>
+          ,{" "}
+          <Link href="/privacy" target="_blank" className="font-semibold text-brand-ink underline hover:text-amber-800">
+            Privacy Policy
+          </Link>
+          , and{" "}
+          <Link href="/cookies" target="_blank" className="font-semibold text-brand-ink underline hover:text-amber-800">
+            Cookie Policy
+          </Link>
+          .
+        </p>
+
         <button
           type="submit"
           disabled={loading || googleLoading}
-          className="w-full py-3.5 px-6 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-sm shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
+          className="w-full py-3.5 px-6 rounded-xl bg-brand-ink hover:bg-brand-900 text-white font-semibold text-sm shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50 mt-1"
         >
           <span>{loading ? "Creating Account..." : "Create Account"}</span>
           <ArrowRight className="w-4 h-4" />
