@@ -4,6 +4,32 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Cookie, Shield, Check, X } from "lucide-react";
 
+const GA_MEASUREMENT_ID = "G-T40Y4VFKPX";
+
+function enableGoogleAnalytics() {
+  if (typeof window === "undefined") return;
+  if ((window as any).__ga_loaded) return;
+  (window as any).__ga_loaded = true;
+
+  // Insert script tag dynamically
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+  document.head.appendChild(script);
+
+  // Initialize dataLayer and gtag
+  (window as any).dataLayer = (window as any).dataLayer || [];
+  function gtag(...args: any[]) {
+    (window as any).dataLayer.push(args);
+  }
+  (window as any).gtag = gtag;
+
+  gtag("js", new Date());
+  gtag("config", GA_MEASUREMENT_ID, {
+    anonymize_ip: true,
+  });
+}
+
 export function CookieBanner() {
   const [visible, setVisible] = useState(false);
 
@@ -15,12 +41,8 @@ export function CookieBanner() {
         const timer = setTimeout(() => setVisible(true), 800);
         return () => clearTimeout(timer);
       } else if (consent === "all") {
-        // Apply granted consent to Google Analytics if present
-        if (typeof window !== "undefined" && (window as any).gtag) {
-          (window as any).gtag("consent", "update", {
-            analytics_storage: "granted",
-          });
-        }
+        // Only load GA if user has previously granted consent
+        enableGoogleAnalytics();
       }
     } catch {
       // In case localStorage is blocked or throws
@@ -30,11 +52,7 @@ export function CookieBanner() {
   const handleAcceptAll = () => {
     try {
       localStorage.setItem("noveraile_cookie_consent", "all");
-      if (typeof window !== "undefined" && (window as any).gtag) {
-        (window as any).gtag("consent", "update", {
-          analytics_storage: "granted",
-        });
-      }
+      enableGoogleAnalytics();
     } catch {}
     setVisible(false);
   };
@@ -42,11 +60,6 @@ export function CookieBanner() {
   const handleEssentialOnly = () => {
     try {
       localStorage.setItem("noveraile_cookie_consent", "essential");
-      if (typeof window !== "undefined" && (window as any).gtag) {
-        (window as any).gtag("consent", "update", {
-          analytics_storage: "denied",
-        });
-      }
     } catch {}
     setVisible(false);
   };
