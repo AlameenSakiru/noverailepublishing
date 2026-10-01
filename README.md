@@ -1,7 +1,7 @@
 # NOVERAILE PUBLISHING
 > **Digital Publishing House & Direct-to-Reader Platform**  
 > *Domain: noverailepublishing.com*  
-> *Core Brand Headline: "Books built for where you're going next."*
+> *Core Brand Headline: "Study smarter. Travel further. Read deeper."*
 
 ---
 

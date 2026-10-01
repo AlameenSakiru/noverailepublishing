@@ -21,16 +21,28 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
 
   const category = await prisma.category.findUnique({
     where: { slug: params.slug },
-    select: { name: true, description: true, slug: true },
+    select: {
+      name: true,
+      description: true,
+      slug: true,
+      _count: {
+        select: {
+          books: {
+            where: { status: "PUBLISHED" },
+          },
+        },
+      },
+    },
   });
 
   if (!category) {
     return { title: "Category Not Found" };
   }
 
-  const title = `${category.name} Books & Publications`;
+  const title = `${category.name} Books`;
   const description = category.description || `Browse curated digital publications in ${category.name} from Noveraile Publishing.`;
   const url = `${siteConfig.url}/categories/${category.slug}`;
+  const hasContent = category._count.books > 0;
 
   return {
     title,
@@ -39,11 +51,28 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
       canonical: url,
     },
     openGraph: {
-      title,
+      title: `${title} | Noveraile Publishing`,
       description,
       url,
       type: "website",
+      images: [
+        {
+          url: "/logo-square.png",
+          width: 1024,
+          height: 1024,
+          alt: category.name,
+        },
+      ],
     },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | Noveraile Publishing`,
+      description,
+      images: ["/logo-square.png"],
+    },
+    robots: hasContent
+      ? { index: true, follow: true }
+      : { index: false, follow: true },
   };
 }
 

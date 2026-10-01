@@ -5,8 +5,12 @@ export const siteConfig = {
   name: process.env.NEXT_PUBLIC_SITE_NAME || "Noveraile Publishing",
   domain: process.env.NEXT_PUBLIC_SITE_DOMAIN || "noverailepublishing.com",
   url: process.env.NEXT_PUBLIC_APP_URL || "https://noverailepublishing.com",
-  tagline: process.env.NEXT_PUBLIC_SITE_TAGLINE || "Books built for where you're going next.",
-  subTagline: "Discover professionally developed digital books across exam preparation, fiction, travel, self-development, business and more. Purchase once and read securely from your personal Noveraile library.",
+  tagline: process.env.NEXT_PUBLIC_SITE_TAGLINE || "Exam Prep, Fiction, Travel & More",
+  subTagline:
+    process.env.NEXT_PUBLIC_SITE_SUBTAGLINE ||
+    "Independent digital books across exam prep, fiction, travel and business. Buy once, read securely in your browser, and keep them in your personal library.",
+  description:
+    "Independent digital publisher of exam prep, fiction, travel and business books. Buy direct, read securely in your browser, and keep every title in your personal library.",
   examPrepTagline: "Prepare. Practice. Pass.",
   contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "noverailepublishing@gmail.com",
   defaultCurrency: process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || "USD",

@@ -4,7 +4,38 @@ import prisma from "@/lib/prisma";
 import { BookCard } from "@/components/BookCard";
 import { Search, SlidersHorizontal } from "lucide-react";
 
+import { Metadata } from "next";
+import { siteConfig } from "@/lib/config";
+
 export const revalidate = 30;
+
+export const metadata: Metadata = {
+  title: "Complete Digital Book Catalog",
+  description: "Browse all curated digital publications from Noveraile Publishing. Read instantly in your browser with automatic cloud progress synchronization.",
+  alternates: {
+    canonical: `${siteConfig.url}/books`,
+  },
+  openGraph: {
+    title: "Complete Digital Book Catalog | Noveraile Publishing",
+    description: "Browse all curated digital publications from Noveraile Publishing. Read instantly in your browser with automatic cloud progress synchronization.",
+    url: `${siteConfig.url}/books`,
+    type: "website",
+    images: [
+      {
+        url: "/logo-square.png",
+        width: 1024,
+        height: 1024,
+        alt: "Noveraile Publishing Catalog",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Complete Digital Book Catalog | Noveraile Publishing",
+    description: "Browse all curated digital publications from Noveraile Publishing.",
+    images: ["/logo-square.png"],
+  },
+};
 
 interface BooksPageProps {
   searchParams: {

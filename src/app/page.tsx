@@ -74,12 +74,12 @@ export default async function HomePage() {
 
           {/* Primary Headline */}
           <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-brand-ink tracking-tight max-w-4xl mx-auto leading-[1.12]">
-            {storefrontSettings.siteTagline || "Books built for where you're going next."}
+            Study smarter. Travel further. Read deeper.
           </h1>
 
           {/* Supporting Statement */}
           <p className="font-sans text-base sm:text-lg md:text-xl text-brand-slate max-w-2xl mx-auto mt-6 leading-relaxed font-light">
-            {storefrontSettings.siteSubTagline || "Authoritative publications across professional certification prep, literature, travel, and strategic leadership. Read instantly in your browser on any device — zero apps or downloads required."}
+            Independent digital books across exam prep, fiction, travel and business. Buy once, read securely in your browser, and keep them in your personal library.
           </p>
 
           {/* Value Badges */}

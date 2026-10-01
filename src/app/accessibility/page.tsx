@@ -1,9 +1,34 @@
 import React from "react";
 import { siteConfig } from "@/lib/config";
 
-export const metadata = {
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
   title: "Accessibility Statement",
   description: "Accessibility commitment and standards compliance for Noveraile Publishing.",
+  alternates: {
+    canonical: `${siteConfig.url}/accessibility`,
+  },
+  openGraph: {
+    title: "Accessibility Statement | Noveraile Publishing",
+    description: "Accessibility commitment and standards compliance for Noveraile Publishing.",
+    url: `${siteConfig.url}/accessibility`,
+    type: "website",
+    images: [
+      {
+        url: "/logo-square.png",
+        width: 1024,
+        height: 1024,
+        alt: "Noveraile Accessibility Statement",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Accessibility Statement | Noveraile Publishing",
+    description: "Accessibility commitment and standards compliance for Noveraile Publishing.",
+    images: ["/logo-square.png"],
+  },
 };
 
 export default function AccessibilityPage() {

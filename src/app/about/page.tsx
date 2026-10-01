@@ -3,9 +3,34 @@ import Link from "next/link";
 import { siteConfig } from "@/lib/config";
 import { ShieldCheck, BookOpen, Award, ArrowRight } from "lucide-react";
 
-export const metadata = {
-  title: "About Noveraile Publishing",
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "About Us",
   description: "Learn about Noveraile Publishing, our editorial philosophy, independent direct publishing model, and imprints.",
+  alternates: {
+    canonical: `${siteConfig.url}/about`,
+  },
+  openGraph: {
+    title: "About Noveraile Publishing",
+    description: "Learn about Noveraile Publishing, our editorial philosophy, independent direct publishing model, and imprints.",
+    url: `${siteConfig.url}/about`,
+    type: "website",
+    images: [
+      {
+        url: "/logo-square.png",
+        width: 1024,
+        height: 1024,
+        alt: "About Noveraile Publishing",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "About Noveraile Publishing",
+    description: "Learn about Noveraile Publishing, our editorial philosophy, and imprints.",
+    images: ["/logo-square.png"],
+  },
 };
 
 export default function AboutPage() {
@@ -20,7 +45,7 @@ export default function AboutPage() {
           About Noveraile Publishing
         </h1>
         <p className="font-serif italic text-lg sm:text-xl text-brand-slate mt-4 max-w-2xl mx-auto">
-          &ldquo;Books built for where you&apos;re going next.&rdquo;
+          &ldquo;Study smarter. Travel further. Read deeper.&rdquo;
         </p>
       </div>
 

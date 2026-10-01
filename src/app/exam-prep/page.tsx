@@ -5,12 +5,55 @@ import { BookCard } from "@/components/BookCard";
 import { siteConfig } from "@/lib/config";
 import { ShieldCheck, CheckCircle2, Award, BookOpen, ArrowRight } from "lucide-react";
 
+import { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Professional Certification & Licensing Exam Prep Books",
-  description: "Official Noveraile Exam Preparation Center. Comprehensive digital study guides, practice question banks, and clinical rationales for high-stakes professional licensing.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const count = await prisma.book.count({
+    where: {
+      status: "PUBLISHED",
+      OR: [
+        { category: { slug: "exam-prep" } },
+        { category: { parent: { slug: "exam-prep" } } },
+      ],
+    },
+  });
+
+  const title = "Professional Certification & Licensing Exam Prep Books";
+  const description =
+    "Official Noveraile Exam Preparation Center. Comprehensive digital study guides, practice question banks, and clinical rationales for high-stakes professional licensing.";
+  const url = `${siteConfig.url}/exam-prep`;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: url,
+    },
+    openGraph: {
+      title: `${title} | Noveraile Publishing`,
+      description,
+      url,
+      type: "website",
+      images: [
+        {
+          url: "/logo-square.png",
+          width: 1024,
+          height: 1024,
+          alt: "Noveraile Exam Prep",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | Noveraile Publishing`,
+      description,
+      images: ["/logo-square.png"],
+    },
+    robots: count > 0 ? { index: true, follow: true } : { index: false, follow: true },
+  };
+}
 
 export default async function ExamPrepPage() {
   const examBooks = await prisma.book.findMany({

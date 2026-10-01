@@ -5,9 +5,35 @@ import { BookOpen, GraduationCap, Compass, TrendingUp, Sparkles, ArrowRight } fr
 
 export const revalidate = 60;
 
-export const metadata = {
+import { siteConfig } from "@/lib/config";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
   title: "Publishing Categories & Collections",
   description: "Browse Noveraile Publishing books across all professional and literary categories.",
+  alternates: {
+    canonical: `${siteConfig.url}/categories`,
+  },
+  openGraph: {
+    title: "Publishing Categories & Collections | Noveraile Publishing",
+    description: "Browse Noveraile Publishing books across all professional and literary categories.",
+    url: `${siteConfig.url}/categories`,
+    type: "website",
+    images: [
+      {
+        url: "/logo-square.png",
+        width: 1024,
+        height: 1024,
+        alt: "Noveraile Categories",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Publishing Categories & Collections | Noveraile Publishing",
+    description: "Browse Noveraile Publishing books across all professional and literary categories.",
+    images: ["/logo-square.png"],
+  },
 };
 
 const iconMap: Record<string, any> = {

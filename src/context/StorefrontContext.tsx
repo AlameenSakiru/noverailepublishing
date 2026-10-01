@@ -10,8 +10,8 @@ interface StorefrontContextType extends StorefrontData {
 
 const defaultStorefront: StorefrontData = {
   siteName: "Noveraile Publishing",
-  siteTagline: "Books built for where you're going next.",
-  siteSubTagline: "Authoritative publications across professional certification prep, literature, travel, and strategic leadership. Read instantly in your browser on any device — zero apps or downloads required.",
+  siteTagline: "Exam Prep, Fiction, Travel & More",
+  siteSubTagline: "Independent digital books across exam prep, fiction, travel and business. Buy once, read securely in your browser, and keep them in your personal library.",
   contactEmail: "noverailepublishing@gmail.com",
   currency: "USD",
   currencySymbol: "$",

@@ -6,8 +6,8 @@ async function runTests() {
   const resHome = await fetch(`${baseUrl}/`);
   const homeHtml = await resHome.text();
   console.log(`[PASS] 1. Homepage status: ${resHome.status}`);
-  if (homeHtml.includes("Books built for where you're going next")) {
-    console.log("       Found core brand headline: 'Books built for where you\\'re going next.'");
+  if (homeHtml.includes("Study smarter. Travel further. Read deeper")) {
+    console.log("       Found core brand headline: 'Study smarter. Travel further. Read deeper.'");
   }
 
   // 2. Test Book Sales Page

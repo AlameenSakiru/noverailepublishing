@@ -3,12 +3,38 @@ import prisma from "@/lib/prisma";
 import { SuccessStoriesClient } from "./SuccessStoriesClient";
 import { FeaturedStory } from "@/lib/storyTypes";
 
+import { Metadata } from "next";
+import { siteConfig } from "@/lib/config";
+
 export const dynamic = "force-dynamic";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Reader Stories & Verified Reviews",
   description:
     "Explore authentic reviews, reader outcomes, and our strict verified-purchaser review policy at Noveraile Publishing.",
+  alternates: {
+    canonical: `${siteConfig.url}/success-stories`,
+  },
+  openGraph: {
+    title: "Reader Stories & Verified Reviews | Noveraile Publishing",
+    description: "Explore authentic reviews and verified purchaser reflections from our readers.",
+    url: `${siteConfig.url}/success-stories`,
+    type: "website",
+    images: [
+      {
+        url: "/logo-square.png",
+        width: 1024,
+        height: 1024,
+        alt: "Noveraile Verified Reader Stories",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Reader Stories & Verified Reviews | Noveraile Publishing",
+    description: "Explore authentic reviews and verified purchaser reflections from our readers.",
+    images: ["/logo-square.png"],
+  },
 };
 
 export default async function SuccessStoriesPage() {

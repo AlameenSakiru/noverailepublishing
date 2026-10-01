@@ -3,10 +3,35 @@ import Link from "next/link";
 import { Cookie, Shield, CheckCircle2, Lock, ArrowLeft } from "lucide-react";
 import { Metadata } from "next";
 
+import { siteConfig } from "@/lib/config";
+
 export const metadata: Metadata = {
   title: "Cookie Policy",
   description:
     "Learn how Noveraile Publishing uses cookies and local storage to provide secure, authenticated, in-browser digital reading.",
+  alternates: {
+    canonical: `${siteConfig.url}/cookies`,
+  },
+  openGraph: {
+    title: "Cookie Policy | Noveraile Publishing",
+    description: "Learn how Noveraile Publishing uses cookies and local storage for digital reading.",
+    url: `${siteConfig.url}/cookies`,
+    type: "website",
+    images: [
+      {
+        url: "/logo-square.png",
+        width: 1024,
+        height: 1024,
+        alt: "Noveraile Cookie Policy",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Cookie Policy | Noveraile Publishing",
+    description: "Learn how Noveraile Publishing uses cookies and local storage.",
+    images: ["/logo-square.png"],
+  },
 };
 
 export default function CookiePolicyPage() {

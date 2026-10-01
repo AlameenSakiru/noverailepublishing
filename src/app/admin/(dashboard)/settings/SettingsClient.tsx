@@ -137,10 +137,10 @@ export function SettingsClient({
 
   // Editable Storefront States
   const [siteName, setSiteName] = useState(settings.site.name || "Noveraile Publishing");
-  const [siteTagline, setSiteTagline] = useState(settings.site.tagline || "Books built for where you're going next.");
+  const [siteTagline, setSiteTagline] = useState(settings.site.tagline || "Exam Prep, Fiction, Travel & More");
   const [siteSubTagline, setSiteSubTagline] = useState(
     settings.site.subTagline ||
-      "Authoritative publications across professional certification prep, literature, travel, and strategic leadership. Read instantly in your browser on any device — zero apps or downloads required."
+      "Independent digital books across exam prep, fiction, travel and business. Buy once, read securely in your browser, and keep them in your personal library."
   );
   const [contactEmail, setContactEmail] = useState(settings.site.contactEmail || "noverailepublishing@gmail.com");
   const [currency, setCurrency] = useState(settings.site.currency || "USD");
@@ -1249,7 +1249,7 @@ export function SettingsClient({
               {/* Simulated Hero Headline */}
               <div className="text-center py-3 space-y-1.5">
                 <h4 className="font-serif text-xl font-bold text-brand-ink">
-                  {siteTagline || "Books built for where you're going next."}
+                  {siteTagline || "Exam Prep, Fiction, Travel & More"}
                 </h4>
                 <p className="text-xs text-brand-slate line-clamp-2 max-w-lg mx-auto font-light">
                   {siteSubTagline || "Authoritative digital publications across professional certification prep and leadership."}
@@ -1335,7 +1335,7 @@ export function SettingsClient({
                   type="text"
                   value={siteTagline}
                   onChange={(e) => setSiteTagline(e.target.value)}
-                  placeholder="Books built for where you're going next."
+                  placeholder="Exam Prep, Fiction, Travel & More"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-ink bg-white font-medium"
                   required
                 />

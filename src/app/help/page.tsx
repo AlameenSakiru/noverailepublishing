@@ -3,9 +3,34 @@ import Link from "next/link";
 import { siteConfig } from "@/lib/config";
 import { HelpCircle, BookOpen, ShieldCheck, Smartphone, Mail, ArrowRight } from "lucide-react";
 
-export const metadata = {
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
   title: "Help Center & Reader FAQ",
   description: "Answers to frequently asked questions about accessing your digital library, reading across devices, and order support.",
+  alternates: {
+    canonical: `${siteConfig.url}/help`,
+  },
+  openGraph: {
+    title: "Help Center & Reader FAQ | Noveraile Publishing",
+    description: "Frequently asked questions regarding reading, digital access, orders, and support.",
+    url: `${siteConfig.url}/help`,
+    type: "website",
+    images: [
+      {
+        url: "/logo-square.png",
+        width: 1024,
+        height: 1024,
+        alt: "Noveraile Help Center",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Help Center & Reader FAQ | Noveraile Publishing",
+    description: "Frequently asked questions regarding reading, digital access, orders, and support.",
+    images: ["/logo-square.png"],
+  },
 };
 
 export default function HelpPage() {

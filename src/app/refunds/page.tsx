@@ -1,9 +1,34 @@
 import React from "react";
 import { siteConfig } from "@/lib/config";
 
-export const metadata = {
-  title: "Refund Policy & Digital Entitlements",
-  description: "Official refund policy for digital books and online cloud library access at Noveraile Publishing.",
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Refund Policy & Satisfaction Guarantee",
+  description: "Official 14-day refund policy and satisfaction guarantee for digital books and online cloud library access at Noveraile Publishing.",
+  alternates: {
+    canonical: `${siteConfig.url}/refunds`,
+  },
+  openGraph: {
+    title: "Refund Policy | Noveraile Publishing",
+    description: "Official 14-day refund policy and satisfaction guarantee at Noveraile Publishing.",
+    url: `${siteConfig.url}/refunds`,
+    type: "website",
+    images: [
+      {
+        url: "/logo-square.png",
+        width: 1024,
+        height: 1024,
+        alt: "Noveraile Refund Policy",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Refund Policy | Noveraile Publishing",
+    description: "Official 14-day refund policy and satisfaction guarantee at Noveraile Publishing.",
+    images: ["/logo-square.png"],
+  },
 };
 
 export default function RefundsPage() {

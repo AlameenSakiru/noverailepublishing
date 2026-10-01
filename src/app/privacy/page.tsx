@@ -1,9 +1,34 @@
 import React from "react";
 import { siteConfig } from "@/lib/config";
 
-export const metadata = {
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "Privacy and data protection policy for Noveraile Publishing.",
+  description: "Privacy and personal data protection policy for Noveraile Publishing under GDPR and international consumer privacy frameworks.",
+  alternates: {
+    canonical: `${siteConfig.url}/privacy`,
+  },
+  openGraph: {
+    title: "Privacy Policy | Noveraile Publishing",
+    description: "Privacy and personal data protection policy for Noveraile Publishing.",
+    url: `${siteConfig.url}/privacy`,
+    type: "website",
+    images: [
+      {
+        url: "/logo-square.png",
+        width: 1024,
+        height: 1024,
+        alt: "Noveraile Privacy Policy",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Privacy Policy | Noveraile Publishing",
+    description: "Privacy and personal data protection policy for Noveraile Publishing.",
+    images: ["/logo-square.png"],
+  },
 };
 
 export default function PrivacyPage() {

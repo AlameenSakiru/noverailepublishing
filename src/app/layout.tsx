@@ -16,7 +16,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const settings = await getStorefrontSettings();
   const siteName = settings.siteName || siteConfig.name;
   const tagline = settings.siteTagline || siteConfig.tagline;
-  const description = settings.siteSubTagline || siteConfig.subTagline;
+  const description =
+    "Independent digital publisher of exam prep, fiction, travel and business books. Buy direct, read securely in your browser, and keep every title in your personal library.";
   const siteUrl = siteConfig.url;
 
   return {
@@ -25,15 +26,6 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s | ${siteName}`,
     },
     description,
-    keywords: [
-      "digital publishing",
-      "exam prep books",
-      "PTCB study guide",
-      "NCLEX practice questions",
-      "independent bookstore",
-      "protected online reader",
-      siteName.toLowerCase(),
-    ],
     authors: [{ name: siteName, url: siteUrl }],
     creator: siteName,
     publisher: siteName,
@@ -45,7 +37,7 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       locale: "en_US",
       url: siteUrl,
-      title: `${siteName} — ${tagline}`,
+      title: `${siteName} | ${tagline}`,
       description,
       siteName,
       images: [
@@ -69,8 +61,8 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: siteName,
-      description: tagline,
+      title: `${siteName} | ${tagline}`,
+      description,
     },
     verification: {
       google: "WNk5Oc4mfX_vzXBxGGKaA-ibTfUgOTwwLTFRheM5YNs",

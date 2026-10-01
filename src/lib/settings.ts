@@ -106,11 +106,11 @@ export async function getStorefrontSettings(): Promise<StorefrontData> {
     siteTagline:
       dbSettings.NEXT_PUBLIC_SITE_TAGLINE ||
       process.env.NEXT_PUBLIC_SITE_TAGLINE ||
-      "Books built for where you're going next.",
+      "Exam Prep, Fiction, Travel & More",
     siteSubTagline:
       dbSettings.NEXT_PUBLIC_SITE_SUBTAGLINE ||
       process.env.NEXT_PUBLIC_SITE_SUBTAGLINE ||
-      "Authoritative publications across professional certification prep, literature, travel, and strategic leadership. Read instantly in your browser on any device — zero apps or downloads required.",
+      "Independent digital books across exam prep, fiction, travel and business. Buy once, read securely in your browser, and keep them in your personal library.",
     contactEmail:
       dbSettings.NEXT_PUBLIC_CONTACT_EMAIL ||
       process.env.NEXT_PUBLIC_CONTACT_EMAIL ||

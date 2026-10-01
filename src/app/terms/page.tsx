@@ -1,9 +1,34 @@
 import React from "react";
 import { siteConfig } from "@/lib/config";
 
-export const metadata = {
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
   title: "Terms of Service",
   description: "Terms of service and digital reading access license agreement for Noveraile Publishing.",
+  alternates: {
+    canonical: `${siteConfig.url}/terms`,
+  },
+  openGraph: {
+    title: "Terms of Service | Noveraile Publishing",
+    description: "Terms of service and digital reading access license agreement for Noveraile Publishing.",
+    url: `${siteConfig.url}/terms`,
+    type: "website",
+    images: [
+      {
+        url: "/logo-square.png",
+        width: 1024,
+        height: 1024,
+        alt: "Noveraile Terms of Service",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Terms of Service | Noveraile Publishing",
+    description: "Terms of service and digital reading access license agreement for Noveraile Publishing.",
+    images: ["/logo-square.png"],
+  },
 };
 
 export default function TermsPage() {
