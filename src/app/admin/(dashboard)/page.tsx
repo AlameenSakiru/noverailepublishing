@@ -33,8 +33,8 @@ function buildGranularDatasets(
     }
   }
 
-  // Anchor date: if orders exist, use latest order; otherwise use current real-time date
-  const anchorDate = orders.length > 0 ? new Date(orders[0].createdAt) : new Date();
+  // Anchor date: Always anchor to the current real-time date (today) so that days advance dynamically every calendar day
+  const anchorDate = new Date();
   const anchorYear = anchorDate.getUTCFullYear();
 
   // 1. Daily 7D
@@ -62,7 +62,6 @@ function buildGranularDatasets(
       }),
       royalties: Number(royalties.toFixed(2)),
       units,
-      pages: units * 145,
     });
   }
 
@@ -91,7 +90,6 @@ function buildGranularDatasets(
       }),
       royalties: Number(royalties.toFixed(2)),
       units,
-      pages: units * 145,
     });
   }
 
@@ -113,7 +111,6 @@ function buildGranularDatasets(
       fullTitle: `${monthFulls[idx]} ${anchorYear}`,
       royalties: Number(royalties.toFixed(2)),
       units,
-      pages: units * 145,
     };
   });
 
@@ -129,7 +126,6 @@ function buildGranularDatasets(
       fullTitle: `Fiscal Year ${y}`,
       royalties: Number(royalties.toFixed(2)),
       units,
-      pages: units * 145,
     };
   });
 

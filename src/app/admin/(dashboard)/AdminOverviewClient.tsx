@@ -52,7 +52,6 @@ export interface ChartDataPoint {
   fullTitle: string;
   royalties: number;
   units: number;
-  pages: number;
 }
 
 export interface BookDataset {
@@ -123,8 +122,8 @@ export function AdminOverviewClient({
   // Day Range sub-filter: "7d" | "14d"
   const [dayRange, setDayRange] = useState<"7d" | "14d">("7d");
 
-  // KDP Metric Tab: "royalties" | "units" | "pages"
-  const [metricTab, setMetricTab] = useState<"royalties" | "units" | "pages">("royalties");
+  // Metric Tab: "royalties" | "units"
+  const [metricTab, setMetricTab] = useState<"royalties" | "units">("royalties");
 
   // Title selector filter
   const [selectedBookId, setSelectedBookId] = useState<string>("ALL");
@@ -161,7 +160,6 @@ export function AdminOverviewClient({
       ...item,
       royalties: Number((item.royalties * ratio).toFixed(2)),
       units: Math.round(item.units * ratio),
-      pages: Math.round(item.pages * ratio),
     }));
   }, [
     selectedBookId,
@@ -179,16 +177,11 @@ export function AdminOverviewClient({
   // Active period totals (calculated dynamically from active dataset)
   const totalRoyalties = activeDataset.reduce((sum, d) => sum + d.royalties, 0);
   const totalUnits = activeDataset.reduce((sum, d) => sum + d.units, 0);
-  const totalPages = activeDataset.reduce((sum, d) => sum + d.pages, 0);
 
   // Dynamic Y-Axis scale calculation
   const maxRawValue = Math.max(
     ...activeDataset.map((d) =>
-      metricTab === "royalties"
-        ? d.royalties
-        : metricTab === "units"
-        ? d.units
-        : d.pages
+      metricTab === "royalties" ? d.royalties : d.units
     )
   );
 
@@ -198,10 +191,6 @@ export function AdminOverviewClient({
     if (metricTab === "royalties") {
       if (val >= 1000) return `$${(val / 1000).toFixed(1)}k`;
       return `$${Math.round(val)}`;
-    }
-    if (metricTab === "pages") {
-      if (val >= 1000) return `${Math.round(val / 1000)}k`;
-      return `${Math.round(val)}`;
     }
     return `${Math.round(val)}`;
   };
@@ -399,8 +388,8 @@ export function AdminOverviewClient({
           </div>
         </div>
 
-        {/* KDP Metric Tabs (The Famous KDP Top Bar) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 border-b border-gray-200 divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
+        {/* Metric Tabs (Royalties and Units) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 border-b border-gray-200 divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
           {/* Tab 1: Net Royalties */}
           <button
             onClick={() => setMetricTab("royalties")}
@@ -451,33 +440,6 @@ export function AdminOverviewClient({
               Full digital edition downloads
             </div>
           </button>
-
-          {/* Tab 3: Cloud Pages Read */}
-          <button
-            onClick={() => setMetricTab("pages")}
-            className={`p-4 sm:p-5 text-left transition-all relative ${
-              metricTab === "pages"
-                ? "bg-amber-50/40"
-                : "hover:bg-gray-50"
-            }`}
-          >
-            {metricTab === "pages" && (
-              <span className="absolute top-0 left-0 right-0 h-1 bg-[#FF9900]" />
-            )}
-            <div className="text-xs font-semibold text-gray-600 flex items-center justify-between">
-              <span>Cloud Reader Pages Read</span>
-              <BookOpen className="w-4 h-4 text-amber-600" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-gray-900 font-mono mt-1">
-              {formatCount(totalPages)}{" "}
-              <span className="text-sm font-sans font-normal text-gray-500">
-                pages
-              </span>
-            </div>
-            <div className="text-[11px] text-gray-500 mt-0.5">
-              Active browser reader engagement
-            </div>
-          </button>
         </div>
 
         {/* KDP Chart Body with Y-Axis & Horizontal Guidelines */}
@@ -509,9 +471,7 @@ export function AdminOverviewClient({
                   const val =
                     metricTab === "royalties"
                       ? item.royalties
-                      : metricTab === "units"
-                      ? item.units
-                      : item.pages;
+                      : item.units;
 
                   const heightPercent =
                     val === 0 ? 0 : Math.max(5, Math.round((val / yCeiling) * 100));
@@ -532,9 +492,7 @@ export function AdminOverviewClient({
                             {item.fullTitle}
                           </div>
                           <div className="font-mono text-[#FF9900] font-bold text-sm">
-                            {metricTab === "royalties" && `$${formatCurrency(item.royalties)}`}
-                            {metricTab === "units" && `${formatCount(item.units)} units`}
-                            {metricTab === "pages" && `${formatCount(item.pages)} pages`}
+                            {metricTab === "royalties" ? `$${formatCurrency(item.royalties)}` : `${formatCount(item.units)} units`}
                           </div>
                           <div className="text-[10px] text-gray-400 mt-0.5">
                             {item.units} {item.units === 1 ? "copy" : "copies"} • ${formatCurrency(item.royalties)} volume
@@ -590,9 +548,7 @@ export function AdminOverviewClient({
                 <span>
                   {metricTab === "royalties"
                     ? "Net Royalties ($ USD)"
-                    : metricTab === "units"
-                    ? "Paid Digital Copies"
-                    : "Cloud Reader Pages Read"}
+                    : "Paid Digital Copies"}
                 </span>
               </span>
               <span className="text-gray-400">•</span>
