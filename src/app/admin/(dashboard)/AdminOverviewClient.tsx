@@ -54,11 +54,24 @@ export interface ChartDataPoint {
   units: number;
 }
 
+export interface QuickSalesSummary {
+  today: { royalties: number; units: number };
+  yesterday: { royalties: number; units: number };
+  thisMonth: { royalties: number; units: number; monthName: string };
+  last7Days: { royalties: number; units: number };
+  last14Days: { royalties: number; units: number };
+  lifetime: { royalties: number; units: number };
+}
+
 export interface BookDataset {
+  dailyToday: ChartDataPoint[];
+  dailyYesterday: ChartDataPoint[];
   daily7d: ChartDataPoint[];
   daily14d: ChartDataPoint[];
+  thisMonthDaily: ChartDataPoint[];
   monthly: ChartDataPoint[];
   yearly: ChartDataPoint[];
+  quickSummary: QuickSalesSummary;
 }
 
 // Deterministic formatters to prevent SSR/hydration locale mismatches
@@ -94,8 +107,12 @@ interface OverviewProps {
   recentOrders: OrderItem[];
   recentEntitlements: EntitlementItem[];
   topBooks: BookLeaderboardItem[];
+  initialQuickSummary: QuickSalesSummary;
+  initialDailyToday: ChartDataPoint[];
+  initialDailyYesterday: ChartDataPoint[];
   initialDaily7d: ChartDataPoint[];
   initialDaily14d: ChartDataPoint[];
+  initialThisMonthDaily: ChartDataPoint[];
   initialMonthly: ChartDataPoint[];
   initialYearly: ChartDataPoint[];
   bookDatasets?: Record<string, BookDataset>;
@@ -110,8 +127,12 @@ export function AdminOverviewClient({
   totalReadersCount,
   recentOrders,
   topBooks,
+  initialQuickSummary,
+  initialDailyToday,
+  initialDailyYesterday,
   initialDaily7d,
   initialDaily14d,
+  initialThisMonthDaily,
   initialMonthly,
   initialYearly,
   bookDatasets,
@@ -119,8 +140,8 @@ export function AdminOverviewClient({
   // Granularity View: "day" | "month" | "year"
   const [viewMode, setViewMode] = useState<"day" | "month" | "year">("day");
 
-  // Day Range sub-filter: "7d" | "14d"
-  const [dayRange, setDayRange] = useState<"7d" | "14d">("7d");
+  // Day Range sub-filter: "today" | "yesterday" | "7d" | "14d" | "thisMonth"
+  const [dayRange, setDayRange] = useState<"today" | "yesterday" | "7d" | "14d" | "thisMonth">("7d");
 
   // Metric Tab: "royalties" | "units"
   const [metricTab, setMetricTab] = useState<"royalties" | "units">("royalties");
@@ -132,13 +153,25 @@ export function AdminOverviewClient({
   // Recent Orders Filter
   const [orderFilter, setOrderFilter] = useState<"ALL" | "PAID" | "PENDING">("ALL");
 
+  // Active Amazon KDP Quick Summary (recalculates dynamically if a book is filtered)
+  const activeQuickSummary: QuickSalesSummary = React.useMemo(() => {
+    if (selectedBookId !== "ALL" && bookDatasets && bookDatasets[selectedBookId]) {
+      return bookDatasets[selectedBookId].quickSummary;
+    }
+    return initialQuickSummary;
+  }, [selectedBookId, bookDatasets, initialQuickSummary]);
+
   // Determine active dataset based on viewMode, range & selectedBookId
   const activeDataset: ChartDataPoint[] = React.useMemo(() => {
     if (selectedBookId !== "ALL" && bookDatasets && bookDatasets[selectedBookId]) {
       const bookData = bookDatasets[selectedBookId];
       if (viewMode === "year") return bookData.yearly;
       if (viewMode === "month") return bookData.monthly;
-      return dayRange === "7d" ? bookData.daily7d : bookData.daily14d;
+      if (dayRange === "today") return bookData.dailyToday;
+      if (dayRange === "yesterday") return bookData.dailyYesterday;
+      if (dayRange === "14d") return bookData.daily14d;
+      if (dayRange === "thisMonth") return bookData.thisMonthDaily;
+      return bookData.daily7d;
     }
 
     const rawDataset =
@@ -146,9 +179,15 @@ export function AdminOverviewClient({
         ? initialYearly
         : viewMode === "month"
         ? initialMonthly
-        : dayRange === "7d"
-        ? initialDaily7d
-        : initialDaily14d;
+        : dayRange === "today"
+        ? initialDailyToday
+        : dayRange === "yesterday"
+        ? initialDailyYesterday
+        : dayRange === "14d"
+        ? initialDaily14d
+        : dayRange === "thisMonth"
+        ? initialThisMonthDaily
+        : initialDaily7d;
 
     if (selectedBookId === "ALL") return rawDataset;
 
@@ -168,8 +207,11 @@ export function AdminOverviewClient({
     bookDatasets,
     initialYearly,
     initialMonthly,
+    initialDailyToday,
+    initialDailyYesterday,
     initialDaily7d,
     initialDaily14d,
+    initialThisMonthDaily,
     topBooks,
     grossRevenue,
   ]);
@@ -280,6 +322,100 @@ export function AdminOverviewClient({
         </div>
       </div>
 
+      {/* 2.5 AMAZON KDP SALES SNAPSHOT (Today, Yesterday, This Month, Last 7 Days) */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+            KDP Sales Snapshot
+          </span>
+          <span className="text-[11px] text-gray-400">
+            Click any period to view on chart
+          </span>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* Today */}
+          <button
+            onClick={() => { setViewMode("day"); setDayRange("today"); }}
+            className={`p-4 rounded-xl border text-left transition-all ${
+              viewMode === "day" && dayRange === "today"
+                ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/30 shadow-xs"
+                : "bg-white border-gray-200 hover:border-gray-300 shadow-2xs"
+            }`}
+          >
+            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              <span>Today</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500" title="Real-time" />
+            </div>
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 mt-1">
+              ${formatCurrency(activeQuickSummary.today.royalties)}
+            </div>
+            <div className="text-[11px] text-gray-500 mt-0.5">
+              {formatCount(activeQuickSummary.today.units)} {activeQuickSummary.today.units === 1 ? "unit" : "units"} ordered
+            </div>
+          </button>
+
+          {/* Yesterday */}
+          <button
+            onClick={() => { setViewMode("day"); setDayRange("yesterday"); }}
+            className={`p-4 rounded-xl border text-left transition-all ${
+              viewMode === "day" && dayRange === "yesterday"
+                ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/30 shadow-xs"
+                : "bg-white border-gray-200 hover:border-gray-300 shadow-2xs"
+            }`}
+          >
+            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              Yesterday
+            </div>
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 mt-1">
+              ${formatCurrency(activeQuickSummary.yesterday.royalties)}
+            </div>
+            <div className="text-[11px] text-gray-500 mt-0.5">
+              {formatCount(activeQuickSummary.yesterday.units)} {activeQuickSummary.yesterday.units === 1 ? "unit" : "units"} ordered
+            </div>
+          </button>
+
+          {/* This Month */}
+          <button
+            onClick={() => { setViewMode("day"); setDayRange("thisMonth"); }}
+            className={`p-4 rounded-xl border text-left transition-all ${
+              viewMode === "day" && dayRange === "thisMonth"
+                ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/30 shadow-xs"
+                : "bg-white border-gray-200 hover:border-gray-300 shadow-2xs"
+            }`}
+          >
+            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              This Month ({activeQuickSummary.thisMonth.monthName})
+            </div>
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 mt-1">
+              ${formatCurrency(activeQuickSummary.thisMonth.royalties)}
+            </div>
+            <div className="text-[11px] text-gray-500 mt-0.5">
+              {formatCount(activeQuickSummary.thisMonth.units)} {activeQuickSummary.thisMonth.units === 1 ? "unit" : "units"} ordered
+            </div>
+          </button>
+
+          {/* Last 7 Days */}
+          <button
+            onClick={() => { setViewMode("day"); setDayRange("7d"); }}
+            className={`p-4 rounded-xl border text-left transition-all ${
+              viewMode === "day" && dayRange === "7d"
+                ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/30 shadow-xs"
+                : "bg-white border-gray-200 hover:border-gray-300 shadow-2xs"
+            }`}
+          >
+            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              Last 7 Days
+            </div>
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 mt-1">
+              ${formatCurrency(activeQuickSummary.last7Days.royalties)}
+            </div>
+            <div className="text-[11px] text-gray-500 mt-0.5">
+              {formatCount(activeQuickSummary.last7Days.units)} {activeQuickSummary.last7Days.units === 1 ? "unit" : "units"} ordered
+            </div>
+          </button>
+        </div>
+      </div>
+
       {/* 3. AMAZON KDP SALES & ROYALTIES CARD */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         {/* KDP Top Filter Controls Bar */}
@@ -332,6 +468,26 @@ export function AdminOverviewClient({
                 </label>
                 <div className="inline-flex items-center bg-white border border-gray-300 rounded-lg p-0.5 shadow-2xs">
                   <button
+                    onClick={() => setDayRange("today")}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                      dayRange === "today"
+                        ? "bg-gray-200 text-gray-900 font-bold"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    onClick={() => setDayRange("yesterday")}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                      dayRange === "yesterday"
+                        ? "bg-gray-200 text-gray-900 font-bold"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    Yesterday
+                  </button>
+                  <button
                     onClick={() => setDayRange("7d")}
                     className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
                       dayRange === "7d"
@@ -350,6 +506,16 @@ export function AdminOverviewClient({
                     }`}
                   >
                     14 Days
+                  </button>
+                  <button
+                    onClick={() => setDayRange("thisMonth")}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                      dayRange === "thisMonth"
+                        ? "bg-gray-200 text-gray-900 font-bold"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    This Month
                   </button>
                 </div>
               </div>
@@ -381,7 +547,17 @@ export function AdminOverviewClient({
               Active Scope
             </span>
             <span className="text-xs font-semibold text-gray-700 font-mono">
-              {viewMode === "day" && (dayRange === "7d" ? "Last 7 Days (Daily)" : "Last 14 Days (Daily)")}
+              {viewMode === "day" && (
+                dayRange === "today"
+                  ? "Today (Real-Time)"
+                  : dayRange === "yesterday"
+                  ? "Yesterday"
+                  : dayRange === "7d"
+                  ? "Last 7 Days (Daily)"
+                  : dayRange === "14d"
+                  ? "Last 14 Days (Daily)"
+                  : `This Month (${activeQuickSummary.thisMonth.monthName} MTD)`
+              )}
               {viewMode === "month" && `Calendar Year ${initialMonthly[0]?.subLabel || "2026"} (Monthly)`}
               {viewMode === "year" && `Multi-Year Trajectory (${initialYearly[0]?.label || "2024"} - ${initialYearly[initialYearly.length - 1]?.label || "2027"})`}
             </span>
@@ -410,7 +586,21 @@ export function AdminOverviewClient({
               ${formatCurrency(totalRoyalties)}
             </div>
             <div className="text-[11px] text-gray-500 mt-0.5">
-              Net digital book sales ({viewMode === "day" ? (dayRange === "7d" ? "last 7 days" : "last 14 days") : viewMode === "month" ? `${initialMonthly[0]?.subLabel || "2026"} YTD` : "multi-year"})
+              Net digital book sales ({
+                viewMode === "day"
+                  ? dayRange === "today"
+                    ? "today"
+                    : dayRange === "yesterday"
+                    ? "yesterday"
+                    : dayRange === "7d"
+                    ? "last 7 days"
+                    : dayRange === "14d"
+                    ? "last 14 days"
+                    : `${activeQuickSummary.thisMonth.monthName} MTD`
+                  : viewMode === "month"
+                  ? `${initialMonthly[0]?.subLabel || "2026"} YTD`
+                  : "multi-year"
+              })
             </div>
           </button>
 
@@ -474,7 +664,7 @@ export function AdminOverviewClient({
                       : item.units;
 
                   const heightPercent =
-                    val === 0 ? 0 : Math.max(5, Math.round((val / yCeiling) * 100));
+                    val === 0 ? 0 : Math.max(8, Math.round((val / yCeiling) * 100));
 
                   const isHovered = hoveredIndex === idx;
 
@@ -485,6 +675,25 @@ export function AdminOverviewClient({
                       onMouseLeave={() => setHoveredIndex(null)}
                       className="flex-1 h-full flex flex-col justify-end items-center group cursor-pointer relative px-0.5 sm:px-1"
                     >
+                      {/* Daily Earnings Pill directly above each bar */}
+                      <div className="mb-1 text-center transition-all select-none">
+                        {val > 0 ? (
+                          <span
+                            className={`inline-block text-[10px] sm:text-[11px] font-mono font-bold px-1.5 py-0.5 rounded shadow-2xs transition-colors ${
+                              isHovered
+                                ? "bg-gray-900 text-[#FF9900]"
+                                : "bg-amber-100 text-amber-950 border border-amber-300/80 font-bold"
+                            }`}
+                          >
+                            {metricTab === "royalties" ? `$${formatCurrency(val)}` : formatCount(val)}
+                          </span>
+                        ) : (
+                          <span className="inline-block text-[10px] font-mono text-gray-300">
+                            {metricTab === "royalties" ? "$0" : "0"}
+                          </span>
+                        )}
+                      </div>
+
                       {/* KDP Hover Tooltip */}
                       {isHovered && (
                         <div className="absolute -top-16 z-30 bg-gray-900 text-white rounded-lg p-2.5 shadow-xl text-[11px] whitespace-nowrap pointer-events-none transform -translate-y-1">
@@ -508,7 +717,11 @@ export function AdminOverviewClient({
                             ? "max-w-[64px]"
                             : viewMode === "month"
                             ? "max-w-[28px]"
-                            : "max-w-[34px]"
+                            : activeDataset.length <= 2
+                            ? "max-w-[96px]"
+                            : activeDataset.length <= 7
+                            ? "max-w-[48px]"
+                            : "max-w-[28px]"
                         } rounded-t transition-all ${
                           val === 0
                             ? "bg-transparent border-t border-dashed border-gray-300"

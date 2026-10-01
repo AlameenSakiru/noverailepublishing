@@ -2,7 +2,7 @@ import React from "react";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { AdminOverviewClient, ChartDataPoint, BookDataset } from "./AdminOverviewClient";
+import { AdminOverviewClient, ChartDataPoint, BookDataset, QuickSalesSummary } from "./AdminOverviewClient";
 
 export const dynamic = "force-dynamic";
 
@@ -36,12 +36,18 @@ function buildGranularDatasets(
   // Anchor date: Always anchor to the current real-time date (today) so that days advance dynamically every calendar day
   const anchorDate = new Date();
   const anchorYear = anchorDate.getUTCFullYear();
+  const anchorMonth = anchorDate.getUTCMonth();
 
-  // 1. Daily 7D
-  const daily7d: ChartDataPoint[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(anchorDate);
-    d.setUTCDate(d.getUTCDate() - i);
+  const yesterdayDate = new Date(anchorDate);
+  yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+
+  const monthShorts = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthFulls = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+
+  const createPoint = (d: Date): ChartDataPoint => {
     const dateStr = d.toISOString().slice(0, 10);
     const matches = relevantItems.filter(
       (it) => it.createdAt.toISOString().slice(0, 10) === dateStr
@@ -50,7 +56,7 @@ function buildGranularDatasets(
     const units = matches.length;
     const dayName = d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
     const monthDay = d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-    daily7d.push({
+    return {
       label: monthDay,
       subLabel: dayName,
       fullTitle: d.toLocaleDateString("en-US", {
@@ -62,43 +68,41 @@ function buildGranularDatasets(
       }),
       royalties: Number(royalties.toFixed(2)),
       units,
-    });
+    };
+  };
+
+  // 1. Today
+  const dailyToday: ChartDataPoint[] = [createPoint(anchorDate)];
+
+  // 2. Yesterday
+  const dailyYesterday: ChartDataPoint[] = [createPoint(yesterdayDate)];
+
+  // 3. Daily 7D (last 7 days ending today)
+  const daily7d: ChartDataPoint[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(anchorDate);
+    d.setUTCDate(d.getUTCDate() - i);
+    daily7d.push(createPoint(d));
   }
 
-  // 2. Daily 14D
+  // 4. Daily 14D (last 14 days ending today)
   const daily14d: ChartDataPoint[] = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date(anchorDate);
     d.setUTCDate(d.getUTCDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
-    const matches = relevantItems.filter(
-      (it) => it.createdAt.toISOString().slice(0, 10) === dateStr
-    );
-    const royalties = matches.reduce((s, it) => s + it.price, 0);
-    const units = matches.length;
-    const dayName = d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
-    const monthDay = d.toLocaleDateString("en-US", { month: "numeric", day: "numeric", timeZone: "UTC" });
-    daily14d.push({
-      label: monthDay,
-      subLabel: dayName,
-      fullTitle: d.toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        timeZone: "UTC",
-      }),
-      royalties: Number(royalties.toFixed(2)),
-      units,
-    });
+    daily14d.push(createPoint(d));
   }
 
-  // 3. Monthly (12 Months of Active Year)
-  const monthShorts = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const monthFulls = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-  ];
+  // 5. This Month Daily (Month to Date, at least 7 days or up to current day)
+  const thisMonthDaily: ChartDataPoint[] = [];
+  const currentDayOfMonth = anchorDate.getUTCDate();
+  const daysToShow = Math.max(currentDayOfMonth, 7);
+  for (let day = 1; day <= daysToShow; day++) {
+    const d = new Date(Date.UTC(anchorYear, anchorMonth, day));
+    thisMonthDaily.push(createPoint(d));
+  }
+
+  // 6. Monthly (12 Months of Active Year)
   const monthly: ChartDataPoint[] = monthShorts.map((m, idx) => {
     const matches = relevantItems.filter(
       (it) => it.createdAt.getUTCFullYear() === anchorYear && it.createdAt.getUTCMonth() === idx
@@ -114,7 +118,7 @@ function buildGranularDatasets(
     };
   });
 
-  // 4. Yearly (4-Year Window)
+  // 7. Yearly (4-Year Window)
   const years = [anchorYear - 2, anchorYear - 1, anchorYear, anchorYear + 1];
   const yearly: ChartDataPoint[] = years.map((y) => {
     const matches = relevantItems.filter((it) => it.createdAt.getUTCFullYear() === y);
@@ -129,7 +133,61 @@ function buildGranularDatasets(
     };
   });
 
-  return { daily7d, daily14d, monthly, yearly };
+  // 8. Quick Amazon KDP Snapshot Summaries
+  const todayPoint = dailyToday[0];
+  const yesterdayPoint = dailyYesterday[0];
+
+  const thisMonthMatches = relevantItems.filter(
+    (it) => it.createdAt.getUTCFullYear() === anchorYear && it.createdAt.getUTCMonth() === anchorMonth
+  );
+  const thisMonthRoyalties = thisMonthMatches.reduce((s, it) => s + it.price, 0);
+
+  const last7dRoyalties = daily7d.reduce((s, it) => s + it.royalties, 0);
+  const last7dUnits = daily7d.reduce((s, it) => s + it.units, 0);
+
+  const last14dRoyalties = daily14d.reduce((s, it) => s + it.royalties, 0);
+  const last14dUnits = daily14d.reduce((s, it) => s + it.units, 0);
+
+  const lifetimeRoyalties = relevantItems.reduce((s, it) => s + it.price, 0);
+
+  const quickSummary: QuickSalesSummary = {
+    today: {
+      royalties: todayPoint.royalties,
+      units: todayPoint.units,
+    },
+    yesterday: {
+      royalties: yesterdayPoint.royalties,
+      units: yesterdayPoint.units,
+    },
+    thisMonth: {
+      royalties: Number(thisMonthRoyalties.toFixed(2)),
+      units: thisMonthMatches.length,
+      monthName: monthFulls[anchorMonth],
+    },
+    last7Days: {
+      royalties: Number(last7dRoyalties.toFixed(2)),
+      units: last7dUnits,
+    },
+    last14Days: {
+      royalties: Number(last14dRoyalties.toFixed(2)),
+      units: last14dUnits,
+    },
+    lifetime: {
+      royalties: Number(lifetimeRoyalties.toFixed(2)),
+      units: relevantItems.length,
+    },
+  };
+
+  return {
+    dailyToday,
+    dailyYesterday,
+    daily7d,
+    daily14d,
+    thisMonthDaily,
+    monthly,
+    yearly,
+    quickSummary,
+  };
 }
 
 export default async function AdminDashboardPage() {
@@ -259,8 +317,12 @@ export default async function AdminDashboardPage() {
       recentOrders={formattedRecentOrders}
       recentEntitlements={formattedRecentEntitlements}
       topBooks={topBooks}
+      initialQuickSummary={allTitlesDatasets.quickSummary}
+      initialDailyToday={allTitlesDatasets.dailyToday}
+      initialDailyYesterday={allTitlesDatasets.dailyYesterday}
       initialDaily7d={allTitlesDatasets.daily7d}
       initialDaily14d={allTitlesDatasets.daily14d}
+      initialThisMonthDaily={allTitlesDatasets.thisMonthDaily}
       initialMonthly={allTitlesDatasets.monthly}
       initialYearly={allTitlesDatasets.yearly}
       bookDatasets={bookDatasets}
