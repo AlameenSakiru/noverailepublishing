@@ -152,7 +152,7 @@ export default async function BookDetailPage({ params }: BookPageProps) {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
+    <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-8 md:py-14">
       {/* Search Engine JSON-LD */}
       <script
         type="application/ld+json"

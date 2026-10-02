@@ -274,9 +274,9 @@ export function BookDetailClient({
   };
 
   return (
-    <div className="space-y-16">
+    <div className="space-y-8 sm:space-y-12 lg:space-y-16">
       {/* 1. Top Breadcrumb & Share Action */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs font-sans text-brand-muted pb-4 border-b border-brand-border">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-4 text-xs font-sans text-brand-muted pb-3 sm:pb-4 border-b border-brand-border">
         <div className="flex items-center gap-2 flex-wrap">
           <Link href="/books" className="hover:text-brand-ink transition-colors">
             Books
@@ -294,7 +294,7 @@ export function BookDetailClient({
 
         <button
           onClick={handleShare}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border hover:bg-brand-50 text-brand-slate hover:text-brand-ink transition-colors text-xs"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border hover:bg-brand-50 text-brand-slate hover:text-brand-ink transition-colors text-xs self-start md:self-auto"
         >
           <Share2 className="w-3.5 h-3.5" />
           <span>{copied ? "Link Copied!" : "Share Publication"}</span>
@@ -302,12 +302,12 @@ export function BookDetailClient({
       </div>
 
       {/* 2. Main Book Stage & High-Converting Amazon Buy Box */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-14 items-start">
         {/* Left Column: 3D Book Art & Sample Preview */}
         <div className="lg:col-span-5 flex flex-col items-center">
-          <div className="relative w-full max-w-sm rounded-3xl bg-gradient-to-b from-[#fbf9f5] via-[#f7f2e8] to-[#eee7d8] p-6 sm:p-8 flex items-center justify-center border border-brand-border/80 shadow-md min-h-[440px]">
+          <div className="relative w-full max-w-[260px] sm:max-w-sm rounded-2xl sm:rounded-3xl bg-gradient-to-b from-[#fbf9f5] via-[#f7f2e8] to-[#eee7d8] p-3.5 sm:p-6 lg:p-8 flex items-center justify-center border border-brand-border/80 shadow-xs sm:shadow-md min-h-[220px] sm:min-h-[340px] lg:min-h-[440px]">
             {/* 3D Tactile Book Presentation (Adapts naturally to ANY trim size: 8.5x11, 6x9, 5x8, square, etc.) */}
-            <div className="relative inline-flex items-center justify-center max-h-[420px] max-w-[320px] rounded-md shadow-book-lg overflow-hidden bg-white border border-black/10 transform transition-transform duration-300 hover:scale-[1.02]">
+            <div className="relative inline-flex items-center justify-center max-h-[210px] sm:max-h-[320px] lg:max-h-[420px] max-w-[160px] sm:max-w-[240px] lg:max-w-[320px] rounded-md shadow-book-sm sm:shadow-book-lg overflow-hidden bg-white border border-black/10 transform transition-transform duration-300 hover:scale-[1.02]">
               {book.coverImage ? (
                 <Image
                   src={book.coverImage}
@@ -315,26 +315,26 @@ export function BookDetailClient({
                   width={800}
                   height={1100}
                   priority
-                  sizes="(max-width: 768px) 100vw, 400px"
-                  className="max-h-[420px] max-w-[320px] w-auto h-auto object-contain block"
+                  sizes="(max-width: 640px) 180px, (max-width: 1024px) 260px, 400px"
+                  className="max-h-[210px] sm:max-h-[320px] lg:max-h-[420px] max-w-[160px] sm:max-w-[240px] lg:max-w-[320px] w-auto h-auto object-contain block"
                 />
               ) : (
-                <div className="w-[240px] h-[360px] bg-gradient-to-br from-brand-navy to-brand-ink p-5 flex flex-col justify-between text-white">
+                <div className="w-[180px] sm:w-[240px] h-[260px] sm:h-[360px] bg-gradient-to-br from-brand-navy to-brand-ink p-4 sm:p-5 flex flex-col justify-between text-white">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-brand-300 block">
+                    <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-brand-300 block">
                       Noveraile Edition
                     </span>
-                    <p className="font-serif font-bold text-base mt-3 leading-tight">{book.title}</p>
+                    <p className="font-serif font-bold text-sm sm:text-base mt-2 sm:mt-3 leading-tight">{book.title}</p>
                   </div>
-                  <p className="text-xs text-gray-300 font-sans">{book.author.name}</p>
+                  <p className="text-[11px] sm:text-xs text-gray-300 font-sans">{book.author.name}</p>
                 </div>
               )}
               {/* Realistic spine edge lighting */}
-              <div className="absolute top-0 bottom-0 left-0 w-3 bg-gradient-to-r from-black/30 via-white/15 to-transparent pointer-events-none z-10" />
+              <div className="absolute top-0 bottom-0 left-0 w-2.5 sm:w-3 bg-gradient-to-r from-black/30 via-white/15 to-transparent pointer-events-none z-10" />
             </div>
 
             {hasDiscount && (
-              <span className="absolute top-4 right-4 px-3 py-1 bg-amber-500 text-brand-ink text-xs font-bold rounded-full shadow-sm">
+              <span className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-amber-500 text-brand-ink text-[10px] sm:text-xs font-bold rounded-full shadow-xs">
                 Save {discountPercent}%
               </span>
             )}
@@ -343,22 +343,22 @@ export function BookDetailClient({
           {/* Sample Preview Trigger Button */}
           <button
             onClick={() => setPreviewOpen(true)}
-            className="w-full max-w-sm mt-4 group relative inline-flex items-center justify-between px-5 py-3.5 rounded-xl border border-brand-300/80 bg-gradient-to-r from-brand-50 via-white to-brand-50 hover:from-brand-100 hover:to-brand-100 text-brand-ink text-xs font-semibold shadow-xs transition-all hover:shadow-md hover:border-brand-500"
+            className="w-full max-w-[260px] sm:max-w-sm mt-2.5 sm:mt-4 group relative inline-flex items-center justify-between px-3.5 sm:px-5 py-2 sm:py-3.5 rounded-xl border border-brand-300/80 bg-gradient-to-r from-brand-50 via-white to-brand-50 hover:from-brand-100 hover:to-brand-100 text-brand-ink text-xs font-semibold shadow-xs transition-all hover:shadow-md hover:border-brand-500"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-brand-100 group-hover:bg-brand-500 group-hover:text-white text-brand-700 flex items-center justify-center transition-colors shrink-0">
-                <BookOpen className="w-4 h-4" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand-100 group-hover:bg-brand-500 group-hover:text-white text-brand-700 flex items-center justify-center transition-colors shrink-0">
+                <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
               <div className="text-left">
-                <span className="font-serif text-sm font-bold block leading-tight text-brand-ink">
+                <span className="font-serif text-xs sm:text-sm font-bold block leading-tight text-brand-ink">
                   Look Inside
                 </span>
-                <span className="text-[11px] text-brand-muted font-normal block mt-0.5">
+                <span className="text-[10px] sm:text-[11px] text-brand-muted font-normal block mt-0.5">
                   Read Opening Excerpt ({previewPages.length} Pages)
                 </span>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-md text-[10px] font-sans font-bold bg-amber-100 text-amber-900 uppercase tracking-wider group-hover:bg-amber-200 transition-colors">
+            <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded text-[9px] sm:text-[10px] font-sans font-bold bg-amber-100 text-amber-900 uppercase tracking-wider group-hover:bg-amber-200 transition-colors">
               Free Excerpt
             </span>
           </button>
@@ -367,17 +367,17 @@ export function BookDetailClient({
         {/* Right Column: Title, Metadata, Ratings & Buy Box */}
         <div className="lg:col-span-7 flex flex-col">
           {/* Category & Imprint Badges */}
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <span className="px-2.5 py-1 rounded-md bg-brand-100 text-brand-800 text-[11px] font-semibold uppercase tracking-wider">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+            <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md bg-brand-100 text-brand-800 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider">
               {book.category.name}
             </span>
             {book.imprint && (
-              <span className="px-2.5 py-1 rounded-md bg-gray-100 text-gray-800 text-[11px] font-medium">
+              <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md bg-gray-100 text-gray-800 text-[10px] sm:text-[11px] font-medium">
                 Imprint: {book.imprint.name}
               </span>
             )}
             {book.examMetadata && (
-              <span className="px-2.5 py-1 rounded-md bg-amber-100 text-amber-950 text-[11px] font-bold flex items-center gap-1">
+              <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md bg-amber-100 text-amber-950 text-[10px] sm:text-[11px] font-bold flex items-center gap-1">
                 <GraduationCap className="w-3.5 h-3.5 text-amber-800" />
                 <span>{book.examMetadata.examAcronym}</span>
               </span>
@@ -385,19 +385,19 @@ export function BookDetailClient({
           </div>
 
           {/* Main Book Title */}
-          <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-brand-ink tracking-tight leading-[1.15]">
+          <h1 className="font-serif text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-brand-ink tracking-tight leading-snug sm:leading-[1.18]">
             {book.title}
           </h1>
 
           {/* Subtitle */}
           {book.subtitle && (
-            <p className="font-sans text-base sm:text-lg text-brand-slate mt-3 leading-relaxed font-light">
+            <p className="font-sans text-xs sm:text-sm md:text-base text-brand-slate mt-2 sm:mt-2.5 leading-relaxed font-normal">
               {book.subtitle}
             </p>
           )}
 
           {/* Author Byline & Rating Row (No link to author page) */}
-          <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-gray-100 text-sm">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-100 text-xs sm:text-sm">
             <span className="font-serif font-semibold text-brand-ink">
               By {book.author.name}
             </span>
@@ -422,10 +422,10 @@ export function BookDetailClient({
                       />
                     ))}
                   </div>
-                  <span className="text-xs font-semibold text-brand-slate group-hover:underline ml-1">
+                  <span className="text-xs font-semibold text-brand-slate group-hover:underline ml-0.5">
                     {averageRating.toFixed(1)}
                   </span>
-                  <span className="text-xs text-brand-muted">
+                  <span className="text-[11px] sm:text-xs text-brand-muted">
                     ({totalReviews} verified {totalReviews === 1 ? "rating" : "ratings"})
                   </span>
                 </a>
@@ -434,37 +434,37 @@ export function BookDetailClient({
           </div>
 
           {/* 3. Amazon-Style Sophisticated Buy Box */}
-          <div className="my-6 p-6 rounded-2xl bg-gradient-to-b from-white to-[#fcfbf9] border border-brand-border shadow-xs">
+          <div className="my-4 sm:my-6 p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-gradient-to-b from-white to-[#fcfbf9] border border-brand-border shadow-xs">
             {/* Format Selection Cards (Like Amazon Kindle vs Paperback) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-              <div className="p-3.5 rounded-xl border-2 border-brand-ink bg-white shadow-xs relative">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 mb-4 sm:mb-6">
+              <div className="p-3 sm:p-3.5 rounded-lg sm:rounded-xl border-2 border-brand-ink bg-white shadow-xs relative">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-brand-ink">Cloud Direct Edition</span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                  <span className="text-[11px] sm:text-xs font-bold text-brand-ink">Cloud Direct Edition</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] sm:text-[10px] font-bold">
                     Instant
                   </span>
                 </div>
-                <p className="text-[11px] text-brand-slate mt-1">
+                <p className="text-[10px] sm:text-[11px] text-brand-slate mt-1">
                   Protected In-Browser Reader • Multi-Device Sync
                 </p>
-                <div className="mt-2 text-sm font-bold text-brand-ink">
+                <div className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-bold text-brand-ink">
                   {formatPrice(activePrice)}
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl border border-brand-border bg-brand-50/50 opacity-90">
+              <div className="p-3 sm:p-3.5 rounded-lg sm:rounded-xl border border-brand-border bg-brand-50/50 opacity-90">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-brand-slate">
+                  <span className="text-[11px] sm:text-xs font-semibold text-brand-slate">
                     {isExamPrep ? "Digital Study Rights" : "Lifetime Access"}
                   </span>
-                  <span className="text-[10px] text-brand-muted">Included</span>
+                  <span className="text-[9px] sm:text-[10px] text-brand-muted">Included</span>
                 </div>
-                <p className="text-[11px] text-brand-muted mt-1">
+                <p className="text-[10px] sm:text-[11px] text-brand-muted mt-1">
                   {isExamPrep
                     ? "Official Blueprint Alignment & Study Edition"
                     : "Permanent Cloud Library & Future Errata"}
                 </p>
-                <div className="mt-2 text-xs font-semibold text-emerald-700">
+                <div className="mt-1.5 sm:mt-2 text-[11px] sm:text-xs font-semibold text-emerald-700">
                   Included Free with Purchase
                 </div>
               </div>
@@ -473,24 +473,24 @@ export function BookDetailClient({
             {/* Pricing Line */}
             {activePrice <= 0.001 ? (
               <div className="flex items-center gap-2.5 mb-2">
-                <span className="font-serif text-3xl sm:text-4xl font-extrabold text-emerald-800">
+                <span className="font-serif text-2xl sm:text-3xl font-extrabold text-emerald-800">
                   FREE
                 </span>
-                <span className="text-xs font-bold text-emerald-900 bg-emerald-100/90 px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-200">
+                <span className="text-[10px] sm:text-xs font-bold text-emerald-900 bg-emerald-100/90 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full uppercase tracking-wider border border-emerald-200">
                   Complimentary Publication
                 </span>
               </div>
             ) : (
-              <div className="flex items-baseline gap-3 mb-2">
-                <span className="font-serif text-3xl sm:text-4xl font-extrabold text-brand-ink">
+              <div className="flex items-baseline gap-2.5 sm:gap-3 mb-2">
+                <span className="font-serif text-2xl sm:text-3xl font-extrabold text-brand-ink">
                   {formatPrice(activePrice)}
                 </span>
                 {hasDiscount && (
                   <>
-                    <span className="text-base text-brand-muted line-through">
+                    <span className="text-xs sm:text-sm text-brand-muted line-through">
                       {formatPrice(book.price)}
                     </span>
-                    <span className="text-xs font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded">
+                    <span className="text-[11px] sm:text-xs font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded">
                       Save {formatPrice(discountAmount)} ({discountPercent}% OFF)
                     </span>
                   </>
@@ -503,38 +503,38 @@ export function BookDetailClient({
             </p>
 
             {/* Primary Action Buttons */}
-            <div className="space-y-3 mt-6">
+            <div className="space-y-2.5 sm:space-y-3 mt-4 sm:mt-6">
               {isUserOwned ? (
-                <div className="space-y-2.5">
+                <div className="space-y-2 sm:space-y-2.5">
                   <Link
                     href={`/reader/${book.slug}`}
-                    className="w-full flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm shadow-md transition-all active:scale-[0.99]"
+                    className="w-full flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm shadow-sm sm:shadow-md transition-all active:scale-[0.99]"
                   >
-                    <BookOpen className="w-5 h-5" />
+                    <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span>In Your Library • Continue Reading</span>
                   </Link>
 
                   <button
                     onClick={handleBuyAsGift}
-                    className="w-full py-3 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+                    className="w-full py-2.5 sm:py-3 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
                   >
-                    <Gift className="w-4 h-4 text-amber-700" />
+                    <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-700" />
                     <span>Send this book as a Gift to a Friend</span>
                   </button>
                 </div>
               ) : (
                 <>
-                  <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
                     <button
                       onClick={handleBuyNow}
-                      className={`flex-1 px-8 py-4 rounded-xl text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99] ${
+                      className={`flex-1 px-5 sm:px-8 py-3 sm:py-3.5 rounded-xl text-white font-semibold text-xs sm:text-sm shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 active:scale-[0.99] ${
                         activePrice <= 0.001
                           ? "bg-emerald-700 hover:bg-emerald-800 shadow-emerald-900/10"
                           : "bg-brand-ink hover:bg-brand-900"
                       }`}
                     >
                       {activePrice <= 0.001 ? (
-                        <Sparkles className="w-4 h-4 text-emerald-200" />
+                        <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-200" />
                       ) : null}
                       <span>
                         {activePrice <= 0.001
@@ -546,7 +546,7 @@ export function BookDetailClient({
                     <button
                       onClick={handleAddToCart}
                       disabled={inCart}
-                      className={`px-6 py-4 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-2 ${
+                      className={`px-4 sm:px-6 py-2.5 sm:py-3.5 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-2 ${
                         inCart
                           ? "bg-emerald-50 text-emerald-800 border-emerald-300 cursor-default"
                           : "bg-white text-brand-ink border-brand-border hover:bg-brand-100"
@@ -554,12 +554,12 @@ export function BookDetailClient({
                     >
                       {inCart ? (
                         <>
-                          <Check className="w-4 h-4 text-emerald-600" />
+                          <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
                           <span>In Your Cart</span>
                         </>
                       ) : (
                         <>
-                          <ShoppingBag className="w-4 h-4" />
+                          <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           <span>Add to Cart</span>
                         </>
                       )}
@@ -568,9 +568,9 @@ export function BookDetailClient({
 
                   <button
                     onClick={handleBuyAsGift}
-                    className="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 hover:from-amber-600 hover:to-amber-700 text-white font-semibold text-xs shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+                    className="w-full py-2.5 sm:py-3.5 px-4 sm:px-5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 hover:from-amber-600 hover:to-amber-700 text-white font-semibold text-xs shadow-2xs hover:shadow-sm transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
                   >
-                    <Gift className="w-4 h-4" />
+                    <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span>Buy as a Gift for Someone Else</span>
                   </button>
                 </>
@@ -578,38 +578,38 @@ export function BookDetailClient({
             </div>
 
             {/* Direct Guarantees Strip */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-brand-border/60 text-[11px] text-brand-slate">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mt-4 sm:mt-6 pt-4 sm:pt-5 border-t border-brand-border/60 text-[10px] sm:text-[11px] text-brand-slate">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0" />
                 <span>TLS / HTTPS Encrypted Checkout</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Smartphone className="w-4 h-4 text-brand-600 shrink-0" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-600 shrink-0" />
                 <span>Universal Multi-Device Cloud Sync</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 shrink-0" />
                 <span>{isExamPrep ? "Lifetime Updates & Free Revisions" : "Lifetime Cloud Library Access"}</span>
               </div>
             </div>
           </div>
 
           {/* Quick Specifications Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl border border-gray-100 text-center bg-white text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 p-3 sm:p-4 rounded-xl border border-gray-100 text-center bg-white text-[11px] sm:text-xs">
             <div>
-              <span className="text-gray-400 block text-[10px] uppercase font-semibold">Format</span>
+              <span className="text-gray-400 block text-[9px] sm:text-[10px] uppercase font-semibold">Format</span>
               <span className="font-semibold text-brand-ink">Protected Cloud Edition</span>
             </div>
             <div>
-              <span className="text-gray-400 block text-[10px] uppercase font-semibold">Edition</span>
+              <span className="text-gray-400 block text-[9px] sm:text-[10px] uppercase font-semibold">Edition</span>
               <span className="font-semibold text-brand-ink">{book.edition || "1st Edition"}</span>
             </div>
             <div>
-              <span className="text-gray-400 block text-[10px] uppercase font-semibold">Language</span>
+              <span className="text-gray-400 block text-[9px] sm:text-[10px] uppercase font-semibold">Language</span>
               <span className="font-semibold text-brand-ink">{book.language || "English"}</span>
             </div>
             <div>
-              <span className="text-gray-400 block text-[10px] uppercase font-semibold">Length</span>
+              <span className="text-gray-400 block text-[9px] sm:text-[10px] uppercase font-semibold">Length</span>
               <span className="font-semibold text-brand-ink">{book.pageCount} Pages</span>
             </div>
           </div>
@@ -617,15 +617,15 @@ export function BookDetailClient({
       </div>
 
       {/* 4. Editorial Description & Deep Product Details */}
-      <div className="space-y-12">
+      <div className="space-y-8 sm:space-y-12">
         {/* Full Editorial Overview */}
-        <div className="bg-white rounded-3xl border border-brand-border p-8 sm:p-10 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-6 border-b border-brand-border gap-2">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-brand-border p-4 sm:p-8 lg:p-10 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 sm:pb-4 mb-4 sm:mb-6 border-b border-brand-border gap-1.5 sm:gap-2">
             <div>
-              <span className="text-[11px] font-mono uppercase tracking-widest text-amber-700 font-bold block mb-1">
+              <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-amber-700 font-bold block mb-0.5 sm:mb-1">
                 Publisher's Official Overview
               </span>
-              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-brand-ink">
+              <h2 className="font-serif text-lg sm:text-2xl lg:text-3xl font-bold text-brand-ink">
                 Editorial Overview & Synopsis
               </h2>
             </div>
@@ -634,37 +634,36 @@ export function BookDetailClient({
           <AmazonBookDescription
             content={book.description}
             defaultExpanded={false}
-            maxCollapsedHeight={320}
+            maxCollapsedHeight={280}
             showExpandToggle={true}
           />
         </div>
 
-
         {/* What's Inside / Key Takeaways */}
         {keyBenefits.length > 0 && (
-          <div className="bg-gradient-to-br from-brand-50/80 to-white rounded-3xl border border-brand-border p-8 sm:p-10 shadow-xs">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
-                <Sparkles className="w-5 h-5" />
+          <div className="bg-gradient-to-br from-brand-50/80 to-white rounded-2xl sm:rounded-3xl border border-brand-border p-4 sm:p-8 lg:p-10 shadow-xs">
+            <div className="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div>
-                <h3 className="font-serif text-2xl font-bold text-brand-ink">
+                <h3 className="font-serif text-lg sm:text-xl lg:text-2xl font-bold text-brand-ink">
                   What You Will Master in This Edition
                 </h3>
-                <p className="text-xs text-brand-muted">
+                <p className="text-[11px] sm:text-xs text-brand-muted">
                   Core competencies, diagnostic frameworks, and takeaways.
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
               {keyBenefits.map((benefit, idx) => (
                 <div
                   key={idx}
-                  className="p-4 rounded-2xl bg-white border border-brand-border/80 flex items-start gap-3 shadow-xs hover:border-brand-300 transition-colors"
+                  className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-brand-border/80 flex items-start gap-2.5 sm:gap-3 shadow-xs hover:border-brand-300 transition-colors"
                 >
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5" />
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   </div>
                   <span className="text-xs sm:text-sm text-brand-slate leading-relaxed">
                     {benefit}
@@ -676,22 +675,22 @@ export function BookDetailClient({
         )}
 
         {/* 5. Amazon-Style Product Details / Specification Matrix */}
-        <div className="bg-white rounded-3xl border border-brand-border p-8 sm:p-10 shadow-xs">
-          <h3 className="font-serif text-2xl font-bold text-brand-ink mb-6 pb-3 border-b border-brand-border flex items-center gap-2">
-            <FileCheck className="w-6 h-6 text-brand-600" />
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-brand-border p-4 sm:p-8 lg:p-10 shadow-xs">
+          <h3 className="font-serif text-lg sm:text-xl lg:text-2xl font-bold text-brand-ink mb-4 sm:mb-6 pb-2.5 sm:pb-3 border-b border-brand-border flex items-center gap-2">
+            <FileCheck className="w-5 h-5 sm:w-6 sm:h-6 text-brand-600" />
             <span>Product Details & Bibliographic Specifications</span>
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm">
-            <div className="space-y-3.5">
-              <div className="flex items-start justify-between py-2 border-b border-gray-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6 text-xs sm:text-sm">
+            <div className="space-y-2.5 sm:space-y-3.5">
+              <div className="flex items-start justify-between py-1.5 sm:py-2 border-b border-gray-100">
                 <span className="text-brand-muted font-medium">Publisher / Imprint:</span>
                 <span className="font-semibold text-brand-ink text-right">
                   {book.imprint?.name || "Noveraile Publishing"} (Direct Publisher Edition)
                 </span>
               </div>
 
-              <div className="flex items-start justify-between py-2 border-b border-gray-100">
+              <div className="flex items-start justify-between py-1.5 sm:py-2 border-b border-gray-100">
                 <span className="text-brand-muted font-medium">Publication Date:</span>
                 <span className="font-semibold text-brand-ink text-right">
                   {new Date(book.createdAt).toLocaleDateString("en-US", {
@@ -701,14 +700,14 @@ export function BookDetailClient({
                 </span>
               </div>
 
-              <div className="flex items-start justify-between py-2 border-b border-gray-100">
+              <div className="flex items-start justify-between py-1.5 sm:py-2 border-b border-gray-100">
                 <span className="text-brand-muted font-medium">Edition:</span>
                 <span className="font-semibold text-brand-ink text-right">
                   {book.edition || "1st Edition"}
                 </span>
               </div>
 
-              <div className="flex items-start justify-between py-2 border-b border-gray-100">
+              <div className="flex items-start justify-between py-1.5 sm:py-2 border-b border-gray-100">
                 <span className="text-brand-muted font-medium">Print Length:</span>
                 <span className="font-semibold text-brand-ink text-right">
                   {book.pageCount} Pages (~{Math.round(book.pageCount * 1.4)} min reading length)
@@ -716,29 +715,29 @@ export function BookDetailClient({
               </div>
             </div>
 
-            <div className="space-y-3.5">
-              <div className="flex items-start justify-between py-2 border-b border-gray-100">
+            <div className="space-y-2.5 sm:space-y-3.5">
+              <div className="flex items-start justify-between py-1.5 sm:py-2 border-b border-gray-100">
                 <span className="text-brand-muted font-medium">Language:</span>
                 <span className="font-semibold text-brand-ink text-right">
                   {book.language || "English"}
                 </span>
               </div>
 
-              <div className="flex items-start justify-between py-2 border-b border-gray-100">
+              <div className="flex items-start justify-between py-1.5 sm:py-2 border-b border-gray-100">
                 <span className="text-brand-muted font-medium">{isRealIsbn ? "ISBN-13:" : "Catalog ID:"}</span>
                 <span className="font-mono font-bold text-brand-ink text-right">
                   {book.isbn || `NOV-${book.id.slice(-8).toUpperCase()}`}
                 </span>
               </div>
 
-              <div className="flex items-start justify-between py-2 border-b border-gray-100">
+              <div className="flex items-start justify-between py-1.5 sm:py-2 border-b border-gray-100">
                 <span className="text-brand-muted font-medium">Digital Rights Management:</span>
                 <span className="font-semibold text-emerald-800 text-right">
                   Secure Cloud Storage • Multi-Device Sync
                 </span>
               </div>
 
-              <div className="flex items-start justify-between py-2 border-b border-gray-100">
+              <div className="flex items-start justify-between py-1.5 sm:py-2 border-b border-gray-100">
                 <span className="text-brand-muted font-medium">Reader Compatibility:</span>
                 <span className="font-semibold text-brand-ink text-right">
                   Mobile, Tablet, Laptop, Desktop Browsers
@@ -749,9 +748,9 @@ export function BookDetailClient({
 
           {/* Exam Blueprint Verification Box (If applicable) */}
           {book.examMetadata && (
-            <div className="mt-8 p-6 rounded-2xl bg-amber-50/80 border border-amber-200/80">
-              <div className="flex items-center gap-2 mb-2 text-amber-900 font-bold text-sm">
-                <GraduationCap className="w-5 h-5 text-amber-700" />
+            <div className="mt-6 sm:mt-8 p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-amber-50/80 border border-amber-200/80">
+              <div className="flex items-center gap-2 mb-2 text-amber-900 font-bold text-xs sm:text-sm">
+                <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700" />
                 <span>
                   Official Blueprint Alignment: {book.examMetadata.examName} (
                   {book.examMetadata.examAcronym})
@@ -771,19 +770,19 @@ export function BookDetailClient({
 
         {/* Table of Contents */}
         {tableOfContents.length > 0 && (
-          <div className="bg-white rounded-3xl border border-brand-border p-8 sm:p-10 shadow-xs">
-            <h3 className="font-serif text-2xl font-bold text-brand-ink mb-6 pb-3 border-b border-brand-border flex items-center gap-2">
-              <BookOpen className="w-6 h-6 text-brand-600" />
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-brand-border p-4 sm:p-8 lg:p-10 shadow-xs">
+            <h3 className="font-serif text-lg sm:text-xl lg:text-2xl font-bold text-brand-ink mb-4 sm:mb-6 pb-2.5 sm:pb-3 border-b border-brand-border flex items-center gap-2">
+              <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-brand-600" />
               <span>Table of Contents & Curriculum Map</span>
             </h3>
 
-            <div className="divide-y divide-gray-100 rounded-2xl border border-brand-border overflow-hidden">
+            <div className="divide-y divide-gray-100 rounded-xl sm:rounded-2xl border border-brand-border overflow-hidden">
               {tableOfContents.map((item, idx) => (
                 <div
                   key={idx}
-                  className="p-4 flex items-center justify-between hover:bg-brand-50/60 transition-colors text-xs sm:text-sm"
+                  className="p-3 sm:p-4 flex items-center justify-between hover:bg-brand-50/60 transition-colors text-xs sm:text-sm"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5 sm:gap-3">
                     <span className="font-mono text-brand-muted text-xs">
                       {String(idx + 1).padStart(2, "0")}
                     </span>
@@ -800,15 +799,15 @@ export function BookDetailClient({
 
         {/* Target Audience */}
         {whoIsThisFor.length > 0 && (
-          <div className="bg-white rounded-3xl border border-brand-border p-8 sm:p-10 shadow-xs">
-            <h3 className="font-serif text-xl font-bold text-brand-ink mb-4">
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-brand-border p-4 sm:p-8 lg:p-10 shadow-xs">
+            <h3 className="font-serif text-lg sm:text-xl font-bold text-brand-ink mb-3 sm:mb-4">
               Who This Publication Is Designed For
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3">
               {whoIsThisFor.map((item, idx) => (
                 <div
                   key={idx}
-                  className="p-4 rounded-xl bg-brand-50/60 border border-brand-border text-xs text-brand-slate flex items-start gap-2.5"
+                  className="p-3 sm:p-4 rounded-xl bg-brand-50/60 border border-brand-border text-xs text-brand-slate flex items-start gap-2.5"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-ink mt-1.5 shrink-0" />
                   <span>{item}</span>
@@ -819,12 +818,12 @@ export function BookDetailClient({
         )}
 
         {/* 6. Why Buy Direct from Noveraile Banner */}
-        <div className="bg-gradient-to-r from-brand-ink via-brand-navy to-brand-ink rounded-3xl p-8 sm:p-12 text-white shadow-xl">
+        <div className="bg-gradient-to-r from-brand-ink via-brand-navy to-brand-ink rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-12 text-white shadow-xl">
           <div className="max-w-2xl">
-            <span className="text-amber-400 text-xs font-mono uppercase tracking-widest block mb-2">
+            <span className="text-amber-400 text-[10px] sm:text-xs font-mono uppercase tracking-widest block mb-1.5 sm:mb-2">
               Direct Publisher Advantage
             </span>
-            <h3 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">
+            <h3 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">
               Why Read Direct on Noveraile Publishing?
             </h3>
             <p className="text-xs sm:text-sm text-gray-300 mt-2 font-light leading-relaxed">
@@ -832,33 +831,33 @@ export function BookDetailClient({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8 pt-8 border-t border-white/10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-white/10">
             <div>
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center mb-3">
-                <Smartphone className="w-4 h-4 text-amber-400" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 flex items-center justify-center mb-2.5 sm:mb-3">
+                <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
               </div>
-              <h4 className="font-serif font-bold text-sm">Read on Any Device</h4>
-              <p className="text-xs text-gray-400 mt-1 font-light">
+              <h4 className="font-serif font-bold text-xs sm:text-sm">Read on Any Device</h4>
+              <p className="text-[11px] sm:text-xs text-gray-400 mt-1 font-light">
                 Opens directly in Safari, Chrome, or Edge on mobile, tablet, and PC.
               </p>
             </div>
 
             <div>
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center mb-3">
-                <Clock className="w-4 h-4 text-emerald-400" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 flex items-center justify-center mb-2.5 sm:mb-3">
+                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
               </div>
-              <h4 className="font-serif font-bold text-sm">Instant Delivery</h4>
-              <p className="text-xs text-gray-400 mt-1 font-light">
+              <h4 className="font-serif font-bold text-xs sm:text-sm">Instant Delivery</h4>
+              <p className="text-[11px] sm:text-xs text-gray-400 mt-1 font-light">
                 No shipping wait times. Access your bookshelf within seconds of checkout.
               </p>
             </div>
 
             <div>
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center mb-3">
-                <Sparkles className="w-4 h-4 text-blue-400" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 flex items-center justify-center mb-2.5 sm:mb-3">
+                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
               </div>
-              <h4 className="font-serif font-bold text-sm">{isExamPrep ? "Free Edition Updates" : "Lifetime Access"}</h4>
-              <p className="text-xs text-gray-400 mt-1 font-light">
+              <h4 className="font-serif font-bold text-xs sm:text-sm">{isExamPrep ? "Free Edition Updates" : "Lifetime Access"}</h4>
+              <p className="text-[11px] sm:text-xs text-gray-400 mt-1 font-light">
                 {isExamPrep
                   ? "Whenever tests or chapters update, your digital edition syncs for free."
                   : "Enjoy permanent library access and continuous reading across your devices."}
@@ -866,11 +865,11 @@ export function BookDetailClient({
             </div>
 
             <div>
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center mb-3">
-                <ShieldCheck className="w-4 h-4 text-amber-400" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 flex items-center justify-center mb-2.5 sm:mb-3">
+                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
               </div>
-              <h4 className="font-serif font-bold text-sm">Reader Guarantee</h4>
-              <p className="text-xs text-gray-400 mt-1 font-light">
+              <h4 className="font-serif font-bold text-xs sm:text-sm">Reader Guarantee</h4>
+              <p className="text-[11px] sm:text-xs text-gray-400 mt-1 font-light">
                 Secure cloud-authenticated delivery and a 14-day reader satisfaction guarantee.
               </p>
             </div>
@@ -878,10 +877,10 @@ export function BookDetailClient({
         </div>
 
         {/* 7. Amazon-Grade Customer Reviews Section */}
-        <div id="reviews-section" className="bg-white rounded-3xl border border-brand-border p-8 sm:p-10 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-brand-border mb-8">
+        <div id="reviews-section" className="bg-white rounded-2xl sm:rounded-3xl border border-brand-border p-4 sm:p-8 lg:p-10 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-brand-border mb-6 sm:mb-8">
             <div>
-              <h3 className="font-serif text-2xl sm:text-3xl font-bold text-brand-ink">
+              <h3 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-brand-ink">
                 Customer Reviews & Ratings
               </h3>
               <p className="text-xs sm:text-sm text-brand-slate mt-1 font-light">
@@ -892,7 +891,7 @@ export function BookDetailClient({
             {isOwned ? (
               <button
                 onClick={() => setReviewModalOpen(true)}
-                className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 self-start sm:self-auto"
+                className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 self-start sm:self-auto"
               >
                 <CheckCircle2 className="w-4 h-4 text-emerald-300" />
                 <span>Write a Verified Review</span>
@@ -900,26 +899,26 @@ export function BookDetailClient({
             ) : !currentUser ? (
               <Link
                 href={`/login?redirect=/books/${book.slug}`}
-                className="px-4 py-2.5 rounded-xl border border-brand-border hover:bg-brand-50 text-brand-slate hover:text-brand-ink text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 self-start sm:self-auto"
+                className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-brand-border hover:bg-brand-50 text-brand-slate hover:text-brand-ink text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 self-start sm:self-auto"
                 title="Only readers who purchased this book can leave a review"
               >
                 <Lock className="w-3.5 h-3.5 text-brand-muted" />
                 <span>Sign in to Review (Purchasers Only)</span>
               </Link>
             ) : (
-              <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs text-brand-muted self-start sm:self-auto">
+              <div className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs text-brand-muted self-start sm:self-auto">
                 <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                 <span>Verified Purchasers Only</span>
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10">
             {/* Left: Star Breakdown Histogram (Amazon style) */}
-            <div className="lg:col-span-4 space-y-6">
-              <div className="bg-brand-50/70 p-6 rounded-2xl border border-brand-border/60">
-                <div className="flex items-baseline gap-3 mb-2">
-                  <span className="font-serif text-4xl sm:text-5xl font-extrabold text-brand-ink">
+            <div className="lg:col-span-4 space-y-4 sm:space-y-6">
+              <div className="bg-brand-50/70 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-brand-border/60">
+                <div className="flex items-baseline gap-2.5 sm:gap-3 mb-2">
+                  <span className="font-serif text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand-ink">
                     {totalReviews > 0 ? averageRating.toFixed(1) : "0.0"}
                   </span>
                   <span className="text-xs text-brand-muted">out of 5 stars</span>
@@ -929,7 +928,7 @@ export function BookDetailClient({
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
-                      className={`w-4 h-4 ${
+                      className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
                         i < Math.round(averageRating)
                           ? "fill-amber-400 text-amber-400"
                           : "text-gray-200 fill-gray-200"
@@ -943,19 +942,19 @@ export function BookDetailClient({
                 </p>
 
                 {/* Star Percentage Bars */}
-                <div className="space-y-2 mt-6 pt-6 border-t border-brand-border/60 text-xs">
+                <div className="space-y-2 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-brand-border/60 text-xs">
                   {ratingBreakdown.map((item) => (
                     <div key={item.stars} className="flex items-center gap-2">
                       <span className="w-12 text-brand-slate font-medium shrink-0">
                         {item.stars} star
                       </span>
-                      <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="flex-1 h-2.5 sm:h-3 bg-gray-200 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-amber-400 rounded-full transition-all duration-500"
                           style={{ width: `${item.percentage}%` }}
                         />
                       </div>
-                      <span className="w-10 text-right text-brand-muted font-mono text-[11px] shrink-0">
+                      <span className="w-9 sm:w-10 text-right text-brand-muted font-mono text-[10px] sm:text-[11px] shrink-0">
                         {item.percentage}%
                       </span>
                     </div>
@@ -965,7 +964,7 @@ export function BookDetailClient({
 
               {/* Review Callout Box: Conditioned by ownership */}
               {isOwned ? (
-                <div className="p-5 rounded-2xl border border-brand-border bg-white text-xs shadow-xs">
+                <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-brand-border bg-white text-xs shadow-xs">
                   <div className="flex items-center gap-1.5 text-emerald-800 font-bold mb-1">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     <span>Verified Reader Review</span>
@@ -975,14 +974,14 @@ export function BookDetailClient({
                   </p>
                   <button
                     onClick={() => setReviewModalOpen(true)}
-                    className="w-full mt-4 px-4 py-2.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2"
+                    className="w-full mt-3 sm:mt-4 px-4 py-2 sm:py-2.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2"
                   >
                     <MessageSquare className="w-3.5 h-3.5 text-brand-300" />
                     <span>Write Your Review</span>
                   </button>
                 </div>
               ) : !currentUser ? (
-                <div className="p-5 rounded-2xl border border-brand-border bg-brand-50/50 text-xs shadow-xs">
+                <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-brand-border bg-brand-50/50 text-xs shadow-xs">
                   <div className="flex items-center gap-1.5 text-brand-ink font-bold mb-1">
                     <Lock className="w-4 h-4 text-amber-600" />
                     <span>Verified Purchase Required</span>
@@ -992,13 +991,13 @@ export function BookDetailClient({
                   </p>
                   <Link
                     href={`/login?redirect=/books/${book.slug}`}
-                    className="w-full mt-4 px-4 py-2.5 rounded-xl border border-brand-border bg-white hover:bg-brand-100 text-brand-ink text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2"
+                    className="w-full mt-3 sm:mt-4 px-4 py-2 sm:py-2.5 rounded-xl border border-brand-border bg-white hover:bg-brand-100 text-brand-ink text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2"
                   >
                     <span>Sign In to Review</span>
                   </Link>
                 </div>
               ) : (
-                <div className="p-5 rounded-2xl border border-brand-border bg-brand-50/50 text-xs shadow-xs">
+                <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-brand-border bg-brand-50/50 text-xs shadow-xs">
                   <div className="flex items-center gap-1.5 text-brand-ink font-bold mb-1">
                     <Lock className="w-4 h-4 text-amber-600" />
                     <span>Verified Purchasers Only</span>
@@ -1008,7 +1007,7 @@ export function BookDetailClient({
                   </p>
                   <button
                     onClick={handleBuyNow}
-                    className="w-full mt-4 px-4 py-2.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                    className="w-full mt-3 sm:mt-4 px-4 py-2 sm:py-2.5 rounded-xl bg-brand-ink hover:bg-brand-900 text-white text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-1.5"
                   >
                     <span>Purchase Book to Review</span>
                   </button>
@@ -1017,11 +1016,11 @@ export function BookDetailClient({
             </div>
 
             {/* Right: Reviews List */}
-            <div className="lg:col-span-8 space-y-6">
+            <div className="lg:col-span-8 space-y-4 sm:space-y-6">
               {reviewsList.length === 0 ? (
-                <div className="text-center py-12 p-8 rounded-2xl border border-dashed border-brand-border bg-brand-50/40">
-                  <Star className="w-8 h-8 text-amber-400 mx-auto mb-3 opacity-60" />
-                  <h4 className="font-serif text-lg font-bold text-brand-ink">
+                <div className="text-center py-8 sm:py-12 p-5 sm:p-8 rounded-xl sm:rounded-2xl border border-dashed border-brand-border bg-brand-50/40">
+                  <Star className="w-7 h-7 sm:w-8 sm:h-8 text-amber-400 mx-auto mb-2.5 opacity-60" />
+                  <h4 className="font-serif text-base sm:text-lg font-bold text-brand-ink">
                     No reviews yet for this edition.
                   </h4>
                   <p className="text-xs text-brand-slate mt-1 max-w-sm mx-auto font-light">
@@ -1029,13 +1028,13 @@ export function BookDetailClient({
                   </p>
                   <button
                     onClick={() => setReviewModalOpen(true)}
-                    className="mt-5 px-6 py-2.5 rounded-xl bg-brand-ink text-white text-xs font-semibold hover:bg-brand-900 transition-colors"
+                    className="mt-4 sm:mt-5 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-brand-ink text-white text-xs font-semibold hover:bg-brand-900 transition-colors"
                   >
                     Write the First Review
                   </button>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {reviewsList.map((review) => {
                     const reviewerName = review.user?.name || "Verified Reader";
                     const initial = reviewerName.charAt(0).toUpperCase();
@@ -1049,11 +1048,11 @@ export function BookDetailClient({
                     return (
                       <div
                         key={review.id}
-                        className="p-6 rounded-2xl border border-brand-border bg-white shadow-xs space-y-3"
+                        className="p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-brand-border bg-white shadow-xs space-y-2.5 sm:space-y-3"
                       >
                         {/* Reviewer Header */}
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-brand-ink text-brand-300 font-bold text-xs flex items-center justify-center shrink-0">
+                        <div className="flex items-center gap-2.5 sm:gap-3">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-brand-ink text-brand-300 font-bold text-xs flex items-center justify-center shrink-0">
                             {initial}
                           </div>
                           <div>
@@ -1067,12 +1066,12 @@ export function BookDetailClient({
                         </div>
 
                         {/* Stars & Title */}
-                        <div className="flex items-center gap-2 pt-1">
+                        <div className="flex items-center gap-2 pt-0.5">
                           <div className="flex items-center text-amber-500">
                             {[...Array(5)].map((_, i) => (
                               <Star
                                 key={i}
-                                className={`w-3.5 h-3.5 ${
+                                className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${
                                   i < review.rating
                                     ? "fill-amber-400 text-amber-400"
                                     : "text-gray-200 fill-gray-200"
@@ -1087,7 +1086,7 @@ export function BookDetailClient({
 
                         {/* Verified Purchase Badge */}
                         {review.isVerifiedPurchase && (
-                          <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">
+                          <div className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                             <span>Verified Purchase</span>
                           </div>
@@ -1099,17 +1098,17 @@ export function BookDetailClient({
                         </p>
 
                         {/* Helpful Counter Button */}
-                        <div className="pt-2 flex items-center gap-4 text-xs text-brand-muted">
+                        <div className="pt-1.5 sm:pt-2 flex items-center gap-3 sm:gap-4 text-[11px] sm:text-xs text-brand-muted">
                           <button
                             onClick={() => handleHelpfulClick(review.id)}
                             disabled={helpfulClicked[review.id]}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs transition-colors ${
+                            className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg border text-[11px] sm:text-xs transition-colors ${
                               helpfulClicked[review.id]
                                 ? "bg-emerald-50 text-emerald-800 border-emerald-200 cursor-default"
                                 : "hover:bg-brand-50 text-brand-slate border-brand-border"
                             }`}
                           >
-                            <ThumbsUp className="w-3.5 h-3.5" />
+                            <ThumbsUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                             <span>
                               {helpfulClicked[review.id] ? "Helpful ✓" : "Helpful"}
                             </span>
@@ -1128,45 +1127,45 @@ export function BookDetailClient({
         </div>
 
         {/* 8. Frequently Asked Questions Accordion */}
-        <div className="bg-white rounded-3xl border border-brand-border p-8 sm:p-10 shadow-xs">
-          <h3 className="font-serif text-2xl font-bold text-brand-ink mb-6 pb-3 border-b border-brand-border flex items-center gap-2">
-            <HelpCircle className="w-6 h-6 text-brand-600" />
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-brand-border p-4 sm:p-8 lg:p-10 shadow-xs">
+          <h3 className="font-serif text-lg sm:text-xl lg:text-2xl font-bold text-brand-ink mb-4 sm:mb-6 pb-2.5 sm:pb-3 border-b border-brand-border flex items-center gap-2">
+            <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6 text-brand-600" />
             <span>Frequently Asked Questions</span>
           </h3>
 
-          <div className="space-y-4">
-            <div className="p-5 rounded-2xl bg-brand-50/50 border border-brand-border">
-              <h4 className="font-serif text-sm font-bold text-brand-ink">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-brand-50/50 border border-brand-border">
+              <h4 className="font-serif text-xs sm:text-sm font-bold text-brand-ink">
                 How do I access this book after purchase?
               </h4>
-              <p className="text-xs sm:text-sm text-brand-slate mt-2 font-light leading-relaxed">
+              <p className="text-xs sm:text-sm text-brand-slate mt-1.5 sm:mt-2 font-light leading-relaxed">
                 Your purchase grants instantaneous digital access. As soon as checkout completes, you can click &quot;Start Reading Now&quot; to open the Noveraile Protected Cloud Reader immediately in your browser. The book is also permanently added to your personal bookshelf at <strong className="text-brand-ink">/my-library</strong>.
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-brand-50/50 border border-brand-border">
-              <h4 className="font-serif text-sm font-bold text-brand-ink">
+            <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-brand-50/50 border border-brand-border">
+              <h4 className="font-serif text-xs sm:text-sm font-bold text-brand-ink">
                 Can I read on my iPhone, Android, iPad, or laptop?
               </h4>
-              <p className="text-xs sm:text-sm text-brand-slate mt-2 font-light leading-relaxed">
+              <p className="text-xs sm:text-sm text-brand-slate mt-1.5 sm:mt-2 font-light leading-relaxed">
                 Yes. The Noveraile Cloud Reader is fully responsive and optimized for mobile touchscreens, tablets, and desktop displays. Your reading progress and saved bookmarks synchronize continuously across all devices.
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-brand-50/50 border border-brand-border">
-              <h4 className="font-serif text-sm font-bold text-brand-ink">
+            <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-brand-50/50 border border-brand-border">
+              <h4 className="font-serif text-xs sm:text-sm font-bold text-brand-ink">
                 Do I need to install an app or software?
               </h4>
-              <p className="text-xs sm:text-sm text-brand-slate mt-2 font-light leading-relaxed">
+              <p className="text-xs sm:text-sm text-brand-slate mt-1.5 sm:mt-2 font-light leading-relaxed">
                 No apps, plugins, or software installations are required. The entire reading experience runs securely in any modern web browser (Safari, Chrome, Firefox, Edge).
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-brand-50/50 border border-brand-border">
-              <h4 className="font-serif text-sm font-bold text-brand-ink">
+            <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-brand-50/50 border border-brand-border">
+              <h4 className="font-serif text-xs sm:text-sm font-bold text-brand-ink">
                 Will I receive future edition updates?
               </h4>
-              <p className="text-xs sm:text-sm text-brand-slate mt-2 font-light leading-relaxed">
+              <p className="text-xs sm:text-sm text-brand-slate mt-1.5 sm:mt-2 font-light leading-relaxed">
                 {isExamPrep
                   ? "Yes. If Noveraile publishes updated errata, revised testing blueprints, or new curriculum chapters for this certification guide, your digital library edition updates automatically at zero additional charge."
                   : "Yes. If the author or Noveraile publishes updated editorial errata or revisions for this title, your digital library edition updates automatically at zero additional charge."}
@@ -1175,9 +1174,9 @@ export function BookDetailClient({
 
             {/* Custom book FAQs if any */}
             {faq.map((item, idx) => (
-              <div key={idx} className="p-5 rounded-2xl bg-brand-50/50 border border-brand-border">
-                <h4 className="font-serif text-sm font-bold text-brand-ink">{item.q}</h4>
-                <p className="text-xs sm:text-sm text-brand-slate mt-2 font-light leading-relaxed">
+              <div key={idx} className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-brand-50/50 border border-brand-border">
+                <h4 className="font-serif text-xs sm:text-sm font-bold text-brand-ink">{item.q}</h4>
+                <p className="text-xs sm:text-sm text-brand-slate mt-1.5 sm:mt-2 font-light leading-relaxed">
                   {item.a}
                 </p>
               </div>
