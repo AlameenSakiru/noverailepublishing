@@ -467,4 +467,19 @@ model SupportMessage {
   @@index([createdAt])
 }
 
+model UploadedFile {
+  id           String   @id @default(cuid())
+  filename     String   @unique
+  originalName String
+  mimeType     String
+  data         Bytes
+  size         Int
+  type         String   // "cover" | "manuscript"
+  createdAt    DateTime @default(now())
+
+  @@index([filename])
+  @@index([type])
+}
+
+
 

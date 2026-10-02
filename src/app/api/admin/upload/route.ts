@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
+import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -92,7 +93,12 @@ export async function POST(req: Request) {
         );
       }
 
-      await fs.mkdir(PUBLIC_COVERS_DIR, { recursive: true });
+      const mimeType =
+        validation.ext === ".png"
+          ? "image/png"
+          : validation.ext === ".webp"
+          ? "image/webp"
+          : "image/jpeg";
 
       // Clean file name strictly
       const cleanBaseName = path
@@ -102,14 +108,41 @@ export async function POST(req: Request) {
         .slice(0, 40) || "cover";
 
       const uniqueFilename = `${cleanBaseName}_${Date.now()}${validation.ext}`;
-      const filePath = path.join(PUBLIC_COVERS_DIR, uniqueFilename);
 
-      await fs.writeFile(filePath, buffer);
+      // 1. Store in Neon PostgreSQL database (works across all serverless instances and deploys)
+      await prisma.uploadedFile.upsert({
+        where: { filename: uniqueFilename },
+        create: {
+          filename: uniqueFilename,
+          originalName: file.name,
+          mimeType,
+          data: buffer,
+          size: file.size,
+          type: "cover",
+        },
+        update: {
+          originalName: file.name,
+          mimeType,
+          data: buffer,
+          size: file.size,
+          type: "cover",
+        },
+      });
+
+      // 2. Best-effort local file write (works in local dev, fails safely with no crash on serverless read-only disk)
+      try {
+        await fs.mkdir(PUBLIC_COVERS_DIR, { recursive: true });
+        const filePath = path.join(PUBLIC_COVERS_DIR, uniqueFilename);
+        await fs.writeFile(filePath, buffer);
+      } catch (fsErr) {
+        // Ignored: On serverless environments (e.g. Vercel), disk is read-only.
+        // The file is already safely persisted in the Neon PostgreSQL database.
+      }
 
       return NextResponse.json({
         success: true,
         type: "cover",
-        url: `/covers/${uniqueFilename}`,
+        url: `/api/covers/${uniqueFilename}`,
         filename: uniqueFilename,
         originalName: file.name,
         size: file.size,
@@ -130,9 +163,6 @@ export async function POST(req: Request) {
         );
       }
 
-      // Store in private storage directory (OUTSIDE public/) so it cannot be downloaded statically
-      await fs.mkdir(PRIVATE_MANUSCRIPTS_DIR, { recursive: true });
-
       const cleanBaseName = path
         .basename(file.name, ".pdf")
         .toLowerCase()
@@ -140,9 +170,35 @@ export async function POST(req: Request) {
         .slice(0, 40) || "manuscript";
 
       const uniqueFilename = `${cleanBaseName}_${Date.now()}.pdf`;
-      const filePath = path.join(PRIVATE_MANUSCRIPTS_DIR, uniqueFilename);
 
-      await fs.writeFile(filePath, buffer);
+      // 1. Store in Neon PostgreSQL database
+      await prisma.uploadedFile.upsert({
+        where: { filename: uniqueFilename },
+        create: {
+          filename: uniqueFilename,
+          originalName: file.name,
+          mimeType: "application/pdf",
+          data: buffer,
+          size: file.size,
+          type: "manuscript",
+        },
+        update: {
+          originalName: file.name,
+          mimeType: "application/pdf",
+          data: buffer,
+          size: file.size,
+          type: "manuscript",
+        },
+      });
+
+      // 2. Best-effort local file write
+      try {
+        await fs.mkdir(PRIVATE_MANUSCRIPTS_DIR, { recursive: true });
+        const filePath = path.join(PRIVATE_MANUSCRIPTS_DIR, uniqueFilename);
+        await fs.writeFile(filePath, buffer);
+      } catch (fsErr) {
+        // Ignored: On serverless environments, file is persisted in Neon database.
+      }
 
       // Extract page count from PDF buffer
       let pageCount = 0;
@@ -164,8 +220,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         type: "manuscript",
-        // Note: url is returned as filename for internal specs storage, NOT as a public static path!
-        url: uniqueFilename,
+        url: `/api/manuscripts/${uniqueFilename}`,
         filename: uniqueFilename,
         originalName: file.name,
         size: file.size,

@@ -94,31 +94,36 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Invalid manuscript configuration." }, { status: 400 });
     }
 
-    // Resolve target path and verify it stays strictly inside the private manuscripts directory
+    let fileBuffer: Buffer | null = null;
+
+    // 1. Resolve target path and attempt reading from local private manuscripts directory
     const targetFilePath = path.resolve(PRIVATE_MANUSCRIPTS_DIR, sanitizedFileName);
-    if (!targetFilePath.startsWith(PRIVATE_MANUSCRIPTS_DIR)) {
-      console.error(`Security alert: Directory traversal attempt detected: ${manuscriptFileName}`);
-      return NextResponse.json({ error: "Access denied." }, { status: 403 });
+    if (targetFilePath.startsWith(PRIVATE_MANUSCRIPTS_DIR)) {
+      try {
+        fileBuffer = await fs.readFile(targetFilePath);
+      } catch {
+        // File not on local container disk; fall back to database storage
+      }
     }
 
-    let fileExists = false;
-    try {
-      await fs.access(targetFilePath);
-      fileExists = true;
-    } catch {
-      fileExists = false;
+    // 2. Fall back to Neon PostgreSQL uploadedFile table (serverless storage)
+    if (!fileBuffer) {
+      const dbFile = await prisma.uploadedFile.findUnique({
+        where: { filename: sanitizedFileName },
+      });
+      if (dbFile) {
+        fileBuffer = dbFile.data;
+      }
     }
 
-    if (!fileExists) {
+    if (!fileBuffer) {
       return NextResponse.json(
         { error: "Manuscript file not found in secure storage." },
         { status: 404 }
       );
     }
 
-    const fileBuffer = await fs.readFile(targetFilePath);
-
-    return new Response(fileBuffer, {
+    return new Response(new Uint8Array(fileBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",

@@ -175,6 +175,9 @@ export function CreateBookModal({
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Failed to upload cover image.");
+        setFormData((prev) => ({ ...prev, coverImageUrl: "" }));
+        setCoverFileName(null);
+        setCoverFileSize(null);
         setCoverUploading(false);
         return;
       }
@@ -183,6 +186,9 @@ export function CreateBookModal({
       setCoverUploading(false);
     } catch {
       setError("Network interruption uploading cover image. Please try again.");
+      setFormData((prev) => ({ ...prev, coverImageUrl: "" }));
+      setCoverFileName(null);
+      setCoverFileSize(null);
       setCoverUploading(false);
     }
   };
@@ -231,6 +237,9 @@ export function CreateBookModal({
       if (!res.ok) {
         setError(data.error || "Failed to upload manuscript PDF.");
         setPdfUploading(false);
+        setPdfFileName(null);
+        setPdfFileSize(null);
+        setPdfUploadSuccess(false);
         return;
       }
 
@@ -244,6 +253,9 @@ export function CreateBookModal({
     } catch {
       setError("Network interruption uploading manuscript PDF. Please try again.");
       setPdfUploading(false);
+      setPdfFileName(null);
+      setPdfFileSize(null);
+      setPdfUploadSuccess(false);
     }
   };
 
