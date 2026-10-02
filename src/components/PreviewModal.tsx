@@ -170,12 +170,6 @@ export function PreviewModal({
   salePrice,
   previewPages = [1, 2, 3, 4, 5],
 }: PreviewModalProps) {
-  // Guaranteed 5-page opening excerpt
-  const validPages =
-    Array.isArray(previewPages) && previewPages.length >= 3
-      ? previewPages
-      : [1, 2, 3, 4, 5];
-
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [viewMode, setViewMode] = useState<"pdf" | "text">("pdf");
   const [loading, setLoading] = useState(true);
@@ -183,6 +177,11 @@ export function PreviewModal({
   // PDF.js State
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [pdfJsReady, setPdfJsReady] = useState(false);
+
+  // Dynamically determine sample pages from loaded PDF doc (first 5 pages or total doc pages)
+  const totalDocPages = pdfDoc?.numPages || 5;
+  const samplePagesCount = Math.min(Math.max(totalDocPages, 1), 5);
+  const validPages = Array.from({ length: samplePagesCount }, (_, i) => i + 1);
 
   // Text Fallback State (if PDF stream is not present)
   const [textPages, setTextPages] = useState<any[]>([]);
@@ -204,37 +203,50 @@ export function PreviewModal({
     }
   }, [isOpen, bookId]);
 
-  // 2. Load Mozilla PDF.js from CDN
+  // 2. Load Mozilla PDF.js from CDN with cross-origin Blob Worker
   useEffect(() => {
     if (!isOpen || typeof window === "undefined") return;
 
+    const setupWorker = () => {
+      if (window.pdfjsLib) {
+        try {
+          const workerBlob = new Blob(
+            [`importScripts("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js");`],
+            { type: "text/javascript" }
+          );
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
+        } catch {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        }
+        setPdfJsReady(true);
+      }
+    };
+
     if (window.pdfjsLib) {
-      setPdfJsReady(true);
+      setupWorker();
       return;
     }
 
-    const script = document.createElement("script");
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-    script.async = true;
+    let script = document.querySelector('script[src*="pdf.min.js"]') as HTMLScriptElement;
+    if (!script) {
+      script = document.createElement("script");
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+      script.async = true;
+      document.head.appendChild(script);
+    }
+
     script.onload = () => {
-      if (window.pdfjsLib) {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-        setPdfJsReady(true);
-      }
+      setupWorker();
     };
     script.onerror = () => {
       setViewMode("text");
       setPdfJsReady(false);
     };
 
-    document.head.appendChild(script);
-
-    return () => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
+    if (window.pdfjsLib) {
+      setupWorker();
+    }
   }, [isOpen]);
 
   // 3. Load PDF Document via preview stream

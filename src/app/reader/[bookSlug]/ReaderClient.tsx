@@ -343,34 +343,46 @@ export function ReaderClient({
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const setupWorker = () => {
+      if (window.pdfjsLib) {
+        try {
+          const workerBlob = new Blob(
+            [`importScripts("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js");`],
+            { type: "text/javascript" }
+          );
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
+        } catch {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        }
+        setPdfJsReady(true);
+      }
+    };
+
     if (window.pdfjsLib) {
-      setPdfJsReady(true);
+      setupWorker();
       return;
     }
 
-    const script = document.createElement("script");
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-    script.async = true;
+    let script = document.querySelector('script[src*="pdf.min.js"]') as HTMLScriptElement;
+    if (!script) {
+      script = document.createElement("script");
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+      script.async = true;
+      document.head.appendChild(script);
+    }
+
     script.onload = () => {
-      if (window.pdfjsLib) {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-        setPdfJsReady(true);
-      }
+      setupWorker();
     };
     script.onerror = () => {
       setPdfError("Could not load secure PDF rendering engine. Switching to text format.");
       setViewMode("text");
     };
 
-    document.head.appendChild(script);
-
-    return () => {
-      // Cleanup script tag if unmounted before load
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
+    if (window.pdfjsLib) {
+      setupWorker();
+    }
   }, []);
 
   // 4. Load PDF Document via PDF.js

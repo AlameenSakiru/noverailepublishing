@@ -56,43 +56,56 @@ export async function GET(req: Request) {
       }
     }
 
-    let manuscriptFileName: string | null = null;
+    let serverFilename: string | null = null;
+    let originalFilename: string | null = null;
     try {
       const specs = JSON.parse(book.specifications || "{}");
-      manuscriptFileName = specs.manuscriptFileName || specs.manuscriptPdfUrl || null;
+      if (specs.manuscriptPdfUrl) {
+        serverFilename = path.basename(specs.manuscriptPdfUrl).trim();
+      }
+      if (specs.manuscriptFileName) {
+        originalFilename = path.basename(specs.manuscriptFileName).trim();
+      }
     } catch {
-      manuscriptFileName = null;
+      serverFilename = null;
+      originalFilename = null;
     }
 
-    if (!manuscriptFileName) {
+    const candidateNames = [serverFilename, originalFilename].filter(
+      (n): n is string => Boolean(n && n.toLowerCase().endsWith(".pdf"))
+    );
+
+    if (candidateNames.length === 0) {
       return NextResponse.json(
         { error: "No PDF manuscript available for this publication." },
         { status: 404 }
       );
     }
 
-    // Path traversal defense
-    const sanitizedFileName = path.basename(manuscriptFileName).trim();
-    if (!sanitizedFileName || !sanitizedFileName.toLowerCase().endsWith(".pdf")) {
-      return NextResponse.json({ error: "Invalid manuscript configuration." }, { status: 400 });
-    }
-
     let fileBuffer: Buffer | null = null;
 
     // 1. Resolve target path and attempt reading from local private manuscripts directory
-    const targetFilePath = path.resolve(PRIVATE_MANUSCRIPTS_DIR, sanitizedFileName);
-    if (targetFilePath.startsWith(PRIVATE_MANUSCRIPTS_DIR)) {
-      try {
-        fileBuffer = await fs.readFile(targetFilePath);
-      } catch {
-        // File not on local container disk; fall back to database storage
+    for (const name of candidateNames) {
+      const targetFilePath = path.resolve(PRIVATE_MANUSCRIPTS_DIR, name);
+      if (targetFilePath.startsWith(PRIVATE_MANUSCRIPTS_DIR)) {
+        try {
+          fileBuffer = await fs.readFile(targetFilePath);
+          if (fileBuffer) break;
+        } catch {
+          // File not on local container disk; fall back
+        }
       }
     }
 
     // 2. Fall back to Neon PostgreSQL uploadedFile table (serverless storage)
     if (!fileBuffer) {
-      const dbFile = await prisma.uploadedFile.findUnique({
-        where: { filename: sanitizedFileName },
+      const dbFile = await prisma.uploadedFile.findFirst({
+        where: {
+          OR: [
+            ...candidateNames.map((name) => ({ filename: name })),
+            ...candidateNames.map((name) => ({ originalName: name })),
+          ],
+        },
       });
       if (dbFile) {
         fileBuffer = dbFile.data;
