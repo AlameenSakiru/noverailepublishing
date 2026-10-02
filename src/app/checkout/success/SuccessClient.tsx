@@ -391,7 +391,7 @@ export function SuccessClient({
                       src={item.book.coverImage}
                       alt={item.bookTitle}
                       fill
-                      className="object-cover"
+                      className="object-contain"
                     />
                   </div>
                 )}
@@ -541,7 +541,7 @@ export function SuccessClient({
                       src={item.book.coverImage}
                       alt={item.bookTitle}
                       fill
-                      className="object-cover"
+                      className="object-contain"
                     />
                   </div>
                 )}

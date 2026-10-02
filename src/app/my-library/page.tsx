@@ -232,7 +232,7 @@ export default async function MyLibraryPage({ searchParams }: MyLibraryPageProps
                               alt={book.title}
                               fill
                               sizes="120px"
-                              className="object-cover"
+                              className="object-contain"
                             />
                           ) : (
                             <div className="p-3 text-center flex flex-col items-center justify-center h-full w-full bg-gradient-to-br from-slate-900 via-slate-800 to-amber-950 text-white">
@@ -436,7 +436,7 @@ export default async function MyLibraryPage({ searchParams }: MyLibraryPageProps
                                 alt={item.book.title}
                                 fill
                                 sizes="60px"
-                                className="object-cover"
+                                className="object-contain"
                               />
                             </div>
 

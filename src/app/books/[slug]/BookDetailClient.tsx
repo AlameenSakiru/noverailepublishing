@@ -305,20 +305,21 @@ export function BookDetailClient({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
         {/* Left Column: 3D Book Art & Sample Preview */}
         <div className="lg:col-span-5 flex flex-col items-center">
-          <div className="relative w-full max-w-sm rounded-3xl bg-gradient-to-b from-[#fbf9f5] via-[#f7f2e8] to-[#eee7d8] p-8 flex items-center justify-center border border-brand-border/80 shadow-md">
-            {/* 3D Tactile Book Presentation (2:3 Standard Book Ratio) */}
-            <div className="relative w-full max-w-[240px] aspect-[2/3] rounded-md shadow-book-lg overflow-hidden bg-white border border-black/10 transform transition-transform duration-300 hover:scale-[1.02]">
+          <div className="relative w-full max-w-sm rounded-3xl bg-gradient-to-b from-[#fbf9f5] via-[#f7f2e8] to-[#eee7d8] p-6 sm:p-8 flex items-center justify-center border border-brand-border/80 shadow-md min-h-[440px]">
+            {/* 3D Tactile Book Presentation (Adapts naturally to ANY trim size: 8.5x11, 6x9, 5x8, square, etc.) */}
+            <div className="relative inline-flex items-center justify-center max-h-[420px] max-w-[320px] rounded-md shadow-book-lg overflow-hidden bg-white border border-black/10 transform transition-transform duration-300 hover:scale-[1.02]">
               {book.coverImage ? (
                 <Image
                   src={book.coverImage}
                   alt={`Official Cover of ${book.title}`}
-                  fill
+                  width={800}
+                  height={1100}
                   priority
                   sizes="(max-width: 768px) 100vw, 400px"
-                  className="object-cover"
+                  className="max-h-[420px] max-w-[320px] w-auto h-auto object-contain block"
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-brand-navy to-brand-ink p-5 flex flex-col justify-between text-white">
+                <div className="w-[240px] h-[360px] bg-gradient-to-br from-brand-navy to-brand-ink p-5 flex flex-col justify-between text-white">
                   <div>
                     <span className="text-[10px] font-mono uppercase tracking-widest text-brand-300 block">
                       Noveraile Edition

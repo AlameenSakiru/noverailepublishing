@@ -300,7 +300,7 @@ export function BookListClient({
                                 src={book.coverImage}
                                 alt={book.title}
                                 fill
-                                className="object-cover"
+                                className="object-contain"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-gray-400">

@@ -68,25 +68,26 @@ export function BookCard({
       {/* 1. Amazon-Style Clean Book Cover Stage (No text overlaid on artwork) */}
       <Link
         href={`/books/${slug}`}
-        className="relative block bg-gradient-to-b from-[#fbf9f5] to-[#f4efe4] p-6 flex items-center justify-center border-b border-brand-border/60 overflow-hidden"
+        className="relative block bg-gradient-to-b from-[#fbf9f5] to-[#f4efe4] p-4 sm:p-5 flex items-center justify-center border-b border-brand-border/60 overflow-hidden min-h-[290px] h-[290px]"
       >
         {/* Soft vignette on hover */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/[0.02] transition-colors pointer-events-none" />
 
-        {/* 3D Tactile Book Presentation (2:3 Standard Book Ratio) */}
-        <div className="relative w-full max-w-[190px] aspect-[2/3] rounded shadow-book group-hover:shadow-book-lg group-hover:scale-[1.03] transition-all duration-300 overflow-hidden bg-white border border-black/10">
+        {/* 3D Tactile Book Presentation (Adapts naturally to ANY trim size: 8.5x11, 6x9, 5x8, square, etc.) */}
+        <div className="relative inline-flex items-center justify-center max-h-[240px] max-w-[190px] rounded-[3px] shadow-book group-hover:shadow-book-lg group-hover:scale-[1.03] transition-all duration-300 overflow-hidden bg-white border border-black/10">
           {coverImage ? (
             <Image
               src={coverImage}
               alt={`Cover of ${title}`}
-              fill
+              width={600}
+              height={800}
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              className="object-cover"
+              className="max-h-[240px] max-w-[190px] w-auto h-auto object-contain block"
               priority={false}
             />
           ) : (
             /* Typographic fallback ONLY when no cover image exists */
-            <div className="w-full h-full bg-gradient-to-br from-brand-navy to-brand-ink p-4 flex flex-col justify-between text-white">
+            <div className="w-[160px] h-[240px] bg-gradient-to-br from-brand-navy to-brand-ink p-4 flex flex-col justify-between text-white">
               <div>
                 <span className="text-[9px] font-mono uppercase tracking-widest text-brand-300 block">Noveraile Edition</span>
                 <p className="font-serif font-bold text-xs mt-2 line-clamp-3 leading-tight">{title}</p>

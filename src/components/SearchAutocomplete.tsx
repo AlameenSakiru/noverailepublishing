@@ -182,7 +182,7 @@ export function SearchAutocomplete({
                           alt={book.title}
                           fill
                           sizes="40px"
-                          className="object-cover"
+                          className="object-contain"
                         />
                       ) : (
                         <div className="w-full h-full bg-brand-ink flex items-center justify-center text-white text-[8px]">

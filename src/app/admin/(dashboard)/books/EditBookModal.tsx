@@ -960,13 +960,14 @@ export function EditBookModal({
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
                       Cover Preview
                     </span>
-                    <div className="relative w-28 aspect-[3/4] rounded-lg shadow-md overflow-hidden border border-gray-300 bg-white flex items-center justify-center">
+                    <div className="relative w-36 h-48 rounded-lg shadow-md overflow-hidden border border-gray-300 bg-white flex items-center justify-center p-1">
                       {formData.coverImage ? (
                         <Image
                           src={formData.coverImage}
                           alt="Cover Preview"
-                          fill
-                          className="object-cover"
+                          width={300}
+                          height={400}
+                          className="max-h-full max-w-full w-auto h-auto object-contain block rounded"
                           unoptimized
                           onError={(e) => {
                             (e.target as HTMLImageElement).src =
