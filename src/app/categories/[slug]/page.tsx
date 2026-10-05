@@ -25,6 +25,18 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
       name: true,
       description: true,
       slug: true,
+      children: {
+        select: {
+          id: true,
+          _count: {
+            select: {
+              books: {
+                where: { status: "PUBLISHED" },
+              },
+            },
+          },
+        },
+      },
       _count: {
         select: {
           books: {
@@ -36,13 +48,17 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   });
 
   if (!category) {
-    return { title: "Category Not Found" };
+    return {
+      title: "Category Not Found",
+      robots: { index: false, follow: false },
+    };
   }
 
+  const subTotal = category.children?.reduce((acc, c) => acc + (c._count?.books || 0), 0) || 0;
+  const hasContent = (category._count.books + subTotal) > 0;
   const title = `${category.name} Books`;
   const description = category.description || `Browse curated digital publications in ${category.name} from Noveraile Publishing.`;
   const url = `${siteConfig.url}/categories/${category.slug}`;
-  const hasContent = category._count.books > 0;
 
   return {
     title,

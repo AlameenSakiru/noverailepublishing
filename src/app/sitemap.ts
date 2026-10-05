@@ -8,16 +8,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     select: { slug: true, updatedAt: true },
   });
 
-  // Only index categories that have at least one published book and are not redirected
+  // Only index categories that have at least one published book (directly or in subcategories) and are not redirected
   const categories = await prisma.category.findMany({
     where: {
       isActive: true,
       slug: { not: "exam-prep" },
-      books: {
-        some: {
-          status: "PUBLISHED",
+      OR: [
+        {
+          books: {
+            some: {
+              status: "PUBLISHED",
+            },
+          },
         },
-      },
+        {
+          children: {
+            some: {
+              isActive: true,
+              books: {
+                some: {
+                  status: "PUBLISHED",
+                },
+              },
+            },
+          },
+        },
+      ],
     },
     select: { slug: true, updatedAt: true },
   });

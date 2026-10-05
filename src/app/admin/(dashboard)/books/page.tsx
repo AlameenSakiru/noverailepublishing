@@ -22,8 +22,8 @@ export default async function AdminBooksPage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.category.findMany({
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true, parentId: true, parent: { select: { name: true } } },
+      orderBy: [{ parentId: "asc" }, { name: "asc" }],
     }),
     prisma.author.findMany({
       select: { id: true, name: true },

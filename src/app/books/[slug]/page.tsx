@@ -1,5 +1,5 @@
 import React from "react";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { cache } from "react";
@@ -43,8 +43,15 @@ const getBook = cache(async (slug: string) => {
 export async function generateMetadata({ params }: BookPageProps): Promise<Metadata> {
   const book = await getBook(params.slug);
 
-  if (!book) {
-    return { title: "Book Not Found" };
+  // If publication is not published or archived, signal search engines to remove from index
+  if (!book || book.status !== "PUBLISHED") {
+    return {
+      title: "Publication Unavailable | Noveraile Publishing",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
   }
 
   const bookUrl = `${siteConfig.url}/books/${book.slug}`;
@@ -81,6 +88,11 @@ export async function generateMetadata({ params }: BookPageProps): Promise<Metad
 export default async function BookDetailPage({ params }: BookPageProps) {
   const { slug } = params;
   const book = await getBook(slug);
+
+  // If the book was archived or discontinued, permanently redirect crawlers and visitors to the catalog
+  if (book && (book.status === "ARCHIVED" || book.status === "DRAFT")) {
+    permanentRedirect("/books");
+  }
 
   if (!book || book.status !== "PUBLISHED") {
     notFound();

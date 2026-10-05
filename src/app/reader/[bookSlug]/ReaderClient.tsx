@@ -320,6 +320,24 @@ export function ReaderClient({
       if (savedSound !== null) {
         setFlipSound(savedSound === "true");
       }
+
+      // Synchronize cloud bookmarks from user account
+      fetch(`/api/reader/progress?bookId=${book.id}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!data) return;
+          if (data.bookmarks && Array.isArray(data.bookmarks) && data.bookmarks.length > 0) {
+            const cloudBookmarks = data.bookmarks.map((b: any) => ({
+              page: b.pageNumber,
+              title: b.label || `Page ${b.pageNumber}`,
+            }));
+            setBookmarks(cloudBookmarks);
+            try {
+              localStorage.setItem(`noveraile_bookmarks_${book.id}`, JSON.stringify(cloudBookmarks));
+            } catch {}
+          }
+        })
+        .catch(() => {});
     } catch {
       // LocalStorage unavailable
     }
@@ -692,21 +710,28 @@ export function ReaderClient({
     }
   }, [layoutMode]);
 
-  // Bookmark Toggle
-  const handleToggleBookmark = () => {
+  // Bookmark Toggle with Cloud Synchronization
+  const handleToggleBookmark = (targetPage?: number | React.MouseEvent) => {
+    const pageToToggle = typeof targetPage === "number" ? targetPage : currentPage;
+    const isCurrentlyBookmarked = bookmarks.some((b) => b.page === pageToToggle);
     let updated: { page: number; title: string }[];
-    if (isBookmarked) {
-      updated = bookmarks.filter((b) => b.page !== currentPage);
-      setIsBookmarked(false);
+    const defaultTitle =
+      textPageData?.chapterTitle ||
+      textPageData?.title ||
+      `Page ${pageToToggle} Key Review`;
+
+    if (isCurrentlyBookmarked) {
+      updated = bookmarks.filter((b) => b.page !== pageToToggle);
+      if (pageToToggle === currentPage) {
+        setIsBookmarked(false);
+      }
     } else {
-      const defaultTitle =
-        textPageData?.chapterTitle ||
-        textPageData?.title ||
-        `Page ${currentPage} Key Review`;
-      updated = [...bookmarks, { page: currentPage, title: defaultTitle }].sort(
+      updated = [...bookmarks, { page: pageToToggle, title: defaultTitle }].sort(
         (a, b) => a.page - b.page
       );
-      setIsBookmarked(true);
+      if (pageToToggle === currentPage) {
+        setIsBookmarked(true);
+      }
     }
     setBookmarks(updated);
     try {
@@ -714,6 +739,19 @@ export function ReaderClient({
     } catch {
       // LocalStorage failed
     }
+
+    // Persist to server database for multi-device sync
+    fetch("/api/reader/progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bookId: book.id,
+        currentPage: pageToToggle,
+        totalPages,
+        toggleBookmark: true,
+        bookmarkLabel: defaultTitle,
+      }),
+    }).catch(() => {});
   };
 
   // Fullscreen Focus Mode
@@ -1154,20 +1192,34 @@ export function ReaderClient({
                   </div>
                   <div className="space-y-1">
                     {bookmarks.map((bm) => (
-                      <button
+                      <div
                         key={bm.page}
-                        onClick={() => {
-                          goToPage(bm.page);
-                          setTocOpen(false);
-                        }}
-                        className="w-full text-left p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 flex items-center justify-between text-xs transition-colors"
+                        className="group w-full flex items-center justify-between p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-xs transition-colors"
                       >
-                        <div className="flex items-center gap-2 truncate">
+                        <button
+                          onClick={() => {
+                            goToPage(bm.page);
+                            setTocOpen(false);
+                          }}
+                          className="flex items-center gap-2 truncate flex-1 text-left"
+                        >
                           <Bookmark className="w-3.5 h-3.5 text-amber-500 fill-current shrink-0" />
                           <span className="truncate">{bm.title || `Page ${bm.page}`}</span>
+                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          <span className="font-mono text-[10px] opacity-60">p. {bm.page}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleBookmark(bm.page);
+                            }}
+                            title="Remove bookmark"
+                            className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity p-0.5 rounded"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
                         </div>
-                        <span className="font-mono text-[10px] opacity-60 ml-2 shrink-0">p. {bm.page}</span>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 </div>

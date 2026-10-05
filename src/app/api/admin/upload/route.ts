@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { PDFDocument } from "pdf-lib";
 
 export const dynamic = "force-dynamic";
 
@@ -200,21 +201,27 @@ export async function POST(req: Request) {
         // Ignored: On serverless environments, file is persisted in Neon database.
       }
 
-      // Extract page count from PDF buffer
+      // Extract true page count from PDF buffer using pdf-lib (handles compressed object streams)
       let pageCount = 0;
       try {
-        const text = buffer.toString("latin1");
-        const countMatch = text.match(/\/Type\s*\/Pages[^>]*\/Count\s+(\d+)/);
-        if (countMatch && parseInt(countMatch[1], 10) > 0) {
-          pageCount = parseInt(countMatch[1], 10);
-        } else {
-          const pageMatches = text.match(/\/Type\s*\/Page[^s]/g);
-          if (pageMatches && pageMatches.length > 0) {
-            pageCount = pageMatches.length;
+        const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
+        pageCount = pdfDoc.getPageCount();
+      } catch (pdfErr) {
+        // Fallback to regex if pdf-lib parsing hits edge case
+        try {
+          const text = buffer.toString("latin1");
+          const countMatch = text.match(/\/Type\s*\/Pages[^>]*\/Count\s+(\d+)/);
+          if (countMatch && parseInt(countMatch[1], 10) > 0) {
+            pageCount = parseInt(countMatch[1], 10);
+          } else {
+            const pageMatches = text.match(/\/Type\s*\/Page[^s]/g);
+            if (pageMatches && pageMatches.length > 0) {
+              pageCount = pageMatches.length;
+            }
           }
+        } catch (err) {
+          console.warn("Could not extract PDF page count:", err);
         }
-      } catch (err) {
-        console.warn("Could not extract PDF page count:", err);
       }
 
       return NextResponse.json({

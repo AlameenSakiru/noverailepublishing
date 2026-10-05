@@ -757,7 +757,7 @@ export function EditBookModal({
                   >
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.name}
+                        {(c as any).parent?.name ? `${(c as any).parent.name} → ${c.name}` : c.name}
                       </option>
                     ))}
                   </select>

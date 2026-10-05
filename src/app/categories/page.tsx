@@ -49,11 +49,24 @@ export default async function CategoriesPage() {
     where: { parentId: null, isActive: true },
     include: {
       children: {
+        where: { isActive: true },
         include: {
-          _count: { select: { books: true } },
+          _count: {
+            select: {
+              books: {
+                where: { status: "PUBLISHED" },
+              },
+            },
+          },
         },
       },
-      _count: { select: { books: true } },
+      _count: {
+        select: {
+          books: {
+            where: { status: "PUBLISHED" },
+          },
+        },
+      },
     },
     orderBy: { sortOrder: "asc" },
   });
@@ -75,6 +88,11 @@ export default async function CategoriesPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {categories.map((cat) => {
           const IconComponent = (cat.icon && iconMap[cat.icon]) || BookOpen;
+          // Roll up published books from this category + all its active subcategories
+          const subcategoriesTotal =
+            cat.children?.reduce((acc, sub) => acc + (sub._count?.books || 0), 0) || 0;
+          const totalPublished = (cat._count?.books || 0) + subcategoriesTotal;
+
           return (
             <div
               key={cat.id}
@@ -117,7 +135,7 @@ export default async function CategoriesPage() {
 
               <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
                 <span className="text-xs text-brand-muted">
-                  {cat._count.books} Published Titles
+                  {totalPublished} {totalPublished === 1 ? "Published Title" : "Published Titles"}
                 </span>
                 <Link
                   href={`/categories/${cat.slug}`}
