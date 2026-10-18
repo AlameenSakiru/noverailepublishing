@@ -11,8 +11,6 @@ import {
   CheckCircle2,
   Clock,
   Tag,
-  DollarSign,
-  TrendingUp,
   ShoppingBag,
 } from "lucide-react";
 
@@ -137,105 +135,11 @@ export function AdminOverviewClient({
   initialYearly,
   bookDatasets,
 }: OverviewProps) {
-  // Granularity View: "day" | "month" | "year"
-  const [viewMode, setViewMode] = useState<"day" | "month" | "year">("day");
-
-  // Day Range sub-filter: "today" | "yesterday" | "7d" | "14d" | "thisMonth"
-  const [dayRange, setDayRange] = useState<"today" | "yesterday" | "7d" | "14d" | "thisMonth">("7d");
-
-  // Metric Tab: "royalties" | "units"
-  const [metricTab, setMetricTab] = useState<"royalties" | "units">("royalties");
-
-  // Title selector filter
-  const [selectedBookId, setSelectedBookId] = useState<string>("ALL");
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-
   // Recent Orders Filter
   const [orderFilter, setOrderFilter] = useState<"ALL" | "PAID" | "PENDING">("ALL");
 
-  // Active Amazon KDP Quick Summary (recalculates dynamically if a book is filtered)
-  const activeQuickSummary: QuickSalesSummary = React.useMemo(() => {
-    if (selectedBookId !== "ALL" && bookDatasets && bookDatasets[selectedBookId]) {
-      return bookDatasets[selectedBookId].quickSummary;
-    }
-    return initialQuickSummary;
-  }, [selectedBookId, bookDatasets, initialQuickSummary]);
-
-  // Determine active dataset based on viewMode, range & selectedBookId
-  const activeDataset: ChartDataPoint[] = React.useMemo(() => {
-    if (selectedBookId !== "ALL" && bookDatasets && bookDatasets[selectedBookId]) {
-      const bookData = bookDatasets[selectedBookId];
-      if (viewMode === "year") return bookData.yearly;
-      if (viewMode === "month") return bookData.monthly;
-      if (dayRange === "today") return bookData.dailyToday;
-      if (dayRange === "yesterday") return bookData.dailyYesterday;
-      if (dayRange === "14d") return bookData.daily14d;
-      if (dayRange === "thisMonth") return bookData.thisMonthDaily;
-      return bookData.daily7d;
-    }
-
-    const rawDataset =
-      viewMode === "year"
-        ? initialYearly
-        : viewMode === "month"
-        ? initialMonthly
-        : dayRange === "today"
-        ? initialDailyToday
-        : dayRange === "yesterday"
-        ? initialDailyYesterday
-        : dayRange === "14d"
-        ? initialDaily14d
-        : dayRange === "thisMonth"
-        ? initialThisMonthDaily
-        : initialDaily7d;
-
-    if (selectedBookId === "ALL") return rawDataset;
-
-    // Fallback proportional calculation if book is not in precomputed datasets
-    const selectedBook = topBooks.find((b) => b.id === selectedBookId);
-    if (!selectedBook || grossRevenue === 0) return rawDataset;
-    const ratio = selectedBook.totalRevenue / grossRevenue;
-    return rawDataset.map((item) => ({
-      ...item,
-      royalties: Number((item.royalties * ratio).toFixed(2)),
-      units: Math.round(item.units * ratio),
-    }));
-  }, [
-    selectedBookId,
-    viewMode,
-    dayRange,
-    bookDatasets,
-    initialYearly,
-    initialMonthly,
-    initialDailyToday,
-    initialDailyYesterday,
-    initialDaily7d,
-    initialDaily14d,
-    initialThisMonthDaily,
-    topBooks,
-    grossRevenue,
-  ]);
-
-  // Active period totals (calculated dynamically from active dataset)
-  const totalRoyalties = activeDataset.reduce((sum, d) => sum + d.royalties, 0);
-  const totalUnits = activeDataset.reduce((sum, d) => sum + d.units, 0);
-
-  // Dynamic Y-Axis scale calculation
-  const maxRawValue = Math.max(
-    ...activeDataset.map((d) =>
-      metricTab === "royalties" ? d.royalties : d.units
-    )
-  );
-
-  const yCeiling = Math.max(10, Math.ceil(maxRawValue * 1.15));
-
-  const formatYLabel = (val: number) => {
-    if (metricTab === "royalties") {
-      if (val >= 1000) return `$${(val / 1000).toFixed(1)}k`;
-      return `$${Math.round(val)}`;
-    }
-    return `${Math.round(val)}`;
-  };
+  // Active Quick Summary
+  const activeQuickSummary: QuickSalesSummary = initialQuickSummary;
 
   const filteredOrders = recentOrders.filter((o) => {
     if (orderFilter === "ALL") return true;
@@ -322,26 +226,16 @@ export function AdminOverviewClient({
         </div>
       </div>
 
-      {/* 2.5 AMAZON KDP SALES SNAPSHOT (Today, Yesterday, This Month, Last 7 Days) */}
+      {/* 2.5 SALES SNAPSHOT (Today, Yesterday, This Month, Last 7 Days) */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-            KDP Sales Snapshot
-          </span>
-          <span className="text-[11px] text-gray-400">
-            Click any period to view on chart
+            Sales Snapshot
           </span>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           {/* Today */}
-          <button
-            onClick={() => { setViewMode("day"); setDayRange("today"); }}
-            className={`p-3 sm:p-4 rounded-xl border text-left transition-all ${
-              viewMode === "day" && dayRange === "today"
-                ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/30 shadow-xs"
-                : "bg-white border-gray-200 hover:border-gray-300 shadow-2xs"
-            }`}
-          >
+          <div className="p-3 sm:p-4 rounded-xl border border-gray-200 bg-white shadow-2xs">
             <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-500">
               <span>Today</span>
               <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Real-time" />
@@ -352,17 +246,10 @@ export function AdminOverviewClient({
             <div className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
               {formatCount(activeQuickSummary.today.units)} {activeQuickSummary.today.units === 1 ? "unit" : "units"} ordered
             </div>
-          </button>
+          </div>
 
           {/* Yesterday */}
-          <button
-            onClick={() => { setViewMode("day"); setDayRange("yesterday"); }}
-            className={`p-3 sm:p-4 rounded-xl border text-left transition-all ${
-              viewMode === "day" && dayRange === "yesterday"
-                ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/30 shadow-xs"
-                : "bg-white border-gray-200 hover:border-gray-300 shadow-2xs"
-            }`}
-          >
+          <div className="p-3 sm:p-4 rounded-xl border border-gray-200 bg-white shadow-2xs">
             <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-500">
               Yesterday
             </div>
@@ -372,17 +259,10 @@ export function AdminOverviewClient({
             <div className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
               {formatCount(activeQuickSummary.yesterday.units)} {activeQuickSummary.yesterday.units === 1 ? "unit" : "units"} ordered
             </div>
-          </button>
+          </div>
 
           {/* This Month */}
-          <button
-            onClick={() => { setViewMode("day"); setDayRange("thisMonth"); }}
-            className={`p-3 sm:p-4 rounded-xl border text-left transition-all ${
-              viewMode === "day" && dayRange === "thisMonth"
-                ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/30 shadow-xs"
-                : "bg-white border-gray-200 hover:border-gray-300 shadow-2xs"
-            }`}
-          >
+          <div className="p-3 sm:p-4 rounded-xl border border-gray-200 bg-white shadow-2xs">
             <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-500 truncate">
               This Month ({activeQuickSummary.thisMonth.monthName})
             </div>
@@ -392,17 +272,10 @@ export function AdminOverviewClient({
             <div className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
               {formatCount(activeQuickSummary.thisMonth.units)} {activeQuickSummary.thisMonth.units === 1 ? "unit" : "units"} ordered
             </div>
-          </button>
+          </div>
 
           {/* Last 7 Days */}
-          <button
-            onClick={() => { setViewMode("day"); setDayRange("7d"); }}
-            className={`p-3 sm:p-4 rounded-xl border text-left transition-all ${
-              viewMode === "day" && dayRange === "7d"
-                ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/30 shadow-xs"
-                : "bg-white border-gray-200 hover:border-gray-300 shadow-2xs"
-            }`}
-          >
+          <div className="p-3 sm:p-4 rounded-xl border border-gray-200 bg-white shadow-2xs">
             <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-500">
               Last 7 Days
             </div>
@@ -411,369 +284,6 @@ export function AdminOverviewClient({
             </div>
             <div className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
               {formatCount(activeQuickSummary.last7Days.units)} {activeQuickSummary.last7Days.units === 1 ? "unit" : "units"} ordered
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* 3. AMAZON KDP SALES & ROYALTIES CARD */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        {/* KDP Top Filter Controls Bar */}
-        <div className="p-3.5 sm:p-5 border-b border-gray-200 bg-[#f8fafc] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            {/* VIEW BY: PER DAY, PER MONTH, PER YEAR */}
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">
-                View By
-              </label>
-              <div className="inline-flex items-center bg-white border border-gray-300 rounded-lg p-0.5 shadow-2xs">
-                <button
-                  onClick={() => setViewMode("day")}
-                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                    viewMode === "day"
-                      ? "bg-gray-900 text-white shadow-xs"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  Per Day
-                </button>
-                <button
-                  onClick={() => setViewMode("month")}
-                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                    viewMode === "month"
-                      ? "bg-gray-900 text-white shadow-xs"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  Per Month
-                </button>
-                <button
-                  onClick={() => setViewMode("year")}
-                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                    viewMode === "year"
-                      ? "bg-gray-900 text-white shadow-xs"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  Per Year
-                </button>
-              </div>
-            </div>
-
-            {/* Sub-range for Per Day */}
-            {viewMode === "day" && (
-              <div className="max-w-full">
-                <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">
-                  Range
-                </label>
-                <div className="overflow-x-auto max-w-full scrollbar-none pb-0.5 sm:pb-0">
-                  <div className="inline-flex items-center bg-white border border-gray-300 rounded-lg p-0.5 shadow-2xs whitespace-nowrap">
-                    <button
-                      onClick={() => setDayRange("today")}
-                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                        dayRange === "today"
-                          ? "bg-gray-200 text-gray-900 font-bold"
-                          : "text-gray-600 hover:text-gray-900"
-                      }`}
-                    >
-                      Today
-                    </button>
-                    <button
-                      onClick={() => setDayRange("yesterday")}
-                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                        dayRange === "yesterday"
-                          ? "bg-gray-200 text-gray-900 font-bold"
-                          : "text-gray-600 hover:text-gray-900"
-                      }`}
-                    >
-                      Yesterday
-                    </button>
-                    <button
-                      onClick={() => setDayRange("7d")}
-                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                        dayRange === "7d"
-                          ? "bg-gray-200 text-gray-900 font-bold"
-                          : "text-gray-600 hover:text-gray-900"
-                      }`}
-                    >
-                      7 Days
-                    </button>
-                    <button
-                      onClick={() => setDayRange("14d")}
-                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                        dayRange === "14d"
-                          ? "bg-gray-200 text-gray-900 font-bold"
-                          : "text-gray-600 hover:text-gray-900"
-                      }`}
-                    >
-                      14 Days
-                    </button>
-                    <button
-                      onClick={() => setDayRange("thisMonth")}
-                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                        dayRange === "thisMonth"
-                          ? "bg-gray-200 text-gray-900 font-bold"
-                          : "text-gray-600 hover:text-gray-900"
-                      }`}
-                    >
-                      This Month
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Title Filter Dropdown */}
-            <div className="relative w-full sm:w-auto">
-              <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">
-                Title Filter
-              </label>
-              <select
-                value={selectedBookId}
-                onChange={(e) => setSelectedBookId(e.target.value)}
-                className="w-full sm:w-auto text-xs font-semibold text-gray-800 bg-white border border-gray-300 rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
-              >
-                <option value="ALL">All Titles ({topBooks.length})</option>
-                {topBooks.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Timeframe Scope Indicator */}
-          <div className="text-left sm:text-right w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200/60">
-            <span className="text-[10px] uppercase font-bold text-gray-400 block">
-              Active Scope
-            </span>
-            <span className="text-xs font-semibold text-gray-700 font-mono">
-              {viewMode === "day" && (
-                dayRange === "today"
-                  ? "Today (Real-Time)"
-                  : dayRange === "yesterday"
-                  ? "Yesterday"
-                  : dayRange === "7d"
-                  ? "Last 7 Days (Daily)"
-                  : dayRange === "14d"
-                  ? "Last 14 Days (Daily)"
-                  : `This Month (${activeQuickSummary.thisMonth.monthName} MTD)`
-              )}
-              {viewMode === "month" && `Calendar Year ${initialMonthly[0]?.subLabel || "2026"} (Monthly)`}
-              {viewMode === "year" && `Multi-Year Trajectory (${initialYearly[0]?.label || "2024"} - ${initialYearly[initialYearly.length - 1]?.label || "2027"})`}
-            </span>
-          </div>
-        </div>
-
-        {/* Metric Tabs (Royalties and Units) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 border-b border-gray-200 divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
-          {/* Tab 1: Net Royalties */}
-          <button
-            onClick={() => setMetricTab("royalties")}
-            className={`p-4 sm:p-5 text-left transition-all relative ${
-              metricTab === "royalties"
-                ? "bg-amber-50/40"
-                : "hover:bg-gray-50"
-            }`}
-          >
-            {metricTab === "royalties" && (
-              <span className="absolute top-0 left-0 right-0 h-1 bg-[#FF9900]" />
-            )}
-            <div className="text-xs font-semibold text-gray-600 flex items-center justify-between">
-              <span>Paid Royalties / Revenue</span>
-              <DollarSign className="w-4 h-4 text-amber-600" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-gray-900 font-mono mt-1">
-              ${formatCurrency(totalRoyalties)}
-            </div>
-            <div className="text-[11px] text-gray-500 mt-0.5">
-              Net digital book sales ({
-                viewMode === "day"
-                  ? dayRange === "today"
-                    ? "today"
-                    : dayRange === "yesterday"
-                    ? "yesterday"
-                    : dayRange === "7d"
-                    ? "last 7 days"
-                    : dayRange === "14d"
-                    ? "last 14 days"
-                    : `${activeQuickSummary.thisMonth.monthName} MTD`
-                  : viewMode === "month"
-                  ? `${initialMonthly[0]?.subLabel || "2026"} YTD`
-                  : "multi-year"
-              })
-            </div>
-          </button>
-
-          {/* Tab 2: Units Ordered */}
-          <button
-            onClick={() => setMetricTab("units")}
-            className={`p-4 sm:p-5 text-left transition-all relative ${
-              metricTab === "units"
-                ? "bg-amber-50/40"
-                : "hover:bg-gray-50"
-            }`}
-          >
-            {metricTab === "units" && (
-              <span className="absolute top-0 left-0 right-0 h-1 bg-[#FF9900]" />
-            )}
-            <div className="text-xs font-semibold text-gray-600 flex items-center justify-between">
-              <span>Paid Units Ordered</span>
-              <ShoppingBag className="w-4 h-4 text-amber-600" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-gray-900 font-mono mt-1">
-              {formatCount(totalUnits)}{" "}
-              <span className="text-sm font-sans font-normal text-gray-500">
-                units
-              </span>
-            </div>
-            <div className="text-[11px] text-gray-500 mt-0.5">
-              Full digital edition downloads
-            </div>
-          </button>
-        </div>
-
-        {/* KDP Chart Body with Y-Axis & Horizontal Guidelines */}
-        <div className="p-3 sm:p-6 sm:p-8">
-          <div className="relative h-64 w-full flex">
-            {/* Y-Axis Labels */}
-            <div className="w-10 sm:w-16 shrink-0 flex flex-col justify-between text-[10px] sm:text-[11px] font-mono text-gray-400 text-right pr-1.5 sm:pr-3 select-none">
-              <span>{formatYLabel(yCeiling)}</span>
-              <span>{formatYLabel(yCeiling * 0.75)}</span>
-              <span>{formatYLabel(yCeiling * 0.5)}</span>
-              <span>{formatYLabel(yCeiling * 0.25)}</span>
-              <span>0</span>
-            </div>
-
-            {/* Grid Area with Bars */}
-            <div className="flex-1 relative flex flex-col justify-between border-l border-b border-gray-300">
-              {/* Horizontal Background Guideline Rules */}
-              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                <div className="w-full border-t border-gray-100" />
-                <div className="w-full border-t border-gray-100" />
-                <div className="w-full border-t border-gray-100" />
-                <div className="w-full border-t border-gray-100" />
-                <div className="w-full" />
-              </div>
-
-              {/* Data Columns */}
-              <div className="relative z-10 w-full h-full flex items-end justify-between px-1.5 sm:px-4">
-                {activeDataset.map((item, idx) => {
-                  const val =
-                    metricTab === "royalties"
-                      ? item.royalties
-                      : item.units;
-
-                  const heightPercent =
-                    val === 0 ? 0 : Math.max(8, Math.round((val / yCeiling) * 100));
-
-                  const isHovered = hoveredIndex === idx;
-
-                  return (
-                    <div
-                      key={idx}
-                      onMouseEnter={() => setHoveredIndex(idx)}
-                      onMouseLeave={() => setHoveredIndex(null)}
-                      className="flex-1 h-full flex flex-col justify-end items-center group cursor-pointer relative px-0.5 sm:px-1"
-                    >
-                      {/* Daily Earnings Pill directly above each bar */}
-                      <div className="mb-1 text-center transition-all select-none">
-                        {val > 0 ? (
-                          <span
-                            className={`inline-block text-[9px] sm:text-[11px] font-mono font-bold px-1 sm:px-1.5 py-0.5 rounded shadow-2xs transition-colors ${
-                              isHovered
-                                ? "bg-gray-900 text-[#FF9900]"
-                                : "bg-amber-100 text-amber-950 border border-amber-300/80 font-bold"
-                            }`}
-                          >
-                            {metricTab === "royalties" ? `$${formatCurrency(val)}` : formatCount(val)}
-                          </span>
-                        ) : (
-                          <span className="inline-block text-[9px] sm:text-[10px] font-mono text-gray-300">
-                            {metricTab === "royalties" ? "$0" : "0"}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* KDP Hover Tooltip */}
-                      {isHovered && (
-                        <div className="absolute -top-16 z-30 bg-gray-900 text-white rounded-lg p-2.5 shadow-xl text-[11px] whitespace-nowrap pointer-events-none transform -translate-y-1">
-                          <div className="font-semibold text-gray-300 border-b border-gray-700 pb-1 mb-1">
-                            {item.fullTitle}
-                          </div>
-                          <div className="font-mono text-[#FF9900] font-bold text-sm">
-                            {metricTab === "royalties" ? `$${formatCurrency(item.royalties)}` : `${formatCount(item.units)} units`}
-                          </div>
-                          <div className="text-[10px] text-gray-400 mt-0.5">
-                            {item.units} {item.units === 1 ? "copy" : "copies"} • ${formatCurrency(item.royalties)} volume
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Bar Graphic with Amazon Orange Accent */}
-                      <div
-                        style={{ height: `${heightPercent}%` }}
-                        className={`w-full ${
-                          viewMode === "year"
-                            ? "max-w-[64px]"
-                            : viewMode === "month"
-                            ? "max-w-[28px]"
-                            : activeDataset.length <= 2
-                            ? "max-w-[96px]"
-                            : activeDataset.length <= 7
-                            ? "max-w-[48px]"
-                            : "max-w-[28px]"
-                        } rounded-t transition-all ${
-                          val === 0
-                            ? "bg-transparent border-t border-dashed border-gray-300"
-                            : isHovered
-                            ? "bg-[#e68a00] shadow-md ring-2 ring-amber-400/50"
-                            : "bg-[#FF9900] hover:bg-[#e68a00]"
-                        }`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* X-Axis Labels */}
-          <div className="flex pl-10 sm:pl-16 pt-3 text-[10px] sm:text-[11px] text-gray-500 font-medium">
-            <div className="flex-1 flex justify-between px-1.5 sm:px-4">
-              {activeDataset.map((item, idx) => (
-                <div key={idx} className="flex-1 text-center truncate">
-                  <span className="font-semibold text-gray-800">{item.label}</span>
-                  {item.subLabel && viewMode !== "day" && (
-                    <span className="block text-[10px] text-gray-400 -mt-0.5">
-                      {item.subLabel}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Chart Legend / Summary */}
-          <div className="mt-5 pt-3.5 sm:mt-6 sm:pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-500 gap-2">
-            <div className="flex items-center gap-4 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 font-medium text-gray-700">
-                <span className="w-3 h-3 rounded-xs bg-[#FF9900]" />
-                <span>
-                  {metricTab === "royalties"
-                    ? "Net Royalties ($ USD)"
-                    : "Paid Digital Copies"}
-                </span>
-              </span>
-              <span className="text-gray-400">•</span>
-              <span>Granularity: <strong>{viewMode === "day" ? "Daily" : viewMode === "month" ? "Monthly" : "Yearly"}</strong></span>
-            </div>
-            <div className="font-mono text-gray-700 font-medium">
-              Average per {viewMode === "day" ? "Day" : viewMode === "month" ? "Month" : "Year"}:{" "}
-              <strong>
-                ${(totalRoyalties / (activeDataset.filter((d) => d.royalties > 0).length || 1)).toFixed(2)}
-              </strong>
             </div>
           </div>
         </div>
