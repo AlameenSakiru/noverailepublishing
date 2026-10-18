@@ -100,12 +100,6 @@ export function BookCard({
           <div className="absolute top-0 bottom-0 left-0 w-2.5 bg-gradient-to-r from-black/25 via-white/10 to-transparent pointer-events-none z-10" />
         </div>
 
-        {/* Category Pill Tag */}
-        {categoryName && (
-          <span className="absolute top-3 left-3 z-20 px-2.5 py-1 bg-white/95 backdrop-blur-md rounded text-[10px] font-semibold text-brand-slate uppercase tracking-wider shadow-xs border border-brand-border/80">
-            {categoryName}
-          </span>
-        )}
       </Link>
 
       {/* 2. Book Info Body Below Cover */}
