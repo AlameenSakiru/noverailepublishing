@@ -169,6 +169,7 @@ export default async function ExamPrepPage() {
                   salePrice={book.salePrice}
                   rating={book.reviews?.length ? book.reviews.reduce((acc, r) => acc + r.rating, 0) / book.reviews.length : null}
                   reviewCount={book.reviews?.length || 0}
+                  createdAt={book.createdAt}
                 />
               </div>
             ))}

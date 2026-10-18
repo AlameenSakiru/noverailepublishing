@@ -293,6 +293,7 @@ export default async function HomePage() {
                 salePrice={book.salePrice}
                 rating={avgRating}
                 reviewCount={reviewCount}
+                createdAt={book.createdAt}
               />
             );
           })}

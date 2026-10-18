@@ -209,6 +209,7 @@ export default async function CategoryDetailPage({ params }: CategoryPageProps) 
                   salePrice={book.salePrice}
                   rating={avgRating}
                   reviewCount={reviewCount}
+                  createdAt={book.createdAt}
                 />
               );
             })}

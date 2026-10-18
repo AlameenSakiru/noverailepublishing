@@ -21,6 +21,7 @@ export interface BookCardProps {
   isOwned?: boolean;
   rating?: number | null;
   reviewCount?: number | null;
+  createdAt?: string | Date | null;
 }
 
 export function BookCard({
@@ -36,12 +37,22 @@ export function BookCard({
   isOwned = false,
   rating,
   reviewCount = 0,
+  createdAt,
 }: BookCardProps) {
   const { addItem, isInCart } = useCart();
   const { isBookOwned } = useAuth();
   const { formatPrice } = useStorefront();
   const isUserOwned = isOwned || isBookOwned(id);
   const inCart = isInCart(id);
+
+  // New Release duration: Active for 30 days from publication/creation date
+  const isNewRelease = React.useMemo(() => {
+    if (!createdAt) return false;
+    const createdTime = new Date(createdAt).getTime();
+    if (isNaN(createdTime)) return false;
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    return Date.now() - createdTime < THIRTY_DAYS_MS;
+  }, [createdAt]);
 
   const activePrice = salePrice != null && salePrice > 0 ? salePrice : price;
   const hasDiscount = salePrice != null && salePrice > 0 && salePrice < price;
@@ -125,13 +136,17 @@ export function BookCard({
               </span>
               <span className="text-[11px] text-brand-muted">({reviewCount})</span>
             </div>
-          ) : (
+          ) : isNewRelease ? (
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200/60">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 New Release
               </span>
               <span className="text-[11px] text-brand-muted">Direct Edition</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-brand-muted font-medium">Direct Edition</span>
             </div>
           )}
         </div>

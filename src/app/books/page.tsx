@@ -298,6 +298,7 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
                   salePrice={book.salePrice}
                   rating={avgRating}
                   reviewCount={reviewCount}
+                  createdAt={book.createdAt}
                 />
               );
             })}
