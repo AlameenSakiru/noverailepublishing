@@ -210,56 +210,56 @@ export function OrdersClient({
       </div>
 
       {/* 2. Top Metric Tiles */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
-          <div className="flex items-center justify-between text-xs font-medium text-gray-500">
-            <span>Total Realized Revenue</span>
-            <DollarSign className="w-4 h-4 text-emerald-600" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl border border-gray-200 shadow-xs">
+          <div className="flex items-center justify-between text-[11px] sm:text-xs font-medium text-gray-500">
+            <span className="truncate">Total Revenue</span>
+            <DollarSign className="w-4 h-4 text-emerald-600 shrink-0" />
           </div>
-          <div className="text-2xl font-bold text-gray-900 mt-2 font-mono">
+          <div className="text-lg sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2 font-mono">
             ${formatCurrency(totalRevenue)}
           </div>
-          <div className="text-xs text-gray-400 mt-1">
+          <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 truncate">
             {paidCount} paid transactions
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
-          <div className="flex items-center justify-between text-xs font-medium text-gray-500">
-            <span>Paid Digital Units</span>
-            <ShoppingBag className="w-4 h-4 text-amber-600" />
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl border border-gray-200 shadow-xs">
+          <div className="flex items-center justify-between text-[11px] sm:text-xs font-medium text-gray-500">
+            <span className="truncate">Paid Units</span>
+            <ShoppingBag className="w-4 h-4 text-amber-600 shrink-0" />
           </div>
-          <div className="text-2xl font-bold text-gray-900 mt-2 font-mono">
+          <div className="text-lg sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2 font-mono">
             {totalUnitsSold}
           </div>
-          <div className="text-xs text-gray-400 mt-1">
-            Across {titlePerformance.length} catalog editions
+          <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 truncate">
+            Across {titlePerformance.length} editions
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
-          <div className="flex items-center justify-between text-xs font-medium text-gray-500">
-            <span>Total Orders Recorded</span>
-            <BookOpen className="w-4 h-4 text-blue-600" />
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl border border-gray-200 shadow-xs">
+          <div className="flex items-center justify-between text-[11px] sm:text-xs font-medium text-gray-500">
+            <span className="truncate">Total Orders</span>
+            <BookOpen className="w-4 h-4 text-blue-600 shrink-0" />
           </div>
-          <div className="text-2xl font-bold text-gray-900 mt-2 font-mono">
+          <div className="text-lg sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2 font-mono">
             {orders.length}
           </div>
-          <div className="text-xs text-gray-400 mt-1">
+          <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 truncate">
             {pendingCount > 0 ? `${pendingCount} awaiting payment` : "100% fulfilled"}
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
-          <div className="flex items-center justify-between text-xs font-medium text-gray-500">
-            <span>Catalog Royalties Ledger</span>
-            <TrendingUp className="w-4 h-4 text-purple-600" />
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl border border-gray-200 shadow-xs">
+          <div className="flex items-center justify-between text-[11px] sm:text-xs font-medium text-gray-500">
+            <span className="truncate">Catalog Royalties</span>
+            <TrendingUp className="w-4 h-4 text-purple-600 shrink-0" />
           </div>
-          <div className="text-2xl font-bold text-emerald-700 mt-2 font-mono">
+          <div className="text-lg sm:text-2xl font-bold text-emerald-700 mt-1 sm:mt-2 font-mono">
             ${formatCurrency(totalCatalogRoyalties)}
           </div>
-          <div className="text-xs text-gray-400 mt-1">
-            Avg. ${(totalUnitsSold > 0 ? totalCatalogRoyalties / totalUnitsSold : 0).toFixed(2)} net / unit
+          <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 truncate">
+            Avg. ${(totalUnitsSold > 0 ? totalCatalogRoyalties / totalUnitsSold : 0).toFixed(2)} / unit
           </div>
         </div>
       </div>
@@ -291,7 +291,8 @@ export function OrdersClient({
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Desktop Table (hidden on mobile) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead className="bg-[#f8fafc] text-gray-600 font-semibold border-b border-gray-200">
                 <tr>
@@ -411,6 +412,80 @@ export function OrdersClient({
             </table>
           </div>
 
+          {/* Mobile Card List (visible on < md) */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {titlePerformance.map((book) => (
+              <div key={book.id} className="p-3.5 space-y-2.5">
+                <div className="flex items-start gap-3">
+                  <div className="relative w-10 h-14 bg-gray-100 rounded overflow-hidden shrink-0 border border-gray-200 shadow-2xs">
+                    {book.coverImage ? (
+                      <Image
+                        src={book.coverImage}
+                        alt={book.title}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        <BookOpen className="w-4 h-4" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={`/books/${book.slug}`}
+                      target="_blank"
+                      className="font-bold text-gray-900 hover:text-amber-800 transition-colors line-clamp-1 text-xs"
+                    >
+                      {book.title}
+                    </Link>
+                    <div className="text-[11px] text-gray-500 mt-0.5 truncate">
+                      {book.categoryName} • <span className="font-mono text-[10px] text-gray-600">{book.imprintName}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs font-mono font-semibold text-gray-900">
+                        ${book.price.toFixed(2)}
+                      </span>
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                        <span>LIVE</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-50">
+                  <span className="text-gray-500">
+                    Sold: <strong className="text-gray-900 font-mono">{book.salesCount}</strong> units
+                  </span>
+                  <span className="font-mono font-bold text-emerald-700 text-sm">
+                    ${formatCurrency(book.totalRevenue)}
+                  </span>
+                </div>
+
+                <div className="pt-1">
+                  <Link
+                    href={`/admin/books?edit=${book.id}`}
+                    className="w-full block text-center py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold text-xs transition-colors"
+                  >
+                    Edit Title
+                  </Link>
+                </div>
+              </div>
+            ))}
+
+            {/* Mobile Summary Row */}
+            <div className="p-3.5 bg-[#f8fafc] text-xs space-y-1">
+              <div className="font-semibold text-gray-700">Total Catalog Performance</div>
+              <div className="flex items-center justify-between font-mono">
+                <span className="text-gray-500">{totalUnitsSold} total units</span>
+                <span className="font-bold text-emerald-800 text-sm">
+                  ${formatCurrency(totalCatalogRoyalties)}
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Interactive Royalties Simulator / Estimator Widget */}
           <div className="p-5 border-t border-gray-200 bg-amber-50/20 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -528,189 +603,337 @@ export function OrdersClient({
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-100">
-                    <tr>
-                      <th className="p-4">Order Number</th>
-                      <th className="p-4">Customer Email</th>
-                      <th className="p-4">Items</th>
-                      <th className="p-4">Total Amount</th>
-                      <th className="p-4">Payment Status</th>
-                      <th className="p-4">Date</th>
-                      <th className="p-4 text-right">Details</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredOrders.map((order) => {
-                      const isExpanded = expandedOrderId === order.id;
-                      return (
-                        <React.Fragment key={order.id}>
-                          <tr className="hover:bg-gray-50/60 transition-colors">
-                            <td className="p-4 font-mono font-bold text-brand-ink">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span>{order.orderNumber}</span>
-                                {order.payment?.provider === "NOWPAYMENTS" && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1">
-                                    <Coins className="w-2.5 h-2.5 text-amber-700" />
-                                    <span>CRYPTO</span>
-                                  </span>
-                                )}
-                                {order.isGift && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                                    GIFT
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="p-4 text-gray-700 font-medium">
-                              <div>
-                                <span>{order.customerEmail}</span>
-                                {order.isGift && order.recipientEmail && (
-                                  <span className="text-[11px] text-amber-800 font-normal block mt-0.5">
-                                    Recipient: {order.recipientName || order.recipientEmail} ({order.recipientEmail})
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="p-4 text-gray-500">
-                              <span className="inline-flex items-center gap-1 font-semibold text-brand-ink">
-                                <BookOpen className="w-3.5 h-3.5 text-gray-400" />
-                                <span>{order.items.length} {order.items.length === 1 ? "Book" : "Books"}</span>
-                              </span>
-                            </td>
-                            <td className="p-4 font-bold text-brand-ink font-serif text-sm">
-                              ${order.totalAmount.toFixed(2)} {order.currency}
-                            </td>
-                            <td className="p-4">
-                              <span
-                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                                  order.paymentStatus === "PAID"
-                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                    : order.paymentStatus === "PENDING"
-                                    ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                    : "bg-red-50 text-red-700 border border-red-200"
-                                }`}
-                              >
-                                {order.paymentStatus === "PAID" ? (
-                                  <CheckCircle2 className="w-3 h-3" />
-                                ) : order.paymentStatus === "PENDING" ? (
-                                  <Clock className="w-3 h-3" />
-                                ) : (
-                                  <XCircle className="w-3 h-3" />
-                                )}
-                                <span>{order.paymentStatus}</span>
-                              </span>
-                            </td>
-                            <td className="p-4 text-gray-400">
-                              {formatOrderDate(order.createdAt)}
-                            </td>
-                            <td className="p-4 text-right">
-                              <button
-                                onClick={() => toggleExpand(order.id)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-[11px] transition-colors"
-                              >
-                                <span>{isExpanded ? "Hide" : "Inspect"}</span>
-                                {isExpanded ? (
-                                  <ChevronUp className="w-3 h-3" />
-                                ) : (
-                                  <ChevronDown className="w-3 h-3" />
-                                )}
-                              </button>
-                            </td>
-                          </tr>
-
-                          {/* Expandable Order Breakdown */}
-                          {isExpanded && (
-                            <tr className="bg-gray-50/80">
-                              <td colSpan={7} className="p-5 border-t border-gray-100">
-                                <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4 shadow-2xs">
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-2">
-                                    <div className="text-xs">
-                                      <span className="font-semibold text-gray-700">
-                                        Gateway Verification:
-                                      </span>{" "}
-                                      <span className="font-mono text-gray-500">
-                                        {order.payment?.provider || "Direct / Sandbox"} — TxID:{" "}
-                                        {order.payment?.transactionId || "N/A"}
-                                      </span>
-                                    </div>
-                                    <div className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
-                                      <CreditCard className="w-3.5 h-3.5" />
-                                      <span>Processed Digitally</span>
-                                    </div>
-                                  </div>
-
-                                  {/* Crypto Details Row */}
-                                  {(order.payment?.provider === "NOWPAYMENTS" || order.payment?.cryptoCurrency || order.cryptoCurrency) && (
-                                    <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1">
-                                      <div className="flex items-center gap-1.5 font-bold text-amber-900">
-                                        <Coins className="w-3.5 h-3.5 text-amber-700" />
-                                        <span>NOWPayments Crypto Transaction</span>
-                                      </div>
-                                      <div>
-                                        <span className="font-semibold">Cryptocurrency:</span> {order.payment?.cryptoCurrency || order.cryptoCurrency || "Multi-Coin"}
-                                        {order.payment?.cryptoAmount || order.cryptoAmount ? ` (Amount: ${order.payment?.cryptoAmount || order.cryptoAmount})` : ""}
-                                      </div>
-                                      {order.payment?.transactionId && (
-                                        <div className="font-mono text-[11px] text-gray-600">
-                                          <span className="font-semibold font-sans">Payment / Invoice ID:</span> {order.payment.transactionId}
-                                        </div>
-                                      )}
-                                    </div>
+              <>
+                {/* Desktop Table (hidden on mobile) */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-100">
+                      <tr>
+                        <th className="p-4">Order Number</th>
+                        <th className="p-4">Customer Email</th>
+                        <th className="p-4">Items</th>
+                        <th className="p-4">Total Amount</th>
+                        <th className="p-4">Payment Status</th>
+                        <th className="p-4">Date</th>
+                        <th className="p-4 text-right">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredOrders.map((order) => {
+                        const isExpanded = expandedOrderId === order.id;
+                        return (
+                          <React.Fragment key={order.id}>
+                            <tr className="hover:bg-gray-50/60 transition-colors">
+                              <td className="p-4 font-mono font-bold text-brand-ink">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span>{order.orderNumber}</span>
+                                  {order.payment?.provider === "NOWPAYMENTS" && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1">
+                                      <Coins className="w-2.5 h-2.5 text-amber-700" />
+                                      <span>CRYPTO</span>
+                                    </span>
                                   )}
-
-                                  {/* Gift Details Row */}
                                   {order.isGift && (
-                                    <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1">
-                                      <div className="flex items-center gap-1.5 font-bold text-amber-900">
-                                        <Gift className="w-3.5 h-3.5 text-amber-700" />
-                                        <span>Gift Purchase Details</span>
-                                      </div>
-                                      <div>
-                                        <span className="font-semibold">Recipient:</span> {order.recipientName || "N/A"} ({order.recipientEmail})
-                                      </div>
-                                      {order.giftMessage && (
-                                        <div>
-                                          <span className="font-semibold">Gift Note:</span> &ldquo;{order.giftMessage}&rdquo;
-                                        </div>
-                                      )}
-                                    </div>
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                      GIFT
+                                    </span>
                                   )}
-
-                                  <div>
-                                    <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">
-                                      Items In This Order ({order.items.length})
-                                    </h4>
-                                    <div className="space-y-2">
-                                      {order.items.map((item) => (
-                                        <div
-                                          key={item.id}
-                                          className="flex items-center justify-between text-xs p-2.5 rounded-lg bg-gray-50 border border-gray-100"
-                                        >
-                                          <div className="flex items-center gap-2">
-                                            <BookOpen className="w-3.5 h-3.5 text-amber-600" />
-                                            <span className="font-semibold text-brand-ink">
-                                              {item.bookTitle}
-                                            </span>
-                                          </div>
-                                          <span className="font-bold text-brand-ink">
-                                            ${item.price.toFixed(2)}
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
                                 </div>
                               </td>
+                              <td className="p-4 text-gray-700 font-medium">
+                                <div>
+                                  <span>{order.customerEmail}</span>
+                                  {order.isGift && order.recipientEmail && (
+                                    <span className="text-[11px] text-amber-800 font-normal block mt-0.5">
+                                      Recipient: {order.recipientName || order.recipientEmail} ({order.recipientEmail})
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-4 text-gray-500">
+                                <span className="inline-flex items-center gap-1 font-semibold text-brand-ink">
+                                  <BookOpen className="w-3.5 h-3.5 text-gray-400" />
+                                  <span>{order.items.length} {order.items.length === 1 ? "Book" : "Books"}</span>
+                                </span>
+                              </td>
+                              <td className="p-4 font-bold text-brand-ink font-serif text-sm">
+                                ${order.totalAmount.toFixed(2)} {order.currency}
+                              </td>
+                              <td className="p-4">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                                    order.paymentStatus === "PAID"
+                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                      : order.paymentStatus === "PENDING"
+                                      ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                      : "bg-red-50 text-red-700 border border-red-200"
+                                  }`}
+                                >
+                                  {order.paymentStatus === "PAID" ? (
+                                    <CheckCircle2 className="w-3 h-3" />
+                                  ) : order.paymentStatus === "PENDING" ? (
+                                    <Clock className="w-3 h-3" />
+                                  ) : (
+                                    <XCircle className="w-3 h-3" />
+                                  )}
+                                  <span>{order.paymentStatus}</span>
+                                </span>
+                              </td>
+                              <td className="p-4 text-gray-400">
+                                {formatOrderDate(order.createdAt)}
+                              </td>
+                              <td className="p-4 text-right">
+                                <button
+                                  onClick={() => toggleExpand(order.id)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-[11px] transition-colors"
+                                >
+                                  <span>{isExpanded ? "Hide" : "Inspect"}</span>
+                                  {isExpanded ? (
+                                    <ChevronUp className="w-3 h-3" />
+                                  ) : (
+                                    <ChevronDown className="w-3 h-3" />
+                                  )}
+                                </button>
+                              </td>
                             </tr>
+
+                            {/* Expandable Order Breakdown */}
+                            {isExpanded && (
+                              <tr className="bg-gray-50/80">
+                                <td colSpan={7} className="p-5 border-t border-gray-100">
+                                  <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4 shadow-2xs">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-2">
+                                      <div className="text-xs">
+                                        <span className="font-semibold text-gray-700">
+                                          Gateway Verification:
+                                        </span>{" "}
+                                        <span className="font-mono text-gray-500">
+                                          {order.payment?.provider || "Direct / Sandbox"} — TxID:{" "}
+                                          {order.payment?.transactionId || "N/A"}
+                                        </span>
+                                      </div>
+                                      <div className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
+                                        <CreditCard className="w-3.5 h-3.5" />
+                                        <span>Processed Digitally</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Crypto Details Row */}
+                                    {(order.payment?.provider === "NOWPAYMENTS" || order.payment?.cryptoCurrency || order.cryptoCurrency) && (
+                                      <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1">
+                                        <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                                          <Coins className="w-3.5 h-3.5 text-amber-700" />
+                                          <span>NOWPayments Crypto Transaction</span>
+                                        </div>
+                                        <div>
+                                          <span className="font-semibold">Cryptocurrency:</span> {order.payment?.cryptoCurrency || order.cryptoCurrency || "Multi-Coin"}
+                                          {order.payment?.cryptoAmount || order.cryptoAmount ? ` (Amount: ${order.payment?.cryptoAmount || order.cryptoAmount})` : ""}
+                                        </div>
+                                        {order.payment?.transactionId && (
+                                          <div className="font-mono text-[11px] text-gray-600">
+                                            <span className="font-semibold font-sans">Payment / Invoice ID:</span> {order.payment.transactionId}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Gift Details Row */}
+                                    {order.isGift && (
+                                      <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1">
+                                        <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                                          <Gift className="w-3.5 h-3.5 text-amber-700" />
+                                          <span>Gift Purchase Details</span>
+                                        </div>
+                                        <div>
+                                          <span className="font-semibold">Recipient:</span> {order.recipientName || "N/A"} ({order.recipientEmail})
+                                        </div>
+                                        {order.giftMessage && (
+                                          <div>
+                                            <span className="font-semibold">Gift Note:</span> &ldquo;{order.giftMessage}&rdquo;
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    <div>
+                                      <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+                                        Items In This Order ({order.items.length})
+                                      </h4>
+                                      <div className="space-y-2">
+                                        {order.items.map((item) => (
+                                          <div
+                                            key={item.id}
+                                            className="flex items-center justify-between text-xs p-2.5 rounded-lg bg-gray-50 border border-gray-100"
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              <BookOpen className="w-3.5 h-3.5 text-amber-600" />
+                                              <span className="font-semibold text-brand-ink">
+                                                {item.bookTitle}
+                                              </span>
+                                            </div>
+                                            <span className="font-bold text-brand-ink">
+                                              ${item.price.toFixed(2)}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Card List (visible on < md) */}
+                <div className="md:hidden divide-y divide-gray-100">
+                  {filteredOrders.map((order) => {
+                    const isExpanded = expandedOrderId === order.id;
+                    return (
+                      <div key={order.id} className="p-3.5 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono font-bold text-xs text-brand-ink">
+                              {order.orderNumber}
+                            </span>
+                            {order.payment?.provider === "NOWPAYMENTS" && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-0.5">
+                                <Coins className="w-2.5 h-2.5 text-amber-700" />
+                                <span>CRYPTO</span>
+                              </span>
+                            )}
+                            {order.isGift && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                GIFT
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              order.paymentStatus === "PAID"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : order.paymentStatus === "PENDING"
+                                ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                : "bg-red-50 text-red-700 border border-red-200"
+                            }`}
+                          >
+                            {order.paymentStatus === "PAID" ? (
+                              <CheckCircle2 className="w-2.5 h-2.5" />
+                            ) : order.paymentStatus === "PENDING" ? (
+                              <Clock className="w-2.5 h-2.5" />
+                            ) : (
+                              <XCircle className="w-2.5 h-2.5" />
+                            )}
+                            <span>{order.paymentStatus}</span>
+                          </span>
+                        </div>
+
+                        <div className="text-xs text-gray-700 font-medium">
+                          <div>{order.customerEmail}</div>
+                          {order.isGift && order.recipientEmail && (
+                            <div className="text-[11px] text-amber-800 font-normal mt-0.5">
+                              Recipient: {order.recipientName || order.recipientEmail} ({order.recipientEmail})
+                            </div>
                           )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-50">
+                          <span className="text-gray-500">
+                            {order.items.length} {order.items.length === 1 ? "Book" : "Books"} • {formatOrderDate(order.createdAt)}
+                          </span>
+                          <span className="font-bold text-brand-ink font-serif text-sm">
+                            ${order.totalAmount.toFixed(2)} {order.currency}
+                          </span>
+                        </div>
+
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(order.id)}
+                            className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs transition-colors"
+                          >
+                            <span>{isExpanded ? "Hide Details" : "Inspect Order"}</span>
+                            {isExpanded ? (
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Expandable Order Breakdown on Mobile */}
+                        {isExpanded && (
+                          <div className="bg-white rounded-xl border border-gray-200 p-3.5 space-y-3 shadow-2xs mt-2">
+                            <div className="text-xs space-y-1 pb-2.5 border-b border-gray-100">
+                              <div className="text-gray-500">Gateway Verification:</div>
+                              <div className="font-mono text-gray-700 break-all">
+                                {order.payment?.provider || "Direct / Sandbox"} — TxID: {order.payment?.transactionId || "N/A"}
+                              </div>
+                            </div>
+
+                            {/* Crypto Details Row */}
+                            {(order.payment?.provider === "NOWPAYMENTS" || order.payment?.cryptoCurrency || order.cryptoCurrency) && (
+                              <div className="p-2.5 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1">
+                                <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                                  <Coins className="w-3.5 h-3.5 text-amber-700" />
+                                  <span>NOWPayments Crypto</span>
+                                </div>
+                                <div>
+                                  <span className="font-semibold">Coin:</span> {order.payment?.cryptoCurrency || order.cryptoCurrency || "Multi-Coin"}
+                                  {order.payment?.cryptoAmount || order.cryptoAmount ? ` (${order.payment?.cryptoAmount || order.cryptoAmount})` : ""}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Gift Details Row */}
+                            {order.isGift && (
+                              <div className="p-2.5 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1">
+                                <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                                  <Gift className="w-3.5 h-3.5 text-amber-700" />
+                                  <span>Gift Purchase</span>
+                                </div>
+                                <div>
+                                  <span className="font-semibold">Recipient:</span> {order.recipientName || "N/A"} ({order.recipientEmail})
+                                </div>
+                                {order.giftMessage && (
+                                  <div>
+                                    <span className="font-semibold">Note:</span> &ldquo;{order.giftMessage}&rdquo;
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            <div>
+                              <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                Ordered Titles ({order.items.length})
+                              </h4>
+                              <div className="space-y-1.5">
+                                {order.items.map((item) => (
+                                  <div
+                                    key={item.id}
+                                    className="flex items-center justify-between text-xs p-2 rounded-lg bg-gray-50 border border-gray-100"
+                                  >
+                                    <span className="font-medium text-brand-ink line-clamp-1 pr-2">
+                                      {item.bookTitle}
+                                    </span>
+                                    <span className="font-bold text-brand-ink shrink-0">
+                                      ${item.price.toFixed(2)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
         </div>

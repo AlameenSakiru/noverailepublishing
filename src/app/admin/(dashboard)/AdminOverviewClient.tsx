@@ -259,11 +259,11 @@ export function AdminOverviewClient({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 flex-wrap">
           <Link
             href="/"
             target="_blank"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-xs font-medium hover:bg-gray-50 transition-colors shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-xs font-medium hover:bg-gray-50 transition-colors shadow-2xs"
           >
             <span>Live Storefront</span>
             <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
@@ -271,7 +271,7 @@ export function AdminOverviewClient({
 
           <Link
             href="/admin/books"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#FF9900] hover:bg-[#e68a00] text-gray-950 font-bold text-xs transition-colors shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-[#FF9900] hover:bg-[#e68a00] text-gray-950 font-bold text-xs transition-colors shadow-2xs"
           >
             <Plus className="w-4 h-4" />
             <span>Create New Title</span>
@@ -280,43 +280,43 @@ export function AdminOverviewClient({
       </div>
 
       {/* 2. 4 TOP KPI TILES (100% Mathematically Aligned With DB) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
-          <div className="text-xs font-medium text-gray-500">Total Lifetime Revenue</div>
-          <div className="text-2xl font-bold text-gray-900 mt-2 font-mono">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl border border-gray-200 shadow-xs">
+          <div className="text-[11px] sm:text-xs font-medium text-gray-500 truncate">Total Lifetime Revenue</div>
+          <div className="text-lg sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2 font-mono">
             ${grossRevenue.toFixed(2)}
           </div>
-          <div className="text-xs text-gray-400 mt-1">
+          <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 truncate">
             {paidOrdersCount} completed orders
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
-          <div className="text-xs font-medium text-gray-500">Total Paid Units</div>
-          <div className="text-2xl font-bold text-gray-900 mt-2 font-mono">
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl border border-gray-200 shadow-xs">
+          <div className="text-[11px] sm:text-xs font-medium text-gray-500 truncate">Total Paid Units</div>
+          <div className="text-lg sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2 font-mono">
             {totalPaidUnits}
           </div>
-          <div className="text-xs text-gray-400 mt-1">
+          <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 truncate">
             Avg. ${(paidOrdersCount > 0 ? grossRevenue / paidOrdersCount : 0).toFixed(2)} per order
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
-          <div className="text-xs font-medium text-gray-500">Books in Catalog</div>
-          <div className="text-2xl font-bold text-gray-900 mt-2 font-mono">
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl border border-gray-200 shadow-xs">
+          <div className="text-[11px] sm:text-xs font-medium text-gray-500 truncate">Books in Catalog</div>
+          <div className="text-lg sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2 font-mono">
             {activeTitlesCount}
           </div>
-          <div className="text-xs text-gray-400 mt-1">
+          <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 truncate">
             Active digital editions
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
-          <div className="text-xs font-medium text-gray-500">Registered Readers</div>
-          <div className="text-2xl font-bold text-gray-900 mt-2 font-mono">
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl border border-gray-200 shadow-xs">
+          <div className="text-[11px] sm:text-xs font-medium text-gray-500 truncate">Registered Readers</div>
+          <div className="text-lg sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2 font-mono">
             {totalReadersCount}
           </div>
-          <div className="text-xs text-gray-400 mt-1">
+          <div className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 truncate">
             Customer reading accounts
           </div>
         </div>
@@ -332,24 +332,24 @@ export function AdminOverviewClient({
             Click any period to view on chart
           </span>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           {/* Today */}
           <button
             onClick={() => { setViewMode("day"); setDayRange("today"); }}
-            className={`p-4 rounded-xl border text-left transition-all ${
+            className={`p-3 sm:p-4 rounded-xl border text-left transition-all ${
               viewMode === "day" && dayRange === "today"
                 ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/30 shadow-xs"
                 : "bg-white border-gray-200 hover:border-gray-300 shadow-2xs"
             }`}
           >
-            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-500">
               <span>Today</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500" title="Real-time" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Real-time" />
             </div>
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 mt-1">
+            <div className="text-lg sm:text-2xl font-bold font-mono text-gray-900 mt-1">
               ${formatCurrency(activeQuickSummary.today.royalties)}
             </div>
-            <div className="text-[11px] text-gray-500 mt-0.5">
+            <div className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
               {formatCount(activeQuickSummary.today.units)} {activeQuickSummary.today.units === 1 ? "unit" : "units"} ordered
             </div>
           </button>
@@ -357,19 +357,19 @@ export function AdminOverviewClient({
           {/* Yesterday */}
           <button
             onClick={() => { setViewMode("day"); setDayRange("yesterday"); }}
-            className={`p-4 rounded-xl border text-left transition-all ${
+            className={`p-3 sm:p-4 rounded-xl border text-left transition-all ${
               viewMode === "day" && dayRange === "yesterday"
                 ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/30 shadow-xs"
                 : "bg-white border-gray-200 hover:border-gray-300 shadow-2xs"
             }`}
           >
-            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-500">
               Yesterday
             </div>
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 mt-1">
+            <div className="text-lg sm:text-2xl font-bold font-mono text-gray-900 mt-1">
               ${formatCurrency(activeQuickSummary.yesterday.royalties)}
             </div>
-            <div className="text-[11px] text-gray-500 mt-0.5">
+            <div className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
               {formatCount(activeQuickSummary.yesterday.units)} {activeQuickSummary.yesterday.units === 1 ? "unit" : "units"} ordered
             </div>
           </button>
@@ -377,19 +377,19 @@ export function AdminOverviewClient({
           {/* This Month */}
           <button
             onClick={() => { setViewMode("day"); setDayRange("thisMonth"); }}
-            className={`p-4 rounded-xl border text-left transition-all ${
+            className={`p-3 sm:p-4 rounded-xl border text-left transition-all ${
               viewMode === "day" && dayRange === "thisMonth"
                 ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/30 shadow-xs"
                 : "bg-white border-gray-200 hover:border-gray-300 shadow-2xs"
             }`}
           >
-            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-500 truncate">
               This Month ({activeQuickSummary.thisMonth.monthName})
             </div>
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 mt-1">
+            <div className="text-lg sm:text-2xl font-bold font-mono text-gray-900 mt-1">
               ${formatCurrency(activeQuickSummary.thisMonth.royalties)}
             </div>
-            <div className="text-[11px] text-gray-500 mt-0.5">
+            <div className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
               {formatCount(activeQuickSummary.thisMonth.units)} {activeQuickSummary.thisMonth.units === 1 ? "unit" : "units"} ordered
             </div>
           </button>
@@ -397,19 +397,19 @@ export function AdminOverviewClient({
           {/* Last 7 Days */}
           <button
             onClick={() => { setViewMode("day"); setDayRange("7d"); }}
-            className={`p-4 rounded-xl border text-left transition-all ${
+            className={`p-3 sm:p-4 rounded-xl border text-left transition-all ${
               viewMode === "day" && dayRange === "7d"
                 ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/30 shadow-xs"
                 : "bg-white border-gray-200 hover:border-gray-300 shadow-2xs"
             }`}
           >
-            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-500">
               Last 7 Days
             </div>
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 mt-1">
+            <div className="text-lg sm:text-2xl font-bold font-mono text-gray-900 mt-1">
               ${formatCurrency(activeQuickSummary.last7Days.royalties)}
             </div>
-            <div className="text-[11px] text-gray-500 mt-0.5">
+            <div className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
               {formatCount(activeQuickSummary.last7Days.units)} {activeQuickSummary.last7Days.units === 1 ? "unit" : "units"} ordered
             </div>
           </button>
@@ -419,8 +419,8 @@ export function AdminOverviewClient({
       {/* 3. AMAZON KDP SALES & ROYALTIES CARD */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         {/* KDP Top Filter Controls Bar */}
-        <div className="p-4 sm:p-5 border-b border-gray-200 bg-[#f8fafc] flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-4">
+        <div className="p-3.5 sm:p-5 border-b border-gray-200 bg-[#f8fafc] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             {/* VIEW BY: PER DAY, PER MONTH, PER YEAR */}
             <div>
               <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">
@@ -429,7 +429,7 @@ export function AdminOverviewClient({
               <div className="inline-flex items-center bg-white border border-gray-300 rounded-lg p-0.5 shadow-2xs">
                 <button
                   onClick={() => setViewMode("day")}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold rounded-md transition-colors ${
                     viewMode === "day"
                       ? "bg-gray-900 text-white shadow-xs"
                       : "text-gray-600 hover:text-gray-900"
@@ -439,7 +439,7 @@ export function AdminOverviewClient({
                 </button>
                 <button
                   onClick={() => setViewMode("month")}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold rounded-md transition-colors ${
                     viewMode === "month"
                       ? "bg-gray-900 text-white shadow-xs"
                       : "text-gray-600 hover:text-gray-900"
@@ -449,7 +449,7 @@ export function AdminOverviewClient({
                 </button>
                 <button
                   onClick={() => setViewMode("year")}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold rounded-md transition-colors ${
                     viewMode === "year"
                       ? "bg-gray-900 text-white shadow-xs"
                       : "text-gray-600 hover:text-gray-900"
@@ -462,74 +462,76 @@ export function AdminOverviewClient({
 
             {/* Sub-range for Per Day */}
             {viewMode === "day" && (
-              <div>
+              <div className="max-w-full">
                 <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">
                   Range
                 </label>
-                <div className="inline-flex items-center bg-white border border-gray-300 rounded-lg p-0.5 shadow-2xs">
-                  <button
-                    onClick={() => setDayRange("today")}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                      dayRange === "today"
-                        ? "bg-gray-200 text-gray-900 font-bold"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    Today
-                  </button>
-                  <button
-                    onClick={() => setDayRange("yesterday")}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                      dayRange === "yesterday"
-                        ? "bg-gray-200 text-gray-900 font-bold"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    Yesterday
-                  </button>
-                  <button
-                    onClick={() => setDayRange("7d")}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                      dayRange === "7d"
-                        ? "bg-gray-200 text-gray-900 font-bold"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    7 Days
-                  </button>
-                  <button
-                    onClick={() => setDayRange("14d")}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                      dayRange === "14d"
-                        ? "bg-gray-200 text-gray-900 font-bold"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    14 Days
-                  </button>
-                  <button
-                    onClick={() => setDayRange("thisMonth")}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                      dayRange === "thisMonth"
-                        ? "bg-gray-200 text-gray-900 font-bold"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    This Month
-                  </button>
+                <div className="overflow-x-auto max-w-full scrollbar-none pb-0.5 sm:pb-0">
+                  <div className="inline-flex items-center bg-white border border-gray-300 rounded-lg p-0.5 shadow-2xs whitespace-nowrap">
+                    <button
+                      onClick={() => setDayRange("today")}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                        dayRange === "today"
+                          ? "bg-gray-200 text-gray-900 font-bold"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      Today
+                    </button>
+                    <button
+                      onClick={() => setDayRange("yesterday")}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                        dayRange === "yesterday"
+                          ? "bg-gray-200 text-gray-900 font-bold"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      Yesterday
+                    </button>
+                    <button
+                      onClick={() => setDayRange("7d")}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                        dayRange === "7d"
+                          ? "bg-gray-200 text-gray-900 font-bold"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      7 Days
+                    </button>
+                    <button
+                      onClick={() => setDayRange("14d")}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                        dayRange === "14d"
+                          ? "bg-gray-200 text-gray-900 font-bold"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      14 Days
+                    </button>
+                    <button
+                      onClick={() => setDayRange("thisMonth")}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                        dayRange === "thisMonth"
+                          ? "bg-gray-200 text-gray-900 font-bold"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      This Month
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Title Filter Dropdown */}
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">
                 Title Filter
               </label>
               <select
                 value={selectedBookId}
                 onChange={(e) => setSelectedBookId(e.target.value)}
-                className="text-xs font-semibold text-gray-800 bg-white border border-gray-300 rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                className="w-full sm:w-auto text-xs font-semibold text-gray-800 bg-white border border-gray-300 rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
               >
                 <option value="ALL">All Titles ({topBooks.length})</option>
                 {topBooks.map((b) => (
@@ -542,7 +544,7 @@ export function AdminOverviewClient({
           </div>
 
           {/* Timeframe Scope Indicator */}
-          <div className="text-right">
+          <div className="text-left sm:text-right w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200/60">
             <span className="text-[10px] uppercase font-bold text-gray-400 block">
               Active Scope
             </span>
@@ -633,10 +635,10 @@ export function AdminOverviewClient({
         </div>
 
         {/* KDP Chart Body with Y-Axis & Horizontal Guidelines */}
-        <div className="p-6 sm:p-8">
+        <div className="p-3 sm:p-6 sm:p-8">
           <div className="relative h-64 w-full flex">
             {/* Y-Axis Labels */}
-            <div className="w-14 sm:w-16 shrink-0 flex flex-col justify-between text-[11px] font-mono text-gray-400 text-right pr-3 select-none">
+            <div className="w-10 sm:w-16 shrink-0 flex flex-col justify-between text-[10px] sm:text-[11px] font-mono text-gray-400 text-right pr-1.5 sm:pr-3 select-none">
               <span>{formatYLabel(yCeiling)}</span>
               <span>{formatYLabel(yCeiling * 0.75)}</span>
               <span>{formatYLabel(yCeiling * 0.5)}</span>
@@ -656,7 +658,7 @@ export function AdminOverviewClient({
               </div>
 
               {/* Data Columns */}
-              <div className="relative z-10 w-full h-full flex items-end justify-between px-2 sm:px-4">
+              <div className="relative z-10 w-full h-full flex items-end justify-between px-1.5 sm:px-4">
                 {activeDataset.map((item, idx) => {
                   const val =
                     metricTab === "royalties"
@@ -679,7 +681,7 @@ export function AdminOverviewClient({
                       <div className="mb-1 text-center transition-all select-none">
                         {val > 0 ? (
                           <span
-                            className={`inline-block text-[10px] sm:text-[11px] font-mono font-bold px-1.5 py-0.5 rounded shadow-2xs transition-colors ${
+                            className={`inline-block text-[9px] sm:text-[11px] font-mono font-bold px-1 sm:px-1.5 py-0.5 rounded shadow-2xs transition-colors ${
                               isHovered
                                 ? "bg-gray-900 text-[#FF9900]"
                                 : "bg-amber-100 text-amber-950 border border-amber-300/80 font-bold"
@@ -688,7 +690,7 @@ export function AdminOverviewClient({
                             {metricTab === "royalties" ? `$${formatCurrency(val)}` : formatCount(val)}
                           </span>
                         ) : (
-                          <span className="inline-block text-[10px] font-mono text-gray-300">
+                          <span className="inline-block text-[9px] sm:text-[10px] font-mono text-gray-300">
                             {metricTab === "royalties" ? "$0" : "0"}
                           </span>
                         )}
@@ -738,8 +740,8 @@ export function AdminOverviewClient({
           </div>
 
           {/* X-Axis Labels */}
-          <div className="flex pl-14 sm:pl-16 pt-3 text-[11px] text-gray-500 font-medium">
-            <div className="flex-1 flex justify-between px-2 sm:px-4">
+          <div className="flex pl-10 sm:pl-16 pt-3 text-[10px] sm:text-[11px] text-gray-500 font-medium">
+            <div className="flex-1 flex justify-between px-1.5 sm:px-4">
               {activeDataset.map((item, idx) => (
                 <div key={idx} className="flex-1 text-center truncate">
                   <span className="font-semibold text-gray-800">{item.label}</span>
@@ -754,8 +756,8 @@ export function AdminOverviewClient({
           </div>
 
           {/* Chart Legend / Summary */}
-          <div className="mt-6 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between text-xs text-gray-500 gap-2">
-            <div className="flex items-center gap-4">
+          <div className="mt-5 pt-3.5 sm:mt-6 sm:pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-500 gap-2">
+            <div className="flex items-center gap-4 flex-wrap">
               <span className="inline-flex items-center gap-1.5 font-medium text-gray-700">
                 <span className="w-3 h-3 rounded-xs bg-[#FF9900]" />
                 <span>
@@ -781,7 +783,7 @@ export function AdminOverviewClient({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: Recent Customer Orders */}
         <div className="lg:col-span-8 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="p-4 sm:p-5 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-gray-900">
                 Recent Orders & Transactions
@@ -791,7 +793,7 @@ export function AdminOverviewClient({
               </p>
             </div>
 
-            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg self-start sm:self-auto">
               {(["ALL", "PAID", "PENDING"] as const).map((s) => (
                 <button
                   key={s}
@@ -808,7 +810,8 @@ export function AdminOverviewClient({
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Desktop Table (hidden on mobile) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead className="bg-[#f8fafc] text-gray-600 font-semibold border-b border-gray-200">
                 <tr>
@@ -870,6 +873,54 @@ export function AdminOverviewClient({
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List (visible on < md) */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {filteredOrders.length === 0 ? (
+              <div className="py-10 px-4 text-center text-gray-400">
+                <ShoppingBag className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                <p className="font-semibold text-gray-700 text-xs">No customer orders recorded yet</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  Transactions will appear here automatically.
+                </p>
+              </div>
+            ) : (
+              filteredOrders.slice(0, 6).map((order) => (
+                <div key={order.id} className="p-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-xs text-gray-900">
+                      {order.orderNumber}
+                    </span>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        order.paymentStatus === "PAID"
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                          : "bg-amber-50 text-amber-800 border border-amber-200"
+                      }`}
+                    >
+                      {order.paymentStatus === "PAID" ? (
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <Clock className="w-3 h-3 text-amber-600" />
+                      )}
+                      <span>{order.paymentStatus}</span>
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-700 font-medium truncate">
+                    {order.customerEmail}
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
+                    <span>
+                      {order.itemsCount} {order.itemsCount === 1 ? "book" : "books"} • {formatOrderDate(order.createdAt)}
+                    </span>
+                    <span className="font-mono font-bold text-gray-900 text-sm">
+                      ${order.totalAmount.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           <div className="p-3.5 bg-gray-50/70 border-t border-gray-100 text-right">

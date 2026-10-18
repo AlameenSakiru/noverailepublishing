@@ -260,9 +260,10 @@ export function BookListClient({
         </div>
       </div>
 
-      {/* Book Catalog Table */}
+      {/* Book Catalog Table & Mobile Cards */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table (hidden on mobile) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-100">
               <tr>
@@ -414,6 +415,126 @@ export function BookListClient({
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card List (visible on < md) */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {filteredBooks.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <p className="font-semibold text-gray-700 text-sm">No publications found</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {searchQuery || statusFilter !== "ALL" || categoryFilter !== "ALL"
+                  ? "Try clearing filters to see all catalog titles."
+                  : "Click 'Add New Publication' to create your first digital book."}
+              </p>
+            </div>
+          ) : (
+            filteredBooks.map((book) => {
+              const hasDiscount = book.salePrice != null && book.salePrice > 0 && book.salePrice < book.price;
+              return (
+                <div key={book.id} className="p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="relative w-12 aspect-[3/4] rounded-md shadow-xs overflow-hidden shrink-0 border border-gray-200 bg-gray-100">
+                      {book.coverImage ? (
+                        <Image
+                          src={book.coverImage}
+                          alt={book.title}
+                          fill
+                          className="object-contain"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <BookOpen className="w-4 h-4" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                            book.status === "PUBLISHED"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : book.status === "DRAFT"
+                              ? "bg-amber-50 text-amber-700"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {book.status}
+                        </span>
+                        {book.examMetadata && (
+                          <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-mono text-[9px] font-bold">
+                            {book.examMetadata.examAcronym}
+                          </span>
+                        )}
+                        {book.edition && (
+                          <span className="text-[10px] text-gray-400">
+                            {book.edition}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-serif font-bold text-brand-ink text-sm mt-1 line-clamp-2">
+                        {book.title}
+                      </h3>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        {book.author?.name || "Unknown"} • {book.category?.name || "Uncategorized"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-50">
+                    <div>
+                      {hasDiscount ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-emerald-700 text-sm">
+                            ${book.salePrice.toFixed(2)}
+                          </span>
+                          <span className="text-gray-400 font-normal line-through text-[11px]">
+                            ${book.price.toFixed(2)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="font-bold text-brand-ink text-sm">
+                          ${book.price.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-gray-500">
+                      <span className="font-semibold text-brand-ink">{book._count?.entitlements || 0}</span> licensed readers
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleEditClick(book)}
+                      className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-brand-ink hover:text-white text-gray-800 font-semibold text-xs transition-colors shadow-2xs"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit Title</span>
+                    </button>
+
+                    <Link
+                      href={`/books/${book.slug}`}
+                      target="_blank"
+                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors text-xs font-medium"
+                    >
+                      <span>Store</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </Link>
+
+                    <Link
+                      href={`/reader/${book.slug}`}
+                      target="_blank"
+                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors font-medium text-xs"
+                    >
+                      <span>Read</span>
+                      <BookOpen className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

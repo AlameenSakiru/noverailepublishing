@@ -25,11 +25,11 @@ export function AdminSignOutButton() {
     <button
       onClick={handleSignOut}
       disabled={loading}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-red-950/60 text-gray-300 hover:text-red-400 border border-gray-700 hover:border-red-800/60 transition-colors text-xs font-medium"
+      className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-red-950/60 text-gray-300 hover:text-red-400 border border-gray-700 hover:border-red-800/60 transition-colors text-xs font-medium"
       title="End Administrator Session"
     >
       <LogOut className="w-3.5 h-3.5" />
-      <span>{loading ? "Signing out..." : "Sign Out"}</span>
+      <span className="hidden xs:inline sm:inline">{loading ? "Signing out..." : "Sign Out"}</span>
     </button>
   );
 }

@@ -34,33 +34,38 @@ export default async function AdminDashboardLayout({
       <div className="sticky top-0 z-50 shadow-md">
         {/* Tier 1: Dark Executive Brand & User Strip */}
         <header className="bg-[#0f172a] text-white border-b border-gray-800">
-          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
-            <div className="flex items-center gap-3.5">
+          <div className="max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3.5">
               <Link
                 href="/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-gray-400 hover:text-amber-400 flex items-center gap-1.5 transition-colors"
+                className="text-xs text-gray-400 hover:text-amber-400 flex items-center gap-1.5 transition-colors p-1 -m-1 sm:p-0 sm:m-0"
                 title="Open Reader Storefront in new tab"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">View Storefront</span>
               </Link>
               <span className="text-gray-700">|</span>
-              <div className="flex items-center gap-2">
-                <span className="font-serif font-bold text-sm tracking-wider text-white">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="font-serif font-bold text-xs sm:text-sm tracking-wider text-white">
                   NOVERAILE
                 </span>
                 <span className="text-[10px] font-sans tracking-[0.2em] text-gray-400 uppercase hidden sm:inline">
                   ADMIN
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono uppercase font-bold border border-amber-500/30">
+              {/* Desktop Role Badge */}
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono uppercase font-bold border border-amber-500/30">
                 {currentUser.role === "EDITOR" ? "BOOK PUBLISHER" : "EXECUTIVE ADMIN"}
+              </span>
+              {/* Compact Mobile Role Badge */}
+              <span className="sm:hidden px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-mono uppercase font-bold border border-amber-500/30">
+                {currentUser.role === "EDITOR" ? "EDITOR" : "ADMIN"}
               </span>
             </div>
 
-            <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-2 sm:gap-4 text-xs">
               <div className="hidden sm:flex flex-col text-right">
                 <span className="font-semibold text-gray-200">
                   {currentUser.name === "Editorial Director" ? "Noveraile Publishing Director" : currentUser.name}
@@ -74,14 +79,14 @@ export default async function AdminDashboardLayout({
 
         {/* Tier 2: Pinned Navigation Tabs Sub-Bar (Edge-to-Edge with Backdrop Blur) */}
         <div className="bg-white/95 backdrop-blur-md border-b border-gray-200">
-          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-2.5">
+          <div className="max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5">
             <AdminNavTabs role={currentUser.role} />
           </div>
         </div>
       </div>
 
       {/* Main Admin Workspace */}
-      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {children}
       </div>
     </div>
