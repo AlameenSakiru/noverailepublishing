@@ -8,7 +8,6 @@ import {
   Check,
   ChevronRight,
   ChevronLeft,
-  DollarSign,
   FileText,
   Shield,
   Upload,
@@ -275,9 +274,6 @@ export function CreateBookModal({
   // Pricing calculations
   const numericPrice = parseFloat(formData.price) || 0;
   const numericSalePrice = formData.salePrice ? parseFloat(formData.salePrice) : null;
-  const activeCalcPrice = numericSalePrice && numericSalePrice > 0 ? numericSalePrice : numericPrice;
-  const royaltyMultiplier = formData.royaltyPlan === "70" ? 0.7 : 0.35;
-  const estimatedRoyaltyPerUnit = (activeCalcPrice * royaltyMultiplier).toFixed(2);
 
   const validateStep1 = () => {
     if (!formData.title.trim()) {
@@ -537,7 +533,7 @@ export function CreateBookModal({
               </div>
               <div className="text-left hidden sm:block">
                 <span className="block text-[10px] uppercase text-gray-400">Step 3</span>
-                <span>Pricing & Royalties</span>
+                <span>Pricing</span>
               </div>
             </button>
           </div>
@@ -1233,82 +1229,15 @@ export function CreateBookModal({
           )}
 
           {/* ========================================================================= */}
-          {/* STEP 3: PRICING & ROYALTIES                                               */}
+          {/* STEP 3: PRICING                                                           */}
           {/* ========================================================================= */}
           {currentStep === 3 && (
             <div className="space-y-6 animate-in fade-in duration-150">
               
-              {/* Royalty Tier Selection */}
-              <div className="p-5 bg-white rounded-xl border border-gray-200 space-y-4 shadow-2xs">
-                <div>
-                  <h3 className="font-bold text-gray-900 text-sm">
-                    1. Select Royalty Plan
-                  </h3>
-                  <p className="text-[11px] text-gray-500 mt-0.5">
-                    Choose the monetization split for this digital title.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <label
-                    className={`p-4 rounded-xl border-2 cursor-pointer flex flex-col justify-between transition-all ${
-                      formData.royaltyPlan === "70"
-                        ? "border-gray-900 bg-gray-50 shadow-xs"
-                        : "border-gray-200 hover:border-gray-300 bg-white"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-gray-900 text-base">70% Royalty Plan</span>
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[9px] font-bold">
-                            STANDARD
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-gray-600 mt-1">
-                          Standard author & publisher margin for commercial digital sales.
-                        </p>
-                      </div>
-                      <input
-                        type="radio"
-                        name="royaltyPlan"
-                        checked={formData.royaltyPlan === "70"}
-                        onChange={() => setFormData({ ...formData, royaltyPlan: "70" })}
-                        className="text-gray-900 focus:ring-gray-900 mt-1"
-                      />
-                    </div>
-                  </label>
-
-                  <label
-                    className={`p-4 rounded-xl border-2 cursor-pointer flex flex-col justify-between transition-all ${
-                      formData.royaltyPlan === "35"
-                        ? "border-gray-900 bg-gray-50 shadow-xs"
-                        : "border-gray-200 hover:border-gray-300 bg-white"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <span className="font-bold text-gray-900 text-base">35% Royalty Plan</span>
-                        <p className="text-[11px] text-gray-600 mt-1">
-                          Reduced tier for promotional or external distribution partnerships.
-                        </p>
-                      </div>
-                      <input
-                        type="radio"
-                        name="royaltyPlan"
-                        checked={formData.royaltyPlan === "35"}
-                        onChange={() => setFormData({ ...formData, royaltyPlan: "35" })}
-                        className="text-gray-900 focus:ring-gray-900 mt-1"
-                      />
-                    </div>
-                  </label>
-                </div>
-              </div>
-
               {/* Price Setting */}
               <div className="p-5 bg-white rounded-xl border border-gray-200 space-y-4 shadow-2xs">
                 <h3 className="font-bold text-gray-900 text-sm">
-                  2. Pricing
+                  Pricing
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1351,49 +1280,6 @@ export function CreateBookModal({
                     <span className="text-[11px] text-gray-400 mt-0.5 block">
                       If entered, original price is struck through
                     </span>
-                  </div>
-                </div>
-
-                {/* Royalty Breakdown Box */}
-                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-bold text-emerald-950 text-xs flex items-center gap-1.5">
-                      <DollarSign className="w-4 h-4 text-emerald-700" />
-                      <span>Net Realized Royalty per Sale</span>
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-emerald-200/80 text-emerald-900 font-mono text-[10px] font-bold">
-                      {formData.royaltyPlan}% PLAN
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                    <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
-                      <span className="text-[10px] text-gray-500 block">Retail Price</span>
-                      <span className="text-sm font-bold text-gray-900 font-mono">
-                        ${activeCalcPrice.toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
-                      <span className="text-[10px] text-gray-500 block">Delivery Fee</span>
-                      <span className="text-sm font-bold text-gray-700 font-mono">
-                        $0.00
-                      </span>
-                    </div>
-
-                    <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
-                      <span className="text-[10px] text-gray-500 block">Royalty Split</span>
-                      <span className="text-sm font-bold text-gray-700 font-mono">
-                        {formData.royaltyPlan}%
-                      </span>
-                    </div>
-
-                    <div className="bg-emerald-600 text-white p-2.5 rounded-lg">
-                      <span className="text-[10px] text-emerald-100 block font-medium">Estimated Royalty</span>
-                      <span className="text-sm font-bold text-white font-mono">
-                        ${estimatedRoyaltyPerUnit}
-                      </span>
-                    </div>
                   </div>
                 </div>
               </div>
