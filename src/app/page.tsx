@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
-import { BookCard } from "@/components/BookCard";
+import { RotatingFeaturedBooks, type FeaturedBookItem } from "@/components/RotatingFeaturedBooks";
 import { siteConfig } from "@/lib/config";
 import { getStorefrontSettings } from "@/lib/settings";
 import { SearchAutocomplete } from "@/components/SearchAutocomplete";
@@ -41,7 +41,10 @@ export default async function HomePage() {
             select: { rating: true },
           },
         },
-        orderBy: { createdAt: "asc" },
+        orderBy: [
+          { isFeatured: "desc" },
+          { createdAt: "asc" },
+        ],
       }),
       prisma.category.findMany({
         where: { parentId: null, isActive: true },
@@ -58,6 +61,28 @@ export default async function HomePage() {
   } catch (err) {
     console.error("Home page DB fetch error (fallback applied):", err);
   }
+
+  const featuredBooksData: FeaturedBookItem[] = allBooks.map((book) => {
+    const reviewCount = book.reviews?.length || 0;
+    const avgRating = reviewCount > 0
+      ? (book.reviews as Array<{ rating: number }>).reduce((acc: number, r: { rating: number }) => acc + r.rating, 0) / reviewCount
+      : null;
+
+    return {
+      id: book.id,
+      title: book.title,
+      subtitle: book.subtitle,
+      slug: book.slug,
+      coverImage: book.coverImage,
+      authorName: book.author?.name || "Noveraile Author",
+      categoryName: book.category?.name || "General",
+      price: book.price,
+      salePrice: book.salePrice,
+      rating: avgRating,
+      reviewCount: reviewCount,
+      createdAt: book.createdAt ? book.createdAt.toISOString() : null,
+    };
+  });
 
   return (
     <div className="space-y-20 pb-20 font-sans">
@@ -271,33 +296,12 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        {/* 6-Book Multi-Niche Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {allBooks.map((book) => {
-            const reviewCount = book.reviews?.length || 0;
-            const avgRating = reviewCount > 0
-              ? (book.reviews as Array<{ rating: number }>).reduce((acc: number, r: { rating: number }) => acc + r.rating, 0) / reviewCount
-              : null;
-
-            return (
-              <BookCard
-                key={book.id}
-                id={book.id}
-                title={book.title}
-                subtitle={book.subtitle}
-                slug={book.slug}
-                coverImage={book.coverImage}
-                authorName={book.author.name}
-                categoryName={book.category.name}
-                price={book.price}
-                salePrice={book.salePrice}
-                rating={avgRating}
-                reviewCount={reviewCount}
-                createdAt={book.createdAt}
-              />
-            );
-          })}
-        </div>
+        {/* 6-Book Auto-Rotating Showcase */}
+        <RotatingFeaturedBooks
+          books={featuredBooksData}
+          itemsPerPage={6}
+          autoRotateInterval={6000}
+        />
       </section>
 
       {/* 4. WHY NOVERAILE PUBLISHING (DIRECT-TO-READER VALUE) */}
