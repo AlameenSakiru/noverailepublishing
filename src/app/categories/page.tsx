@@ -71,6 +71,20 @@ export default async function CategoriesPage() {
     orderBy: { sortOrder: "asc" },
   });
 
+  // Roll up published books from each category + its active subcategories, and only
+  // list categories (and subcategory chips) that readers can actually browse into.
+  const visibleCategories = categories
+    .map((cat) => {
+      const subcategoriesTotal =
+        cat.children?.reduce((acc, sub) => acc + (sub._count?.books || 0), 0) || 0;
+      return {
+        cat,
+        totalPublished: (cat._count?.books || 0) + subcategoriesTotal,
+        populatedChildren: (cat.children || []).filter((sub) => sub._count.books > 0),
+      };
+    })
+    .filter(({ totalPublished }) => totalPublished > 0);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
       <div className="text-center max-w-2xl mx-auto mb-16">
@@ -86,12 +100,8 @@ export default async function CategoriesPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {categories.map((cat) => {
+        {visibleCategories.map(({ cat, totalPublished, populatedChildren }) => {
           const IconComponent = (cat.icon && iconMap[cat.icon]) || BookOpen;
-          // Roll up published books from this category + all its active subcategories
-          const subcategoriesTotal =
-            cat.children?.reduce((acc, sub) => acc + (sub._count?.books || 0), 0) || 0;
-          const totalPublished = (cat._count?.books || 0) + subcategoriesTotal;
 
           return (
             <div
@@ -113,13 +123,13 @@ export default async function CategoriesPage() {
                   {cat.description}
                 </p>
 
-                {cat.children && cat.children.length > 0 && (
+                {populatedChildren.length > 0 && (
                   <div className="mt-5 pt-4 border-t border-gray-100">
                     <span className="text-[11px] font-semibold text-brand-muted uppercase tracking-wider block mb-2">
                       Subcategories
                     </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {cat.children.map((sub) => (
+                      {populatedChildren.map((sub) => (
                         <Link
                           key={sub.id}
                           href={`/categories/${sub.slug}`}

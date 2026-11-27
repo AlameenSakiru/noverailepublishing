@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { cache } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { siteConfig } from "@/lib/config";
+import { toPlainText } from "@/lib/text";
 import { BookDetailClient } from "./BookDetailClient";
 
 export const revalidate = 60;
@@ -56,7 +57,7 @@ export async function generateMetadata({ params }: BookPageProps): Promise<Metad
 
   const bookUrl = `${siteConfig.url}/books/${book.slug}`;
   const bookTitle = book.title;
-  const bookDescription = book.shortDescription || (book.description ? book.description.replace(/<[^>]*>?/gm, "").slice(0, 160) : "");
+  const bookDescription = toPlainText(book.shortDescription) || toPlainText(book.description, 160);
 
   return {
     title: bookTitle,
@@ -143,7 +144,7 @@ export default async function BookDetailPage({ params }: BookPageProps) {
     "bookFormat": "https://schema.org/EBook",
     "inLanguage": book.language,
     "image": book.coverImage,
-    "description": book.shortDescription,
+    "description": toPlainText(book.shortDescription) || toPlainText(book.description, 300),
     "author": {
       "@type": "Person",
       "name": book.author.name,

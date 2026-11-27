@@ -23,6 +23,72 @@ import {
 
 export const dynamic = "force-dynamic";
 
+type DivisionTheme = { iconWrap: string; accent: string; hover: string };
+
+const DEFAULT_DIVISION_THEME: DivisionTheme = {
+  iconWrap: "bg-brand-100 text-brand-800",
+  accent: "text-brand-700",
+  hover: "hover:text-brand-700",
+};
+
+// Display copy for the homepage "Editorial Divisions" cards, keyed by category slug.
+// Imprints follow the rules in src/lib/imprintMapping.ts.
+const DIVISION_PRESETS: Record<
+  string,
+  { title: string; blurb: string; imprint: string; href: string; cta: string; Icon: any; theme: DivisionTheme }
+> = {
+  "exam-prep": {
+    title: "Certification & Exam Prep",
+    blurb:
+      "Rigorous study manuals developed directly from official candidate test blueprints with diagnostic questions and formula drills.",
+    imprint: "Scholarforge ED.",
+    href: "/exam-prep",
+    cta: "Explore Exam Prep",
+    Icon: GraduationCap,
+    theme: { iconWrap: "bg-amber-50 text-amber-800", accent: "text-amber-800", hover: "hover:text-amber-800" },
+  },
+  fiction: {
+    title: "Fiction & Literature",
+    blurb:
+      "Gripping suspense, nuanced drama, and character-driven stories crafted for readers who love to lose themselves in a book.",
+    imprint: "Noveraile Publishing",
+    href: "/categories/fiction",
+    cta: "Explore Fiction",
+    Icon: BookOpen,
+    theme: { iconWrap: "bg-emerald-50 text-emerald-700", accent: "text-emerald-700", hover: "hover:text-emerald-700" },
+  },
+  "self-help": {
+    title: "Self-Help & Personal Growth",
+    blurb:
+      "Practical, compassionate guides for calmer thinking, healthier boundaries, money confidence, and habits that finally stick.",
+    imprint: "Noveraile Publishing",
+    href: "/categories/self-help",
+    cta: "Explore Self-Help",
+    Icon: Sparkles,
+    theme: { iconWrap: "bg-rose-50 text-rose-700", accent: "text-rose-700", hover: "hover:text-rose-700" },
+  },
+  travel: {
+    title: "Travel & Overland Guides",
+    blurb:
+      "Authoritative expedition itineraries, off-grid campervan route maps, regional cultural history, and wilderness field guides.",
+    imprint: "Noveraile Meridian",
+    href: "/categories/travel",
+    cta: "Explore Travel",
+    Icon: Compass,
+    theme: { iconWrap: "bg-blue-50 text-blue-700", accent: "text-blue-700", hover: "hover:text-blue-700" },
+  },
+  business: {
+    title: "Business & Leadership",
+    blurb:
+      "Actionable executive frameworks for organizational governance, ethical technological transformation, and strategic decision-making.",
+    imprint: "Noveraile Publishing",
+    href: "/categories/business",
+    cta: "Explore Business",
+    Icon: TrendingUp,
+    theme: { iconWrap: "bg-purple-50 text-purple-700", accent: "text-purple-700", hover: "hover:text-purple-700" },
+  },
+};
+
 export default async function HomePage() {
   let allBooks: any[] = [];
   let categories: any[] = [];
@@ -50,8 +116,14 @@ export default async function HomePage() {
       prisma.category.findMany({
         where: { parentId: null, isActive: true },
         include: {
+          children: {
+            where: { isActive: true },
+            include: {
+              _count: { select: { books: { where: { status: "PUBLISHED" } } } },
+            },
+          },
           _count: {
-            select: { books: true },
+            select: { books: { where: { status: "PUBLISHED" } } },
           },
         },
         orderBy: { sortOrder: "asc" },
@@ -62,6 +134,37 @@ export default async function HomePage() {
   } catch (err) {
     console.error("Home page DB fetch error (fallback applied):", err);
   }
+
+  // Only promote divisions that readers can actually buy from: a top-level
+  // category appears once it (or one of its subcategories) has a published book.
+  const divisions = categories
+    .map((cat) => {
+      const subcategoryTotal =
+        cat.children?.reduce((acc: number, sub: any) => acc + (sub._count?.books || 0), 0) || 0;
+      const totalPublished = (cat._count?.books || 0) + subcategoryTotal;
+      const preset = DIVISION_PRESETS[cat.slug];
+      return {
+        key: cat.id as string,
+        totalPublished,
+        title: preset?.title || (cat.name as string),
+        blurb: preset?.blurb || (cat.description as string) || "",
+        imprint: preset?.imprint || siteConfig.name,
+        href: preset?.href || `/categories/${cat.slug}`,
+        cta: preset?.cta || `Explore ${cat.name}`,
+        Icon: preset?.Icon || BookOpen,
+        theme: preset?.theme || DEFAULT_DIVISION_THEME,
+      };
+    })
+    .filter((division) => division.totalPublished > 0);
+
+  const divisionGridClass =
+    divisions.length === 1
+      ? "grid-cols-1 max-w-sm mx-auto"
+      : divisions.length === 2
+        ? "grid-cols-1 md:grid-cols-2 max-w-3xl mx-auto"
+        : divisions.length % 4 === 0
+          ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+          : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
 
   return (
     <div className="space-y-20 pb-20 font-sans">
@@ -127,130 +230,56 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 2. THE 4 PUBLISHING DIVISIONS / NICHES */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <span className="text-xs font-semibold text-brand-500 uppercase tracking-widest block mb-1">
-            Our Publishing Program
-          </span>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-brand-ink">
-            Curated Editorial Divisions
-          </h2>
-          <p className="text-sm text-brand-slate mt-2 font-light">
-            Noveraile Publishing develops distinguished titles across four dedicated publishing imprints and subject areas.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Division 1: Fiction */}
-          <div className="bg-white rounded-2xl p-6 border border-brand-border shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between group">
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-4">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-700 font-bold block mb-1">
-                Imprint: Noveraile Publishing
-              </span>
-              <h3 className="font-serif text-lg font-bold text-brand-ink group-hover:text-brand-700 transition-colors mb-2">
-                Fiction & Literature
-              </h3>
-              <p className="text-xs text-brand-slate leading-relaxed font-light">
-                Immersive historical drama, nuanced literary narratives, and character-driven works crafted for reflective readers.
-              </p>
-            </div>
-            <div className="mt-6 pt-4 border-t border-gray-100">
-              <Link
-                href="/categories/fiction"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-ink hover:text-emerald-700 transition-colors"
-              >
-                <span>Explore Fiction</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
+      {/* 2. PUBLISHING DIVISIONS (only categories with published titles) */}
+      {divisions.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <span className="text-xs font-semibold text-brand-500 uppercase tracking-widest block mb-1">
+              Our Publishing Program
+            </span>
+            <h2 className="font-serif text-3xl sm:text-4xl font-bold text-brand-ink">
+              Curated Editorial Divisions
+            </h2>
+            <p className="text-sm text-brand-slate mt-2 font-light">
+              Every subject area is developed and published under a dedicated Noveraile imprint.
+            </p>
           </div>
 
-          {/* Division 2: Travel */}
-          <div className="bg-white rounded-2xl p-6 border border-brand-border shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between group">
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center mb-4">
-                <Compass className="w-5 h-5" />
-              </div>
-              <span className="text-[10px] font-mono uppercase tracking-wider text-blue-700 font-bold block mb-1">
-                Imprint: Noveraile Meridian
-              </span>
-              <h3 className="font-serif text-lg font-bold text-brand-ink group-hover:text-brand-700 transition-colors mb-2">
-                Travel & Overland Guides
-              </h3>
-              <p className="text-xs text-brand-slate leading-relaxed font-light">
-                Authoritative expedition itineraries, off-grid campervan route maps, regional cultural history, and wilderness field guides.
-              </p>
-            </div>
-            <div className="mt-6 pt-4 border-t border-gray-100">
-              <Link
-                href="/categories/travel"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-ink hover:text-blue-700 transition-colors"
+          <div className={`grid gap-6 ${divisionGridClass}`}>
+            {divisions.map(({ key, title, blurb, imprint, href, cta, Icon, theme, totalPublished }) => (
+              <div
+                key={key}
+                className="bg-white rounded-2xl p-6 border border-brand-border shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between group"
               >
-                <span>Explore Travel</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-
-          {/* Division 3: Business */}
-          <div className="bg-white rounded-2xl p-6 border border-brand-border shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between group">
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center mb-4">
-                <TrendingUp className="w-5 h-5" />
+                <div>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${theme.iconWrap}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <span className={`text-[10px] font-mono uppercase tracking-wider font-bold block mb-1 ${theme.accent}`}>
+                    Imprint: {imprint}
+                  </span>
+                  <h3 className="font-serif text-lg font-bold text-brand-ink group-hover:text-brand-700 transition-colors mb-2">
+                    {title}
+                  </h3>
+                  <p className="text-xs text-brand-slate leading-relaxed font-light">{blurb}</p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                  <Link
+                    href={href}
+                    className={`inline-flex items-center gap-1.5 text-xs font-semibold text-brand-ink transition-colors ${theme.hover}`}
+                  >
+                    <span>{cta}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                  <span className="text-[11px] text-brand-muted">
+                    {totalPublished} {totalPublished === 1 ? "title" : "titles"}
+                  </span>
+                </div>
               </div>
-              <span className="text-[10px] font-mono uppercase tracking-wider text-purple-700 font-bold block mb-1">
-                Imprint: Noveraile Leadership
-              </span>
-              <h3 className="font-serif text-lg font-bold text-brand-ink group-hover:text-brand-700 transition-colors mb-2">
-                Business & Leadership
-              </h3>
-              <p className="text-xs text-brand-slate leading-relaxed font-light">
-                Actionable executive frameworks for organizational governance, ethical technological transformation, and strategic decision-making.
-              </p>
-            </div>
-            <div className="mt-6 pt-4 border-t border-gray-100">
-              <Link
-                href="/categories/business"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-ink hover:text-purple-700 transition-colors"
-              >
-                <span>Explore Business</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
+            ))}
           </div>
-
-          {/* Division 4: Professional Exam Prep */}
-          <div className="bg-white rounded-2xl p-6 border border-brand-border shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between group">
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center mb-4">
-                <GraduationCap className="w-5 h-5" />
-              </div>
-              <span className="text-[10px] font-mono uppercase tracking-wider text-amber-800 font-bold block mb-1">
-                Imprint: Scholarforge ED.
-              </span>
-              <h3 className="font-serif text-lg font-bold text-brand-ink group-hover:text-brand-700 transition-colors mb-2">
-                Certification & Exam Prep
-              </h3>
-              <p className="text-xs text-brand-slate leading-relaxed font-light">
-                Rigorous study manuals developed directly from official candidate test blueprints with diagnostic questions and formula drills.
-              </p>
-            </div>
-            <div className="mt-6 pt-4 border-t border-gray-100">
-              <Link
-                href="/categories/exam-prep"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-ink hover:text-amber-800 transition-colors"
-              >
-                <span>Explore Exam Prep</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 3. FEATURED PUBLICATIONS ACROSS ALL NICHES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

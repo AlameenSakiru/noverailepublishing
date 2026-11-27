@@ -116,12 +116,16 @@ export function formatAmazonDescriptionHtml(raw: string): string {
       continue;
     }
 
-    // Check for Bullet points (•, -, *, +, ✔, ✓, ★, ➤, ►, ▪, ▫)
-    const bulletMatch = rawLine.match(/^([•\-\*\+✔✓★➤►▪▫]|\u2022|\u2023|\u25E6|\u2043|\u2219)\s*(.*)$/);
+    // Check for Bullet points (•, -, *, +, ✔, ✓, ★, ➤, ►, ▪, ▫).
+    // Markdown-style markers (-, *, +) need a following space, so a line that opens
+    // with **bold** or *italic* text is not mistaken for a bullet.
+    const bulletMatch = rawLine.match(
+      /^(?:[•✔✓★➤►▪▫\u2022\u2023\u25E6\u2043\u2219]\s*|[\-\*\+]\s+)(.*)$/
+    );
     if (bulletMatch) {
       if (inOrderedList) flushList();
       inList = true;
-      const itemContent = processInlineFormatting(bulletMatch[2]);
+      const itemContent = processInlineFormatting(bulletMatch[1]);
       listItems.push(
         `<li class="flex items-start gap-2 text-slate-700 text-xs sm:text-sm leading-relaxed"><span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></span><span class="flex-1">${itemContent}</span></li>`
       );
