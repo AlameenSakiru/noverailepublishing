@@ -84,7 +84,17 @@ export function formatAmazonDescriptionHtml(raw: string): string {
   };
 
   const processInlineFormatting = (str: string): string => {
-    return str
+    let line = str;
+    // A line that opens with ** or * but never closes it (common when pasting from
+    // KDP / Word) is meant to be bold / italic as a whole; close the marker so the
+    // raw asterisks are not printed.
+    if (/^\*\*(?!\*)/.test(line) && !line.slice(2).includes("**")) {
+      line = `**${line.slice(2).trim()}**`;
+    } else if (/^\*(?!\*)/.test(line) && !/(?<!\*)\*(?!\*)/.test(line.slice(1))) {
+      line = `*${line.slice(1).trim()}*`;
+    }
+
+    return line
       // Bold markdown **text** or __text__
       .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-950">$1</strong>')
       .replace(/__(.*?)__/g, '<strong class="font-bold text-slate-950">$1</strong>')
